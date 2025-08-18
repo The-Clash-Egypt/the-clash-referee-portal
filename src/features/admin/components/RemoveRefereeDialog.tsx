@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Referee } from "../../matches/api/matches";
 import "./RemoveRefereeDialog.scss";
 
@@ -11,6 +11,20 @@ interface RemoveRefereeDialogProps {
 }
 
 const RemoveRefereeDialog: React.FC<RemoveRefereeDialogProps> = ({ isOpen, referee, onClose, onConfirm, loading }) => {
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+
+    // Cleanup function to restore scrolling when component unmounts
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
   if (!isOpen || !referee) return null;
 
   return (

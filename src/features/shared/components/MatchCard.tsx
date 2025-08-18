@@ -9,6 +9,7 @@ interface MatchCardProps {
   onUpdateScore?: (match: Match) => void;
   showAdminActions?: boolean;
   showUpdateScore?: boolean;
+  showAssignReferee?: boolean;
 }
 
 const MatchCard: React.FC<MatchCardProps> = ({
@@ -18,41 +19,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
   onUpdateScore,
   showAdminActions = false,
   showUpdateScore = true,
+  showAssignReferee = true,
 }) => {
-  const formatDateTime = (dateTimeString: string) => {
-    const date = new Date(dateTimeString);
-    return date.toLocaleString();
-  };
-
-  const getMatchStatus = (match: Match) => {
-    if (match.isCompleted) {
-      return "Completed";
-    }
-    if (match.startTime && new Date(match.startTime) < new Date()) {
-      return "In Progress";
-    }
-    return "Upcoming";
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Completed":
-        return "status-completed";
-      case "In Progress":
-        return "status-in-progress";
-      case "Upcoming":
-        return "status-upcoming";
-      default:
-        return "";
-    }
-  };
-
-  const handleAssignReferee = () => {
-    if (onAssignReferee) {
-      onAssignReferee(match);
-    }
-  };
-
   const handleUpdateScore = () => {
     if (onUpdateScore) {
       onUpdateScore(match);
@@ -112,7 +80,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
       </div>
 
       {/* Assigned Referees */}
-      {match.referees && match.referees.length > 0 && (
+      {match.referees && match.referees.length > 0 && showAssignReferee && (
         <div className="referees-section">
           <div className="section-title">Assigned Referees</div>
           <div className="referees-list">
@@ -166,20 +134,18 @@ const MatchCard: React.FC<MatchCardProps> = ({
       )}
 
       {/* Action Buttons */}
-      {showAdminActions && (
-        <div className="match-actions">
-          {onAssignReferee && (
-            <button className="btn btn-primary" onClick={() => onAssignReferee(match)}>
-              Assign Referee
-            </button>
-          )}
-          {onUpdateScore && showUpdateScore && (
-            <button className="btn btn-secondary" onClick={handleUpdateScore}>
-              Update Score
-            </button>
-          )}
-        </div>
-      )}
+      <div className="match-actions">
+        {showAdminActions && onAssignReferee && (
+          <button className="btn btn-primary" onClick={() => onAssignReferee(match)}>
+            Assign Referee
+          </button>
+        )}
+        {onUpdateScore && showUpdateScore && (
+          <button className="btn btn-secondary" onClick={handleUpdateScore}>
+            Update Score
+          </button>
+        )}
+      </div>
     </div>
   );
 };

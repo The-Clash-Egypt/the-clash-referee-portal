@@ -382,7 +382,7 @@ const MatchesManagement: React.FC = () => {
       <div className="matches-stats">
         <div className="matches-count">
           <span className="stat-label">Total Matches</span>
-          <span className="stat-value">{matches.length}</span>
+          <span className="stat-value">{filteredMatches.length}</span>
         </div>
         <div className="status-stats">
           <div className="stat-item">
@@ -440,7 +440,6 @@ const MatchesManagement: React.FC = () => {
                 onAssignReferee={openAssignmentModal}
                 onUnassignReferee={handleUnassignReferee}
                 showAdminActions={true}
-                showUpdateScore={false}
               />
             ))}
         </div>

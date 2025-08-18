@@ -26,6 +26,20 @@ const AddRefereeModal: React.FC<AddRefereeModalProps> = ({ isOpen, onClose, onSu
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+
+    // Cleanup function to restore scrolling when component unmounts
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
   const fetchPlayerSuggestions = async (search: string) => {
     try {
       setLoadingSuggestions(true);

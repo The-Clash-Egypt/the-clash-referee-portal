@@ -51,7 +51,7 @@ const Navbar: React.FC = () => {
           <img src={require("../assets/images/logo.png")} alt="The Clash" className="navbar-logo" />
           <div className="navbar-title-container">
             <span className="navbar-title">The Clash Referees Portal</span>
-            <span className="navbar-subtitle">{getPageTitle()}</span>
+            {/* <span className="navbar-subtitle">{getPageTitle()}</span> */}
           </div>
         </div>
 
@@ -77,7 +77,7 @@ const Navbar: React.FC = () => {
               className={`nav-link ${location.pathname === "/matches" ? "active" : ""}`}
               onClick={() => handleNavigation("/matches")}
             >
-              My Matches
+              Matches
             </button>
           )}
           <button className="nav-link logout desktop-only" onClick={handleLogout}>
@@ -102,7 +102,7 @@ const Navbar: React.FC = () => {
           </div>
         </div>
         <div className="mobile-nav-links">
-          {user.role === "admin" && (
+          {user.role === "admin" ? (
             <>
               <button
                 className={`mobile-nav-link ${location.pathname === "/admin/matches" ? "active" : ""}`}
@@ -117,13 +117,14 @@ const Navbar: React.FC = () => {
                 Referees Management
               </button>
             </>
+          ) : (
+            <button
+              className={`mobile-nav-link ${location.pathname === "/matches" ? "active" : ""}`}
+              onClick={() => handleNavigation("/matches")}
+            >
+              My Matches
+            </button>
           )}
-          <button
-            className={`mobile-nav-link ${location.pathname === "/matches" ? "active" : ""}`}
-            onClick={() => handleNavigation("/matches")}
-          >
-            My Matches
-          </button>
           <button className="mobile-nav-link logout" onClick={handleLogout}>
             Logout
           </button>
