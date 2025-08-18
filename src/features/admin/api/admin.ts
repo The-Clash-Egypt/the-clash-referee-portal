@@ -9,7 +9,7 @@ export const getAllMatchesForAdmin = (): Promise<{ data: Match[] }> => api.get("
 
 // Assign referee to match
 export const assignRefereeToMatch = (refereeId: string, matchId: string) =>
-  api.delete(`/Referee/${refereeId}/assign/${matchId}`);
+  api.post(`/Referee/${refereeId}/assign/${matchId}`);
 
 // Unassign referee from match
 export const unassignRefereeFromMatch = (refereeId: string, matchId: string) =>
