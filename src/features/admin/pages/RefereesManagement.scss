@@ -1,0 +1,370 @@
+.referees-management {
+  min-height: 100vh;
+  background: #fafbfc;
+  padding: 12px 32px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  .dashboard-header {
+    text-align: center;
+    margin: 24px 0;
+
+    h1 {
+      color: #1a202c;
+      font-size: 36px;
+      font-weight: 600;
+      margin: 0;
+      margin-bottom: 4px;
+    }
+
+    p {
+      color: #718096;
+      font-size: 16px;
+      margin: 0;
+      font-weight: 400;
+    }
+  }
+
+  .filters-section {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    align-items: center;
+    flex-wrap: wrap;
+
+    .search-filter {
+      flex: 1;
+      min-width: 300px;
+
+      .search-input {
+        width: -webkit-fill-available;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+        background: white;
+        transition: all 0.2s ease;
+
+        &:focus {
+          outline: none;
+          border-color: #3182ce;
+          box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+        }
+
+        &::placeholder {
+          color: #a0aec0;
+        }
+      }
+    }
+
+    .status-filter {
+      .status-select {
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:focus {
+          outline: none;
+          border-color: #3182ce;
+          box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+        }
+      }
+    }
+
+    .action-filter {
+      .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+    }
+  }
+
+  .referees-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+    padding: 16px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      .stat-label {
+        color: #718096;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .stat-value {
+        color: #2d3748;
+        font-size: 24px;
+        font-weight: 700;
+      }
+    }
+  }
+
+  .loading-container,
+  .error-container,
+  .no-referees {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    text-align: center;
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e2e8f0;
+      border-top: 3px solid #3182ce;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 24px;
+    }
+
+    h2 {
+      color: #2d3748;
+      font-size: 24px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    p {
+      color: #718096;
+      font-size: 16px;
+      margin-bottom: 32px;
+      font-weight: 400;
+    }
+
+    .retry-button {
+      background: #3182ce;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: #2c5aa0;
+        transform: translateY(-1px);
+      }
+    }
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+
+    .empty-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+
+    h2 {
+      color: #2d3748;
+      font-size: 24px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    p {
+      color: #718096;
+      font-size: 16px;
+      margin-bottom: 24px;
+      font-weight: 400;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &.btn-primary {
+        background: #3182ce;
+        color: white;
+
+        &:hover {
+          background: #2c5aa0;
+          transform: translateY(-1px);
+        }
+      }
+    }
+  }
+
+  .referees-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 24px;
+  }
+
+  /* Responsive design */
+  @media (max-width: 768px) {
+    padding: 20px;
+
+    .dashboard-header h1 {
+      font-size: 28px;
+    }
+
+    .filters-section {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+
+      .search-filter {
+        min-width: auto;
+        order: 1;
+      }
+
+      .status-filter {
+        order: 2;
+        width: 100%;
+
+        .status-select {
+          width: 100%;
+        }
+      }
+
+      .action-filter {
+        order: 3;
+
+        .btn {
+          width: 100%;
+        }
+      }
+    }
+
+    .referees-stats {
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .referees-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    padding: 16px;
+
+    .dashboard-header h1 {
+      font-size: 24px;
+    }
+
+    .filters-section {
+      gap: 8px;
+
+      .search-filter .search-input {
+        padding: 10px 14px;
+        font-size: 14px; /* Prevents zoom on iOS */
+      }
+
+      .status-filter .status-select {
+        padding: 10px 14px;
+        font-size: 14px; /* Prevents zoom on iOS */
+      }
+
+      .action-filter .btn {
+        padding: 10px 14px;
+        font-size: 14px; /* Prevents zoom on iOS */
+      }
+    }
+
+    .referees-stats {
+      padding: 12px;
+      gap: 12px;
+
+      .stat-item .stat-value {
+        font-size: 20px;
+      }
+    }
+
+    .empty-state {
+      padding: 32px 16px;
+
+      .empty-icon {
+        font-size: 48px;
+      }
+    }
+  }
+
+  @media (max-width: 360px) {
+    padding: 12px;
+
+    .dashboard-header h1 {
+      font-size: 22px;
+    }
+
+    .dashboard-header p {
+      font-size: 14px;
+    }
+
+    .filters-section {
+      .search-filter .search-input {
+        padding: 8px 12px;
+      }
+
+      .status-filter .status-select {
+        padding: 8px 12px;
+      }
+
+      .action-filter .btn {
+        padding: 8px 12px;
+      }
+    }
+
+    .referees-grid {
+      gap: 12px;
+    }
+
+    .empty-state {
+      padding: 24px 12px;
+
+      .empty-icon {
+        font-size: 40px;
+      }
+
+      h2 {
+        font-size: 20px;
+      }
+
+      p {
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

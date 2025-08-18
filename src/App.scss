@@ -1,0 +1,27 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+
+  .app-main {
+    flex: 1;
+    background: #f8f9fa;
+  }
+
+  /* Update dashboard containers to account for navbar */
+  .matches-dashboard,
+  .admin-dashboard {
+    min-height: calc(100vh - 64px);
+    background: #f8f9fa;
+    padding: 24px;
+
+    @media (max-width: 768px) {
+      min-height: calc(100vh - 56px);
+      padding: 16px;
+    }
+
+    @media (max-width: 480px) {
+      padding: 12px;
+    }
+  }
+}

@@ -1,0 +1,255 @@
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+
+  .modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px 32px 0 32px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+
+      h3 {
+        color: #2d3748;
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0;
+      }
+
+      .modal-close {
+        background: #f7fafc;
+        border: 1px solid #e2e8f0;
+        font-size: 18px;
+        color: #718096;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: #edf2f7;
+          color: #2d3748;
+        }
+      }
+    }
+
+    .modal-body {
+      padding: 0 32px 32px 32px;
+
+      .match-info {
+        margin-bottom: 24px;
+        padding: 16px;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+
+        h4 {
+          color: #2d3748;
+          font-size: 16px;
+          font-weight: 600;
+          margin: 0 0 12px 0;
+        }
+
+        p {
+          color: #4a5568;
+          font-size: 14px;
+          margin: 8px 0;
+          line-height: 1.5;
+
+          strong {
+            color: #2d3748;
+            font-weight: 600;
+          }
+        }
+      }
+
+      .referees-list {
+        h4 {
+          color: #2d3748;
+          font-size: 16px;
+          font-weight: 600;
+          margin: 0 0 16px 0;
+        }
+
+        p {
+          color: #718096;
+          font-size: 14px;
+          text-align: center;
+          padding: 20px;
+        }
+
+        .referees-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+          gap: 16px;
+
+          .referee-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+
+            &:hover {
+              background: #f1f5f9;
+              border-color: #cbd5e0;
+            }
+
+            .referee-info {
+              flex: 1;
+
+              h5 {
+                color: #2d3748;
+                font-size: 14px;
+                font-weight: 600;
+                margin: 0 0 4px 0;
+              }
+
+              p {
+                color: #718096;
+                font-size: 12px;
+                margin: 0;
+              }
+            }
+
+            .assign-button {
+              background: #3182ce;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              padding: 8px 16px;
+              font-size: 12px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              white-space: nowrap;
+
+              &:hover:not(:disabled) {
+                background: #2c5aa0;
+                transform: translateY(-1px);
+              }
+
+              &:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+                transform: none;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 16px;
+
+    .modal-content {
+      .modal-header {
+        padding: 20px 24px 0 24px;
+      }
+
+      .modal-body {
+        padding: 0 24px 24px 24px;
+
+        .referees-list .referees-grid {
+          grid-template-columns: 1fr;
+
+          .referee-card {
+            flex-direction: column;
+            gap: 12px;
+            text-align: center;
+
+            .assign-button {
+              width: 100%;
+              padding: 10px 16px;
+              font-size: 14px;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 12px;
+
+    .modal-content {
+      .modal-header {
+        padding: 16px 20px 0 20px;
+
+        h3 {
+          font-size: 18px;
+        }
+      }
+
+      .modal-body {
+        padding: 0 20px 20px 20px;
+
+        .match-info {
+          padding: 12px;
+
+          h4 {
+            font-size: 14px;
+          }
+
+          p {
+            font-size: 13px;
+          }
+        }
+
+        .referees-list {
+          h4 {
+            font-size: 14px;
+          }
+
+          .referees-grid .referee-card {
+            padding: 12px;
+
+            .referee-info h5 {
+              font-size: 13px;
+            }
+
+            .referee-info p {
+              font-size: 11px;
+            }
+          }
+        }
+      }
+    }
+  }
+}

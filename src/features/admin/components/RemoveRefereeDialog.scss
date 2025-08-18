@@ -1,0 +1,171 @@
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+
+  .modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+
+    &.confirmation-dialog {
+      max-width: 400px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 32px 12px 32px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 12px;
+
+      h3 {
+        color: #2d3748;
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0;
+      }
+
+      .modal-close {
+        background: #f7fafc;
+        border: 1px solid #e2e8f0;
+        font-size: 18px;
+        color: #718096;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: #edf2f7;
+          color: #2d3748;
+        }
+      }
+    }
+
+    .modal-body {
+      padding: 0 32px 32px 32px;
+
+      .confirmation-message {
+        text-align: center;
+        margin-bottom: 24px;
+
+        p {
+          color: #4a5568;
+          font-size: 16px;
+          margin-bottom: 12px;
+          line-height: 1.5;
+
+          &:last-child {
+            margin-bottom: 0;
+            color: #718096;
+            font-size: 14px;
+          }
+
+          strong {
+            color: #2d3748;
+            font-weight: 600;
+          }
+        }
+      }
+
+      .modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+
+        .btn {
+          padding: 12px 24px;
+          border: none;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &.btn-secondary {
+            background: #f7fafc;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+
+            &:hover {
+              background: #edf2f7;
+              transform: translateY(-1px);
+            }
+          }
+
+          &.btn-danger {
+            background: #fed7d7;
+            color: #c53030;
+            border: 1px solid #feb2b2;
+
+            &:hover:not(:disabled) {
+              background: #feb2b2;
+              color: #9b2c2c;
+              transform: translateY(-1px);
+            }
+
+            &:disabled {
+              opacity: 0.6;
+              cursor: not-allowed;
+              transform: none;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 16px;
+
+    .modal-content {
+      .modal-header {
+        padding: 12px 24px 12px 24px;
+      }
+
+      .modal-body {
+        padding: 0 24px 24px 24px;
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 12px;
+
+    .modal-content {
+      .modal-header {
+        padding: 12px 20px 12px 20px;
+      }
+
+      .modal-body {
+        padding: 0 20px 20px 20px;
+      }
+    }
+  }
+}
