@@ -387,15 +387,19 @@ const MatchesManagement: React.FC = () => {
         <div className="status-stats">
           <div className="stat-item">
             <span className="stat-label">Upcoming</span>
-            <span className="stat-value">{matches.filter((m) => getMatchStatus(m) === "upcoming").length}</span>
+            <span className="stat-value">{filteredMatches.filter((m) => getMatchStatus(m) === "upcoming").length}</span>
           </div>
           <div className="stat-item">
             <span className="stat-label">In Progress</span>
-            <span className="stat-value">{matches.filter((m) => getMatchStatus(m) === "in-progress").length}</span>
+            <span className="stat-value">
+              {filteredMatches.filter((m) => getMatchStatus(m) === "in-progress").length}
+            </span>
           </div>
           <div className="stat-item">
             <span className="stat-label">Completed</span>
-            <span className="stat-value">{matches.filter((m) => getMatchStatus(m) === "completed").length}</span>
+            <span className="stat-value">
+              {filteredMatches.filter((m) => getMatchStatus(m) === "completed").length}
+            </span>
           </div>
         </div>
       </div>
