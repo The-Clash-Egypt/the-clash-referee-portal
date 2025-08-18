@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
-import { getRefereeMatches, Match } from "../api/matches";
+import { getRefereeMatches, Match, MatchGameScore, submitMatchResult } from "../api/matches";
 import { RootState } from "../../../store";
 import MatchCard from "../../shared/components/MatchCard";
+import UpdateScoreDialog from "../../admin/components/UpdateScoreDialog";
 import "./MatchesDashboard.scss";
 
 const MatchesDashboard: React.FC = () => {
@@ -18,6 +19,14 @@ const MatchesDashboard: React.FC = () => {
   const [filterRound, setFilterRound] = useState<string>("all");
   const [filterVenue, setFilterVenue] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [updateScoreDialog, setUpdateScoreDialog] = useState<{
+    isOpen: boolean;
+    match: Match | null;
+  }>({
+    isOpen: false,
+    match: null,
+  });
+  const [updateScoreLoading, setUpdateScoreLoading] = useState(false);
 
   useEffect(() => {
     fetchMatches();
@@ -181,8 +190,38 @@ const MatchesDashboard: React.FC = () => {
   };
 
   const handleUpdateScore = (match: Match) => {
-    // TODO: Implement update score functionality
-    console.log("Update score for match:", match.id);
+    setUpdateScoreDialog({
+      isOpen: true,
+      match: match,
+    });
+  };
+
+  const handleCloseUpdateScoreDialog = () => {
+    setUpdateScoreDialog({
+      isOpen: false,
+      match: null,
+    });
+  };
+
+  const handleSubmitUpdateScore = async (gameScores: MatchGameScore[]) => {
+    if (!updateScoreDialog.match) return;
+
+    try {
+      setUpdateScoreLoading(true);
+      await submitMatchResult(updateScoreDialog.match.id, { gameScores });
+
+      // Refresh matches to show updated scores
+      await fetchMatches();
+
+      // Show success message (you can add a toast notification here)
+      console.log("Score updated successfully");
+    } catch (error: any) {
+      console.error("Error updating score:", error);
+      // Show error message (you can add a toast notification here)
+      throw error; // Re-throw to let the dialog handle the error
+    } finally {
+      setUpdateScoreLoading(false);
+    }
   };
 
   if (loading) {
@@ -383,11 +422,20 @@ const MatchesDashboard: React.FC = () => {
                 onUpdateScore={handleUpdateScore}
                 showAdminActions={false}
                 showAssignReferee={false}
-                showUpdateScore={true}
+                showUpdateScore={!match.isCompleted}
               />
             ))}
         </div>
       )}
+
+      {/* Update Score Dialog */}
+      <UpdateScoreDialog
+        isOpen={updateScoreDialog.isOpen}
+        match={updateScoreDialog.match}
+        onClose={handleCloseUpdateScoreDialog}
+        onSubmit={handleSubmitUpdateScore}
+        loading={updateScoreLoading}
+      />
     </div>
   );
 };
