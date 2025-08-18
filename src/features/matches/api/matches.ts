@@ -18,6 +18,7 @@ export interface Match {
   tournamentName?: string;
   categoryName?: string;
   format?: string;
+  bestOf?: number;
   startTime?: string;
   round?: string;
   homeTeamId?: string;

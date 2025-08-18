@@ -1,0 +1,474 @@
+/* Modal Overlay */
+.update-score-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+
+  /* Modal Content */
+  .modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+
+    /* Modal Header */
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 12px;
+
+      h3 {
+        color: #2d3748;
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0;
+      }
+
+      .modal-close {
+        background: #f7fafc;
+        border: 1px solid #e2e8f0;
+        font-size: 18px;
+        color: #718096;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: #edf2f7;
+          color: #2d3748;
+        }
+      }
+    }
+
+    /* Modal Body */
+    .modal-body {
+      padding: 0 32px 32px 32px;
+
+      /* Match Info Section */
+      .match-info {
+        margin-bottom: 24px;
+        padding: 16px;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+
+        h4 {
+          color: #2d3748;
+          font-size: 16px;
+          font-weight: 700;
+          margin: 0 0 12px 0;
+          text-decoration-line: underline;
+        }
+
+        p {
+          color: #4a5568;
+          font-size: 14px;
+          margin: 8px 0;
+          line-height: 1.5;
+
+          strong {
+            color: #2d3748;
+            font-weight: 600;
+          }
+        }
+      }
+
+      /* Score Section */
+      .score-section {
+        margin-bottom: 24px;
+
+        h4 {
+          color: #2d3748;
+          font-size: 16px;
+          font-weight: 600;
+          margin: 0;
+        }
+
+        .score-instructions {
+          color: #718096;
+          font-size: 14px;
+          margin: 0 0 16px 0;
+          line-height: 1.5;
+        }
+
+        /* Games Grid */
+        .games-grid {
+          display: grid;
+          gap: 16px;
+          margin-bottom: 16px;
+
+          /* Game Score Card */
+          .game-score-card {
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+
+            .game-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 12px;
+
+              h5 {
+                color: #2d3748;
+                font-size: 14px;
+                font-weight: 600;
+                margin: 0;
+                text-align: left;
+              }
+
+              .remove-game-btn {
+                background: #fed7d7;
+                color: #c53030;
+                border: 1px solid #feb2b2;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                flex-shrink: 0;
+
+                &:hover {
+                  background: #feb2b2;
+                  color: #9b2c2c;
+                  transform: scale(1.1);
+                }
+
+                &:active {
+                  transform: scale(0.95);
+                }
+              }
+            }
+
+            .score-inputs {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+
+              .team-score {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                align-items: center;
+
+                label {
+                  color: #4a5568;
+                  font-size: 12px;
+                  font-weight: 500;
+                  text-align: center;
+                }
+
+                .score-input {
+                  width: 40px;
+                  padding: 8px 12px;
+                  border: 1px solid #e2e8f0;
+                  border-radius: 6px;
+                  font-size: 14 px;
+                  text-align: center;
+                  background: white;
+                  transition: all 0.2s ease;
+
+                  &:focus {
+                    outline: none;
+                    border-color: var(--primary-color);
+                    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+                  }
+
+                  &::-webkit-outer-spin-button,
+                  &::-webkit-inner-spin-button {
+                    -webkit-appearance: none;
+                    margin: 0;
+                  }
+
+                  &[type="number"] {
+                    -moz-appearance: textfield;
+                  }
+                }
+              }
+
+              .score-divider {
+                color: #718096;
+                font-size: 14px;
+                font-weight: 500;
+                padding: 0 8px;
+              }
+            }
+          }
+        }
+
+        .add-game-section {
+          display: flex;
+          justify-content: center;
+          margin-top: 16px;
+
+          .add-game-btn {
+            background: #f7fafc;
+            color: #4a5568;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+
+            &:hover {
+              background: #edf2f7;
+              border-color: #a0aec0;
+              color: #2d3748;
+              transform: translateY(-1px);
+            }
+
+            &:active {
+              transform: translateY(0);
+            }
+
+            &:focus {
+              outline: none;
+              border-color: #3182ce;
+              box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+            }
+          }
+        }
+
+        /* Error Messages */
+        .error-messages {
+          margin-top: 16px;
+
+          .error-message {
+            color: #dc2626;
+            font-size: 14px;
+            margin: 4px 0;
+            padding: 8px 12px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+          }
+        }
+      }
+
+      /* Modal Actions */
+      .modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+
+        .btn {
+          padding: 12px 24px;
+          border: none;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+          }
+
+          &.btn-primary {
+            background: var(--primary-color);
+            color: white;
+
+            &:hover:not(:disabled) {
+              background: color-mix(in srgb, var(--primary-color) 90%, black);
+              transform: translateY(-1px);
+            }
+          }
+
+          &.btn-secondary {
+            background: #f7fafc;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+
+            &:hover:not(:disabled) {
+              background: #edf2f7;
+              transform: translateY(-1px);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/* Responsive Design - Tablet */
+@media (max-width: 768px) {
+  .update-score-modal-overlay {
+    padding: 16px;
+
+    .modal-content {
+      .modal-header {
+        padding: 20px 24px 0 24px;
+      }
+
+      .modal-body {
+        padding: 0 24px 24px 24px;
+
+        .score-section {
+          .games-grid {
+            .game-score-card {
+              .game-header {
+                .remove-game-btn {
+                  width: 18px;
+                  height: 18px;
+                  font-size: 12px;
+                }
+              }
+
+              .score-inputs {
+                flex-direction: column;
+                gap: 8px;
+
+                .score-divider {
+                  padding: 4px 0;
+                }
+              }
+            }
+          }
+
+          .add-game-section {
+            .add-game-btn {
+              padding: 10px 20px;
+              font-size: 13px;
+              min-width: 100px;
+            }
+          }
+        }
+
+        .modal-actions {
+          flex-direction: column;
+
+          .btn {
+            width: 100%;
+          }
+        }
+      }
+    }
+  }
+}
+
+/* Responsive Design - Mobile */
+@media (max-width: 480px) {
+  .update-score-modal-overlay {
+    padding: 12px;
+
+    .modal-content {
+      .modal-header {
+        padding: 16px 20px 0 20px;
+
+        h3 {
+          font-size: 18px;
+        }
+      }
+
+      .modal-body {
+        padding: 0 20px 20px 20px;
+
+        .match-info {
+          padding: 12px;
+
+          h4 {
+            font-size: 14px;
+          }
+
+          p {
+            font-size: 13px;
+          }
+        }
+
+        .score-section {
+          h4 {
+            font-size: 14px;
+          }
+
+          .score-instructions {
+            font-size: 13px;
+          }
+
+          .games-grid {
+            .game-score-card {
+              padding: 12px;
+
+              h5 {
+                font-size: 13px;
+              }
+
+              .score-inputs {
+                .team-score {
+                  label {
+                    font-size: 11px;
+                  }
+
+                  .score-input {
+                    padding: 6px 10px;
+                    font-size: 14px;
+                  }
+                }
+
+                .score-divider {
+                  font-size: 12px;
+                }
+              }
+            }
+          }
+
+          .error-messages {
+            .error-message {
+              font-size: 13px;
+              padding: 6px 10px;
+            }
+          }
+        }
+
+        .score-section {
+          .add-game-section {
+            .add-game-btn {
+              padding: 8px 16px;
+              font-size: 12px;
+              min-width: 80px;
+            }
+          }
+        }
+
+        .modal-actions {
+          .btn {
+            padding: 10px 20px;
+            font-size: 13px;
+          }
+        }
+      }
+    }
+  }
+}

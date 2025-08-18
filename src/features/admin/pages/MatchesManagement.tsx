@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { getAllMatchesForAdmin, getAllRefereesForAdmin, assignRefereeToMatch, unassignRefereeFromMatch } from "../api";
-import { Match, Referee } from "../../matches/api/matches";
+import { Match, Referee, MatchGameScore } from "../../matches/api/matches";
 import MatchCard from "../../shared/components/MatchCard";
 import AssignRefereeModal from "../components/AssignRefereeModal";
+import UpdateScoreDialog from "../components/UpdateScoreDialog";
 import "./MatchesManagement.scss";
 
 const MatchesManagement: React.FC = () => {
@@ -13,6 +14,9 @@ const MatchesManagement: React.FC = () => {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [assigningReferee, setAssigningReferee] = useState(false);
+  const [showUpdateScoreModal, setShowUpdateScoreModal] = useState(false);
+  const [updatingScore, setUpdatingScore] = useState(false);
+  const [selectedMatchForScore, setSelectedMatchForScore] = useState<Match | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterTournament, setFilterTournament] = useState<string>("all");
@@ -227,8 +231,28 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleUpdateScore = (match: Match) => {
-    // TODO: Implement update score functionality
-    console.log("Update score for match:", match.id);
+    setSelectedMatchForScore(match);
+    setShowUpdateScoreModal(true);
+  };
+
+  const handleSubmitScore = async (gameScores: MatchGameScore[]) => {
+    if (!selectedMatchForScore) return;
+
+    try {
+      setUpdatingScore(true);
+      // TODO: Implement API call to update match scores
+      console.log("Updating scores for match:", selectedMatchForScore.id, gameScores);
+
+      // Refresh data to show updated scores
+      await fetchData();
+      setShowUpdateScoreModal(false);
+      setSelectedMatchForScore(null);
+    } catch (error: any) {
+      console.error("Error updating scores:", error);
+      alert("Failed to update scores. Please try again.");
+    } finally {
+      setUpdatingScore(false);
+    }
   };
 
   const clearAllFilters = () => {
@@ -444,6 +468,7 @@ const MatchesManagement: React.FC = () => {
                 onAssignReferee={openAssignmentModal}
                 onUnassignReferee={handleUnassignReferee}
                 showAdminActions={true}
+                showUpdateScore={true}
               />
             ))}
         </div>
@@ -457,6 +482,18 @@ const MatchesManagement: React.FC = () => {
         onClose={() => setShowAssignmentModal(false)}
         onAssign={handleAssignReferee}
         loading={assigningReferee}
+      />
+
+      {/* Update Score Modal */}
+      <UpdateScoreDialog
+        isOpen={showUpdateScoreModal}
+        match={selectedMatchForScore}
+        onClose={() => {
+          setShowUpdateScoreModal(false);
+          setSelectedMatchForScore(null);
+        }}
+        onSubmit={handleSubmitScore}
+        loading={updatingScore}
       />
     </div>
   );
