@@ -185,8 +185,6 @@ const MatchesDashboard: React.FC = () => {
     console.log("Update score for match:", match.id);
   };
 
-  const isAdmin = user?.role === "admin";
-
   if (loading) {
     return (
       <div className="matches-dashboard">
@@ -224,123 +222,127 @@ const MatchesDashboard: React.FC = () => {
         <p>View and manage your assigned matches</p>
       </div>
 
-      <div className="filters-section">
-        <div className="search-filter">
-          <input
-            type="text"
-            placeholder="Search matches by team, venue, or tournament..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-        </div>
-
-        <button className={`filters-toggle ${showFilters ? "expanded" : ""}`} onClick={toggleFilters}>
-          <span>Filters & Search</span>
-          <span className="toggle-icon">▼</span>
-        </button>
-
-        <div className={`filters-row ${showFilters ? "visible" : ""}`}>
-          <div className="filter-group">
-            <select
-              value={filterTournament}
-              onChange={(e) => setFilterTournament(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">All Tournaments</option>
-              {uniqueTournaments.map((tournament) => (
-                <option key={tournament} value={tournament}>
-                  {tournament}
-                </option>
-              ))}
-            </select>
+      {matches.length > 0 && (
+        <div className="filters-section">
+          <div className="search-filter">
+            <input
+              type="text"
+              placeholder="Search matches by team, venue, or tournament..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
           </div>
 
-          <div className="filter-group">
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">All Categories</option>
-              {uniqueCategories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </div>
+          <button className={`filters-toggle ${showFilters ? "expanded" : ""}`} onClick={toggleFilters}>
+            <span>Filters & Search</span>
+            <span className="toggle-icon">▼</span>
+          </button>
 
-          <div className="filter-group">
-            <select value={filterFormat} onChange={(e) => setFilterFormat(e.target.value)} className="filter-select">
-              <option value="all">All Formats</option>
-              {uniqueFormats.map((format) => (
-                <option key={format} value={format}>
-                  {format}
-                </option>
-              ))}
-            </select>
-          </div>
+          <div className={`filters-row ${showFilters ? "visible" : ""}`}>
+            <div className="filter-group">
+              <select
+                value={filterTournament}
+                onChange={(e) => setFilterTournament(e.target.value)}
+                className="filter-select"
+              >
+                <option value="all">All Tournaments</option>
+                {uniqueTournaments.map((tournament) => (
+                  <option key={tournament} value={tournament}>
+                    {tournament}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="filter-group">
-            <select value={filterRound} onChange={(e) => setFilterRound(e.target.value)} className="filter-select">
-              <option value="all">All Rounds</option>
-              {uniqueRounds.map((round) => (
-                <option key={round} value={round}>
-                  {round}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="filter-group">
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="filter-select"
+              >
+                <option value="all">All Categories</option>
+                {uniqueCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="filter-group">
-            <select value={filterVenue} onChange={(e) => setFilterVenue(e.target.value)} className="filter-select">
-              <option value="all">All Venues</option>
-              {getUniqueVenues().map((venue) => (
-                <option key={venue} value={venue}>
-                  {venue}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="filter-group">
+              <select value={filterFormat} onChange={(e) => setFilterFormat(e.target.value)} className="filter-select">
+                <option value="all">All Formats</option>
+                {uniqueFormats.map((format) => (
+                  <option key={format} value={format}>
+                    {format}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="filter-group">
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="filter-select">
-              <option value="all">All Status</option>
-              <option value="upcoming">Upcoming</option>
-              <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
+            <div className="filter-group">
+              <select value={filterRound} onChange={(e) => setFilterRound(e.target.value)} className="filter-select">
+                <option value="all">All Rounds</option>
+                {uniqueRounds.map((round) => (
+                  <option key={round} value={round}>
+                    {round}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="filter-group">
-            <button onClick={clearAllFilters} className="clear-filters-btn">
-              Clear Filters
-            </button>
-          </div>
-        </div>
-      </div>
+            <div className="filter-group">
+              <select value={filterVenue} onChange={(e) => setFilterVenue(e.target.value)} className="filter-select">
+                <option value="all">All Venues</option>
+                {getUniqueVenues().map((venue) => (
+                  <option key={venue} value={venue}>
+                    {venue}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-      <div className="matches-stats">
-        <div className="matches-count">
-          <span className="stat-label">Total Assigned Matches</span>
-          <span className="stat-value">{matches.length}</span>
-        </div>
-        <div className="status-stats">
-          <div className="stat-item">
-            <span className="stat-label">Upcoming</span>
-            <span className="stat-value">{matches.filter((m) => getMatchStatus(m) === "upcoming").length}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">In Progress</span>
-            <span className="stat-value">{matches.filter((m) => getMatchStatus(m) === "in-progress").length}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Completed</span>
-            <span className="stat-value">{matches.filter((m) => getMatchStatus(m) === "completed").length}</span>
+            <div className="filter-group">
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="filter-select">
+                <option value="all">All Status</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="in-progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <button onClick={clearAllFilters} className="clear-filters-btn">
+                Clear Filters
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {matches.length > 0 && (
+        <div className="matches-stats">
+          <div className="matches-count">
+            <span className="stat-label">Total Assigned Matches</span>
+            <span className="stat-value">{matches.length}</span>
+          </div>
+          <div className="status-stats">
+            <div className="stat-item">
+              <span className="stat-label">Upcoming</span>
+              <span className="stat-value">{matches.filter((m) => getMatchStatus(m) === "upcoming").length}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">In Progress</span>
+              <span className="stat-value">{matches.filter((m) => getMatchStatus(m) === "in-progress").length}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Completed</span>
+              <span className="stat-value">{matches.filter((m) => getMatchStatus(m) === "completed").length}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {filteredMatches.length === 0 ? (
         <div className="no-matches">
