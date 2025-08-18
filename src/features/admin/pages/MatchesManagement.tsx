@@ -300,15 +300,6 @@ const MatchesManagement: React.FC = () => {
 
         <div className={`filters-row ${showFilters ? "visible" : ""}`}>
           <div className="filter-group">
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="filter-select">
-              <option value="all">All Status</option>
-              <option value="upcoming">Upcoming</option>
-              <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-
-          <div className="filter-group">
             <select
               value={filterTournament}
               onChange={(e) => setFilterTournament(e.target.value)}
@@ -368,6 +359,15 @@ const MatchesManagement: React.FC = () => {
                   {venue}
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="filter-select">
+              <option value="all">All Status</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
             </select>
           </div>
 
