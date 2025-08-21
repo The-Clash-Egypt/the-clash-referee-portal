@@ -118,7 +118,7 @@
     flex-shrink: 0;
     margin-bottom: 12px;
     padding: 12px;
-    gap: 4px;
+    gap: 8px;
 
     .team {
       width: 100%;
@@ -429,6 +429,36 @@
     .match-actions .action-button {
       padding: 8px 12px;
       font-size: 13px;
+    }
+  }
+
+  // Selection styles
+  &.selectable {
+    cursor: pointer;
+
+    &:hover {
+      border-color: #3b82f6;
+      background-color: #f8fafc;
+    }
+  }
+
+  &.selected {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  }
+
+  .selection-checkbox {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 10;
+
+    .match-checkbox {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      accent-color: #3b82f6;
     }
   }
 }

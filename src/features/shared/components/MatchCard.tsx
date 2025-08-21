@@ -10,6 +10,9 @@ interface MatchCardProps {
   showAdminActions?: boolean;
   showUpdateScore?: boolean;
   showAssignReferee?: boolean;
+  isSelectable?: boolean;
+  isSelected?: boolean;
+  onSelectionChange?: (matchId: string, selected: boolean) => void;
 }
 
 const MatchCard: React.FC<MatchCardProps> = ({
@@ -20,6 +23,9 @@ const MatchCard: React.FC<MatchCardProps> = ({
   showAdminActions = false,
   showUpdateScore = true,
   showAssignReferee = true,
+  isSelectable = false,
+  isSelected = false,
+  onSelectionChange,
 }) => {
   const handleUpdateScore = () => {
     if (onUpdateScore) {
@@ -33,8 +39,20 @@ const MatchCard: React.FC<MatchCardProps> = ({
     }
   };
 
+  const handleSelectionChange = () => {
+    if (onSelectionChange) {
+      onSelectionChange(match.id, !isSelected);
+    }
+  };
+
   return (
-    <div className="match-card">
+    <div className={`match-card ${isSelectable ? "selectable" : ""} ${isSelected ? "selected" : ""}`}>
+      {/* Selection Checkbox */}
+      {isSelectable && (
+        <div className="selection-checkbox">
+          <input type="checkbox" checked={isSelected} onChange={handleSelectionChange} className="match-checkbox" />
+        </div>
+      )}
       {/* Tournament Info Header */}
       <div className="tournament-header">
         {match.tournamentName && <div className="tournament-name">{match.tournamentName}</div>}
@@ -74,10 +92,6 @@ const MatchCard: React.FC<MatchCardProps> = ({
             </div>
             {match.isCompleted && <span className="team-score">{match.homeScore || "0"}</span>}
           </div>
-        </div>
-
-        <div className="match-center">
-          {!match.isCompleted ? <div className="vs-badge">VS</div> : <div className="score-divider">-</div>}
         </div>
 
         <div className="team away-team">

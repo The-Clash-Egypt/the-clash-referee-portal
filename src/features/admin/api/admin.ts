@@ -11,6 +11,21 @@ export const getAllMatchesForAdmin = (): Promise<{ data: Match[] }> => api.get("
 export const assignRefereeToMatch = (refereeId: string, matchId: string) =>
   api.post(`/Referee/${refereeId}/assign/${matchId}`);
 
+// Bulk assign referee to multiple matches (using Promise.allSettled for better error handling)
+export const bulkAssignRefereeToMatches = async (refereeId: string, matchIds: string[]) => {
+  const promises = matchIds.map((matchId) => assignRefereeToMatch(refereeId, matchId));
+  const results = await Promise.allSettled(promises);
+
+  // Check if any assignments failed
+  const failedAssignments = results.filter((result) => result.status === "rejected");
+
+  if (failedAssignments.length > 0) {
+    throw new Error(`${failedAssignments.length} assignment(s) failed`);
+  }
+
+  return results.map((result) => (result as PromiseFulfilledResult<any>).value);
+};
+
 // Unassign referee from match
 export const unassignRefereeFromMatch = (refereeId: string, matchId: string) =>
   api.delete(`/Referee/${refereeId}/unassign/${matchId}`);

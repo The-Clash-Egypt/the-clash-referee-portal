@@ -3,6 +3,7 @@ import {
   getAllMatchesForAdmin,
   getAllRefereesForAdmin,
   assignRefereeToMatch,
+  bulkAssignRefereeToMatches,
   unassignRefereeFromMatch,
   updateKnockoutMatch,
   updateLeagueMatch,
@@ -11,6 +12,7 @@ import {
 import { Match, Referee, MatchGameScore } from "../../matches/api/matches";
 import MatchCard from "../../shared/components/MatchCard";
 import AssignRefereeModal from "../components/AssignRefereeModal";
+import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
 import UpdateScoreDialog from "../components/UpdateScoreDialog";
 import "./MatchesManagement.scss";
 
@@ -33,6 +35,9 @@ const MatchesManagement: React.FC = () => {
   const [filterRound, setFilterRound] = useState<string>("all");
   const [filterVenue, setFilterVenue] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedMatches, setSelectedMatches] = useState<Set<string>>(new Set());
+  const [showBulkAssignmentModal, setShowBulkAssignmentModal] = useState(false);
+  const [bulkAssigningReferee, setBulkAssigningReferee] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -223,6 +228,24 @@ const MatchesManagement: React.FC = () => {
     }
   };
 
+  const handleBulkAssignReferee = async (refereeId: string, matchIds: string[]) => {
+    try {
+      setBulkAssigningReferee(true);
+      await bulkAssignRefereeToMatches(refereeId, matchIds);
+
+      // Refresh data to show updated assignments
+      await fetchData();
+      setShowBulkAssignmentModal(false);
+      setSelectedMatches(new Set());
+    } catch (error: any) {
+      console.error("Error bulk assigning referee:", error);
+      const errorMessage = error.message || "Failed to assign referee to one or more matches. Please try again.";
+      alert(errorMessage);
+    } finally {
+      setBulkAssigningReferee(false);
+    }
+  };
+
   const handleUnassignReferee = async (refereeId: string, matchId: string) => {
     try {
       await unassignRefereeFromMatch(refereeId, matchId);
@@ -278,6 +301,20 @@ const MatchesManagement: React.FC = () => {
     setFilterFormat("all");
     setFilterRound("all");
     setFilterVenue("all");
+  };
+
+  const handleMatchSelection = (matchId: string, selected: boolean) => {
+    const newSelectedMatches = new Set(selectedMatches);
+    if (selected) {
+      newSelectedMatches.add(matchId);
+    } else {
+      newSelectedMatches.delete(matchId);
+    }
+    setSelectedMatches(newSelectedMatches);
+  };
+
+  const clearSelectedMatches = () => {
+    setSelectedMatches(new Set());
   };
 
   const toggleFilters = () => {
@@ -418,6 +455,40 @@ const MatchesManagement: React.FC = () => {
         </div>
       </div>
 
+      {/* Bulk Assignment Controls */}
+      <div className="bulk-assignment-controls">
+        <div className="bulk-info">
+          {selectedMatches.size > 0 ? (
+            <>
+              <span className="selected-count">
+                {selectedMatches.size} match{selectedMatches.size !== 1 ? "es" : ""} selected
+              </span>
+              <button className="clear-selection-btn" onClick={clearSelectedMatches}>
+                Clear Selection
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="selection-prompt">Select matches to bulk assign a referee</span>
+              <button
+                className="select-all-btn"
+                onClick={() => {
+                  const allMatchIds = new Set(filteredMatches.map((match) => match.id));
+                  setSelectedMatches(allMatchIds);
+                }}
+              >
+                Select All ({filteredMatches.length})
+              </button>
+            </>
+          )}
+        </div>
+        {selectedMatches.size > 0 && (
+          <button className="bulk-assign-btn" onClick={() => setShowBulkAssignmentModal(true)}>
+            Bulk Assign Referee
+          </button>
+        )}
+      </div>
+
       <div className="matches-stats">
         <div className="matches-count">
           <span className="stat-label">Total Matches</span>
@@ -484,6 +555,9 @@ const MatchesManagement: React.FC = () => {
                 onUnassignReferee={handleUnassignReferee}
                 showAdminActions={true}
                 showUpdateScore={true}
+                isSelectable={true}
+                isSelected={selectedMatches.has(match.id)}
+                onSelectionChange={handleMatchSelection}
               />
             ))}
         </div>
@@ -497,6 +571,16 @@ const MatchesManagement: React.FC = () => {
         onClose={() => setShowAssignmentModal(false)}
         onAssign={handleAssignReferee}
         loading={assigningReferee}
+      />
+
+      {/* Bulk Assignment Modal */}
+      <BulkAssignRefereeModal
+        isOpen={showBulkAssignmentModal}
+        selectedMatches={filteredMatches.filter((match) => selectedMatches.has(match.id))}
+        referees={referees}
+        onClose={() => setShowBulkAssignmentModal(false)}
+        onAssign={handleBulkAssignReferee}
+        loading={bulkAssigningReferee}
       />
 
       {/* Update Score Modal */}
