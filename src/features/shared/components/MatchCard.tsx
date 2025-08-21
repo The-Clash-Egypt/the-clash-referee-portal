@@ -63,6 +63,13 @@ const MatchCard: React.FC<MatchCardProps> = ({
         <div className="team home-team">
           <div className="team-info">
             <span className="team-name">{match.homeTeamName || "TBD"}</span>
+            <div className="team-game-scores">
+              {match.gameScores?.map((game, id) => (
+                <span key={id} className={`team-game-score ${game.homeScore > game.awayScore ? "winner" : ""}`}>
+                  {game.homeScore}
+                </span>
+              ))}
+            </div>
             {match.isCompleted && <span className="team-score">{match.homeScore || "0"}</span>}
           </div>
         </div>
@@ -74,6 +81,13 @@ const MatchCard: React.FC<MatchCardProps> = ({
         <div className="team away-team">
           <div className="team-info">
             <span className="team-name">{match.awayTeamName || "TBD"}</span>
+            <div className="team-game-scores">
+              {match.gameScores?.map((game, id) => (
+                <span key={id} className={`team-game-score ${game.awayScore > game.homeScore ? "winner" : ""}`}>
+                  {game.awayScore}
+                </span>
+              ))}
+            </div>
             {match.isCompleted && <span className="team-score">{match.awayScore || "0"}</span>}
           </div>
         </div>
@@ -101,34 +115,6 @@ const MatchCard: React.FC<MatchCardProps> = ({
                 )}
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Game Scores - Only show for completed matches */}
-      {match.isCompleted && match.gameScores && match.gameScores.length > 0 && (
-        <div className="match-scores">
-          <div className="section-title">Game Scores</div>
-
-          <div className="row">
-            <div className="teams-games-info">
-              <span>{match.homeTeamName}</span>
-              <span>{match.awayTeamName}</span>
-            </div>
-            <div className="scores-list">
-              {match.gameScores
-                .sort((a, b) => a.gameNumber - b.gameNumber)
-                .map((score, scoreIndex) => (
-                  <div key={scoreIndex} className="game-score">
-                    <span className={`${score.homeScore > score.awayScore ? "text-bold" : "text-light"}`}>
-                      {score.homeScore}
-                    </span>
-                    <span className={`${score.awayScore > score.homeScore ? "text-bold" : "text-light"}`}>
-                      {score.awayScore}
-                    </span>
-                  </div>
-                ))}
-            </div>
           </div>
         </div>
       )}
