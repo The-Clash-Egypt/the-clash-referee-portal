@@ -76,3 +76,10 @@ export const submitMatchResult = (matchId: string, data: UpdateMatchDTO) =>
 // Update match
 export const updateMatch = (matchId: string, data: UpdateMatchDTO) =>
   api.patch(`/Referee/matches/${matchId}/update`, data);
+
+export const updateGroupMatch = (matchId: string, data: UpdateMatchDTO) => api.put(`/Group/match/${matchId}`, data);
+
+export const updateLeagueMatch = (matchId: string, data: UpdateMatchDTO) => api.put(`/League/match/${matchId}`, data);
+
+export const updateKnockoutMatch = (matchId: string, data: UpdateMatchDTO) =>
+  api.put(`/Knockout/match/${matchId}`, data);

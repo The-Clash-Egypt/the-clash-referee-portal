@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
-import { getRefereeMatches, Match, MatchGameScore, submitMatchResult } from "../api/matches";
+import {
+  getRefereeMatches,
+  Match,
+  MatchGameScore,
+  submitMatchResult,
+  updateGroupMatch,
+  updateLeagueMatch,
+  updateKnockoutMatch,
+  updateMatch,
+} from "../api/matches";
 import { RootState } from "../../../store";
 import MatchCard from "../../shared/components/MatchCard";
 import UpdateScoreDialog from "../../admin/components/UpdateScoreDialog";
@@ -208,7 +217,13 @@ const MatchesDashboard: React.FC = () => {
 
     try {
       setUpdateScoreLoading(true);
-      await submitMatchResult(updateScoreDialog.match.id, { gameScores });
+      if (updateScoreDialog.match.format === "Group") {
+        await updateGroupMatch(updateScoreDialog.match.id, { gameScores });
+      } else if (updateScoreDialog.match.format === "League") {
+        await updateLeagueMatch(updateScoreDialog.match.id, { gameScores });
+      } else if (updateScoreDialog.match.format === "Knockout") {
+        await updateKnockoutMatch(updateScoreDialog.match.id, { gameScores });
+      }
 
       // Refresh matches to show updated scores
       await fetchMatches();

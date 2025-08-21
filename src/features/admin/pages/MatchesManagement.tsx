@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { getAllMatchesForAdmin, getAllRefereesForAdmin, assignRefereeToMatch, unassignRefereeFromMatch } from "../api";
+import {
+  getAllMatchesForAdmin,
+  getAllRefereesForAdmin,
+  assignRefereeToMatch,
+  unassignRefereeFromMatch,
+  updateKnockoutMatch,
+  updateLeagueMatch,
+  updateGroupMatch,
+} from "../api";
 import { Match, Referee, MatchGameScore } from "../../matches/api/matches";
 import MatchCard from "../../shared/components/MatchCard";
 import AssignRefereeModal from "../components/AssignRefereeModal";
@@ -240,8 +248,15 @@ const MatchesManagement: React.FC = () => {
 
     try {
       setUpdatingScore(true);
-      // TODO: Implement API call to update match scores
-      console.log("Updating scores for match:", selectedMatchForScore.id, gameScores);
+
+      // Call API to update match scores
+      if (selectedMatchForScore.format === "Group") {
+        await updateGroupMatch(selectedMatchForScore.id, { gameScores });
+      } else if (selectedMatchForScore.format === "League") {
+        await updateLeagueMatch(selectedMatchForScore.id, { gameScores });
+      } else if (selectedMatchForScore.format === "Knockout") {
+        await updateKnockoutMatch(selectedMatchForScore.id, { gameScores });
+      }
 
       // Refresh data to show updated scores
       await fetchData();

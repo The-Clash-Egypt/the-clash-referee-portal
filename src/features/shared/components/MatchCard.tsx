@@ -64,11 +64,13 @@ const MatchCard: React.FC<MatchCardProps> = ({
           <div className="team-info">
             <span className="team-name">{match.homeTeamName || "TBD"}</span>
             <div className="team-game-scores">
-              {match.gameScores?.map((game, id) => (
-                <span key={id} className={`team-game-score ${game.homeScore > game.awayScore ? "winner" : ""}`}>
-                  {game.homeScore}
-                </span>
-              ))}
+              {match.gameScores
+                ?.sort((a, b) => a.gameNumber - b.gameNumber)
+                .map((game, id) => (
+                  <span key={id} className={`team-game-score ${game.homeScore > game.awayScore ? "winner" : ""}`}>
+                    {game.homeScore}
+                  </span>
+                ))}
             </div>
             {match.isCompleted && <span className="team-score">{match.homeScore || "0"}</span>}
           </div>
@@ -82,11 +84,13 @@ const MatchCard: React.FC<MatchCardProps> = ({
           <div className="team-info">
             <span className="team-name">{match.awayTeamName || "TBD"}</span>
             <div className="team-game-scores">
-              {match.gameScores?.map((game, id) => (
-                <span key={id} className={`team-game-score ${game.awayScore > game.homeScore ? "winner" : ""}`}>
-                  {game.awayScore}
-                </span>
-              ))}
+              {match.gameScores
+                ?.sort((a, b) => a.gameNumber - b.gameNumber)
+                .map((game, id) => (
+                  <span key={id} className={`team-game-score ${game.awayScore > game.homeScore ? "winner" : ""}`}>
+                    {game.awayScore}
+                  </span>
+                ))}
             </div>
             {match.isCompleted && <span className="team-score">{match.awayScore || "0"}</span>}
           </div>
