@@ -158,6 +158,10 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
     }
   };
 
+  const handleBackToScores = () => {
+    setShowSummary(false);
+  };
+
   const handleSubmit = async () => {
     if (!validateScores()) {
       return;
@@ -382,9 +386,14 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
             )}
 
             {showSummary && (
-              <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
-                {loading ? "Updating..." : `Update ${completedMatches} Match${completedMatches !== 1 ? "es" : ""}`}
-              </button>
+              <div className="summary-actions">
+                <button className="btn btn-secondary" onClick={handleBackToScores} disabled={loading}>
+                  Back to Scores
+                </button>
+                <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
+                  {loading ? "Updating..." : `Update ${completedMatches} Match${completedMatches !== 1 ? "es" : ""}`}
+                </button>
+              </div>
             )}
           </div>
         </div>

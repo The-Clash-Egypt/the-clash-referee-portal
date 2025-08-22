@@ -10,17 +10,19 @@
   align-items: center;
   z-index: 1000;
   padding: 20px;
-  overflow-y: auto;
+  overflow: hidden;
 
-  .modal-content {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    max-width: 800px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    position: relative;
+      .modal-content {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      max-width: 800px;
+      width: 100%;
+      max-height: 85vh;
+      height: auto;
+      display: flex;
+      flex-direction: column;
+      position: relative;
 
     .modal-header {
       display: flex;
@@ -53,8 +55,11 @@
       }
     }
 
-    .modal-body {
-      padding: 24px;
+          .modal-body {
+        padding: 24px;
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
 
       .progress-header {
         display: flex;
@@ -497,7 +502,7 @@
 
     .modal-content {
       max-width: 95vw;
-      max-height: 95vh;
+      max-height: 90vh;
 
       .modal-header {
         padding: 16px 16px 0 16px;
@@ -657,7 +662,7 @@
             font-size: 0.9rem;
           }
 
-          .navigation-buttons {
+                            .navigation-buttons {
             display: flex;
             gap: 8px;
             width: 100%;
@@ -667,10 +672,23 @@
               width: auto;
             }
           }
-        }
-      }
-    }
-  }
+
+          .summary-actions {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+
+            .btn {
+              flex: 1;
+              width: auto;
+            }
+          }
+
+                 }
+       }
+     }
+   }
+ }
 }
 
 // Extra small screens
@@ -680,7 +698,7 @@
 
     .modal-content {
       max-width: 98vw;
-      max-height: 98vh;
+      max-height: 95vh;
 
       .modal-body {
         padding: 12px;
