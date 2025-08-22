@@ -60,13 +60,10 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
     return 1;
   };
 
-  const updateGameScore = (gameNumber: number, field: "homeScore" | "awayScore", value: number) => {
+  const updateGameScore = (gameNumber: number, field: "homeScore" | "awayScore", value: string) => {
+    const numericValue = value === "" ? 0 : Math.max(0, parseInt(value) || 0);
     setGameScores((prev) =>
-      prev.map((score) =>
-        score.gameNumber === gameNumber
-          ? { ...score, [field]: Math.max(0, value) } // Ensure non-negative values
-          : score
-      )
+      prev.map((score) => (score.gameNumber === gameNumber ? { ...score, [field]: numericValue } : score))
     );
   };
 
@@ -190,8 +187,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
                       <input
                         type="number"
                         min="0"
-                        value={score.homeScore}
-                        onChange={(e) => updateGameScore(score.gameNumber, "homeScore", parseInt(e.target.value) || 0)}
+                        value={score.homeScore === 0 ? "" : score.homeScore}
+                        onChange={(e) => updateGameScore(score.gameNumber, "homeScore", e.target.value)}
                         className="score-input"
                         placeholder="0"
                       />
@@ -202,8 +199,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
                       <input
                         type="number"
                         min="0"
-                        value={score.awayScore}
-                        onChange={(e) => updateGameScore(score.gameNumber, "awayScore", parseInt(e.target.value) || 0)}
+                        value={score.awayScore === 0 ? "" : score.awayScore}
+                        onChange={(e) => updateGameScore(score.gameNumber, "awayScore", e.target.value)}
                         className="score-input"
                         placeholder="0"
                       />

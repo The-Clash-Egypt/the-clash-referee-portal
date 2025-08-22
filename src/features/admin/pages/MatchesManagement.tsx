@@ -14,6 +14,7 @@ import MatchCard from "../../shared/components/MatchCard";
 import AssignRefereeModal from "../components/AssignRefereeModal";
 import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
 import UpdateScoreDialog from "../components/UpdateScoreDialog";
+import BulkUpdateScoreModal from "../components/BulkUpdateScoreModal";
 import "./MatchesManagement.scss";
 
 const MatchesManagement: React.FC = () => {
@@ -38,6 +39,8 @@ const MatchesManagement: React.FC = () => {
   const [selectedMatches, setSelectedMatches] = useState<Set<string>>(new Set());
   const [showBulkAssignmentModal, setShowBulkAssignmentModal] = useState(false);
   const [bulkAssigningReferee, setBulkAssigningReferee] = useState(false);
+  const [showBulkUpdateScoreModal, setShowBulkUpdateScoreModal] = useState(false);
+  const [bulkUpdatingScores, setBulkUpdatingScores] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -243,6 +246,38 @@ const MatchesManagement: React.FC = () => {
       alert(errorMessage);
     } finally {
       setBulkAssigningReferee(false);
+    }
+  };
+
+  const handleBulkUpdateScores = async (matchScores: { matchId: string; gameScores: MatchGameScore[] }[]) => {
+    try {
+      setBulkUpdatingScores(true);
+
+      // Update each match with its scores
+      const updatePromises = matchScores.map(async ({ matchId, gameScores }) => {
+        const match = matches.find((m) => m.id === matchId);
+        if (!match) return;
+
+        if (match.format === "Group") {
+          return updateGroupMatch(matchId, { gameScores });
+        } else if (match.format === "League") {
+          return updateLeagueMatch(matchId, { gameScores });
+        } else if (match.format === "Knockout") {
+          return updateKnockoutMatch(matchId, { gameScores });
+        }
+      });
+
+      await Promise.all(updatePromises);
+
+      // Refresh data to show updated scores
+      await fetchData();
+      setShowBulkUpdateScoreModal(false);
+      setSelectedMatches(new Set());
+    } catch (error: any) {
+      console.error("Error bulk updating scores:", error);
+      alert("Failed to update scores for one or more matches. Please try again.");
+    } finally {
+      setBulkUpdatingScores(false);
     }
   };
 
@@ -469,7 +504,7 @@ const MatchesManagement: React.FC = () => {
             </>
           ) : (
             <>
-              <span className="selection-prompt">Select matches to bulk assign a referee</span>
+              <span className="selection-prompt">Select matches to bulk assign referee or update scores</span>
               <button
                 className="select-all-btn"
                 onClick={() => {
@@ -483,9 +518,14 @@ const MatchesManagement: React.FC = () => {
           )}
         </div>
         {selectedMatches.size > 0 && (
-          <button className="bulk-assign-btn" onClick={() => setShowBulkAssignmentModal(true)}>
-            Bulk Assign Referee
-          </button>
+          <div className="bulk-actions">
+            <button className="bulk-assign-btn" onClick={() => setShowBulkAssignmentModal(true)}>
+              Bulk Assign Referee
+            </button>
+            <button className="bulk-update-score-btn" onClick={() => setShowBulkUpdateScoreModal(true)}>
+              Bulk Update Scores
+            </button>
+          </div>
         )}
       </div>
 
@@ -593,6 +633,15 @@ const MatchesManagement: React.FC = () => {
         }}
         onSubmit={handleSubmitScore}
         loading={updatingScore}
+      />
+
+      {/* Bulk Update Score Modal */}
+      <BulkUpdateScoreModal
+        isOpen={showBulkUpdateScoreModal}
+        selectedMatches={matches.filter((match) => selectedMatches.has(match.id))}
+        onClose={() => setShowBulkUpdateScoreModal(false)}
+        onSubmit={handleBulkUpdateScores}
+        loading={bulkUpdatingScores}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import api from "../../../api/axios";
-import { Match, Referee, UpdateMatchDTO } from "../../matches/api/matches";
+import { Match, Referee, UpdateMatchDTO, MatchGameScore } from "../../matches/api/matches";
 
 // Get all referees for admin
 export const getAllRefereesForAdmin = (): Promise<{ data: { data: Referee[] } }> => api.get("/Referee/all");
@@ -46,3 +46,15 @@ export const updateLeagueMatch = (matchId: string, data: UpdateMatchDTO) => api.
 
 export const updateKnockoutMatch = (matchId: string, data: UpdateMatchDTO) =>
   api.put(`/Knockout/match/${matchId}`, data);
+
+// Bulk update scores for multiple matches
+export const bulkUpdateMatchScores = async (matchScores: { matchId: string; gameScores: MatchGameScore[] }[]) => {
+  const promises = matchScores.map(({ matchId, gameScores }) => {
+    const data = { gameScores };
+    // We need to determine the match format to call the correct API
+    // This will be handled in the component by calling the appropriate update function
+    return { matchId, data };
+  });
+  
+  return promises;
+};
