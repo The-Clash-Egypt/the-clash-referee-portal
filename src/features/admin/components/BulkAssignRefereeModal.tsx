@@ -122,7 +122,6 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
                 className="referee-search-input"
               />
               <div className="search-info">
-                <span className="total-referees">Total: {referees.length}</span>
                 {searchTerm && <span className="filtered-count">Showing: {filteredReferees.length}</span>}
               </div>
             </div>
@@ -134,21 +133,23 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
                 </div>
               ) : (
                 <div className="referees-grid">
-                  {filteredReferees.map((referee) => (
-                    <div
-                      key={referee.id}
-                      className={`referee-item ${selectedReferee?.id === referee.id ? "selected" : ""}`}
-                      onClick={() => setSelectedReferee(referee)}
-                    >
-                      <div className="referee-info">
-                        <h5>{referee.fullName}</h5>
-                        <p>{referee.email}</p>
+                  {filteredReferees.map((referee, id) =>
+                    id < 3 ? (
+                      <div
+                        key={referee.id}
+                        className={`referee-item ${selectedReferee?.id === referee.id ? "selected" : ""}`}
+                        onClick={() => setSelectedReferee(referee)}
+                      >
+                        <div className="referee-info">
+                          <h5>{referee.fullName}</h5>
+                          <p>{referee.email}</p>
+                        </div>
+                        <div className="selection-indicator">
+                          {selectedReferee?.id === referee.id && <span className="checkmark">✓</span>}
+                        </div>
                       </div>
-                      <div className="selection-indicator">
-                        {selectedReferee?.id === referee.id && <span className="checkmark">✓</span>}
-                      </div>
-                    </div>
-                  ))}
+                    ) : null
+                  )}
                 </div>
               )}
             </div>

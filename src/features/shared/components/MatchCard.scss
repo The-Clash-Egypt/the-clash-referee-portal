@@ -7,8 +7,6 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
   transition: all 0.3s ease;
-  height: auto;
-  min-height: 400px;
   display: flex;
   flex-direction: column;
 
@@ -258,6 +256,11 @@
 
           .referee-email {
             font-size: 11px;
+            color: var(--grey);
+          }
+
+          .no-referee {
+            font-size: 12px;
             color: var(--grey);
           }
         }

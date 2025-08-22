@@ -576,7 +576,7 @@ const MatchesManagement: React.FC = () => {
       {/* Bulk Assignment Modal */}
       <BulkAssignRefereeModal
         isOpen={showBulkAssignmentModal}
-        selectedMatches={filteredMatches.filter((match) => selectedMatches.has(match.id))}
+        selectedMatches={matches.filter((match) => selectedMatches.has(match.id))}
         referees={referees}
         onClose={() => setShowBulkAssignmentModal(false)}
         onAssign={handleBulkAssignReferee}

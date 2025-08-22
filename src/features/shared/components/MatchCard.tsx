@@ -112,27 +112,35 @@ const MatchCard: React.FC<MatchCardProps> = ({
       </div>
 
       {/* Assigned Referees */}
-      {match.referees && match.referees.length > 0 && showAssignReferee && (
+      {showAssignReferee && (
         <div className="referees-section">
           <div className="section-title">Assigned Referees</div>
           <div className="referees-list">
-            {match.referees.map((referee, index) => (
-              <div key={referee.id} className="referee-item">
-                <div className="referee-info">
-                  <span className="referee-name">{referee.fullName}</span>
-                  <span className="referee-email">{referee.email}</span>
+            {match?.referees && match.referees.length > 0 ? (
+              match.referees?.map((referee, index) => (
+                <div key={referee.id} className="referee-item">
+                  <div className="referee-info">
+                    <span className="referee-name">{referee.fullName}</span>
+                    <span className="referee-email">{referee.email}</span>
+                  </div>
+                  {showAdminActions && onUnassignReferee && (
+                    <button
+                      className="unassign-button"
+                      onClick={() => handleUnassignReferee(referee.id)}
+                      title="Unassign referee"
+                    >
+                      -
+                    </button>
+                  )}
                 </div>
-                {showAdminActions && onUnassignReferee && (
-                  <button
-                    className="unassign-button"
-                    onClick={() => handleUnassignReferee(referee.id)}
-                    title="Unassign referee"
-                  >
-                    -
-                  </button>
-                )}
+              ))
+            ) : (
+              <div className="referee-item">
+                <div className="referee-info">
+                  <span className="no-referee">No referees assigned for this match</span>
+                </div>
               </div>
-            ))}
+            )}
           </div>
         </div>
       )}
