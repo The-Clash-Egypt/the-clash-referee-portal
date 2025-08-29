@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSelector } from "react-redux";
 import {
   getRefereeMatches,
@@ -51,6 +51,7 @@ const MatchesDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterTournament, setFilterTournament] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
@@ -80,10 +81,19 @@ const MatchesDashboard: React.FC = () => {
     fetchMatches();
   }, []);
 
-  // Apply filters when they change
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Apply filters when they change (using debounced search term)
   useEffect(() => {
     const filters: MatchFilters = {
-      search: searchTerm || undefined,
+      search: debouncedSearchTerm || undefined,
       status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
       tournament: filterTournament !== "all" ? filterTournament : undefined,
       category: filterCategory !== "all" ? filterCategory : undefined,
@@ -93,7 +103,7 @@ const MatchesDashboard: React.FC = () => {
     };
 
     fetchMatches(filters);
-  }, [searchTerm, filterStatus, filterTournament, filterCategory, filterFormat, filterRound, filterVenue]);
+  }, [debouncedSearchTerm, filterStatus, filterTournament, filterCategory, filterFormat, filterRound, filterVenue]);
 
   // Reset round filter when format changes
   useEffect(() => {
@@ -115,7 +125,7 @@ const MatchesDashboard: React.FC = () => {
     setFilterVenue("all");
   }, [filterTournament, filterCategory]);
 
-  const fetchMatches = async (filters?: MatchFilters) => {
+  const fetchMatches = useCallback(async (filters?: MatchFilters) => {
     try {
       setLoading(true);
       const response = await getRefereeMatches(filters);
@@ -145,7 +155,7 @@ const MatchesDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const getMatchStatus = (match: Match) => {
     if (match.isCompleted) {

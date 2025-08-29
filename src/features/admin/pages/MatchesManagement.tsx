@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   getAllMatchesForAdmin,
   getAllRefereesForAdmin,
@@ -58,6 +58,7 @@ const MatchesManagement: React.FC = () => {
   const [updatingScore, setUpdatingScore] = useState(false);
   const [selectedMatchForScore, setSelectedMatchForScore] = useState<Match | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterTournament, setFilterTournament] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
@@ -117,6 +118,15 @@ const MatchesManagement: React.FC = () => {
     setIsInitialized(true);
   }, []);
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   // Update URL params when filters or pagination change
   useEffect(() => {
     if (!isInitialized) return;
@@ -158,12 +168,12 @@ const MatchesManagement: React.FC = () => {
     }
   }, [isInitialized]);
 
-  // Apply filters when they change
+  // Apply filters when they change (using debounced search term)
   useEffect(() => {
     if (!isInitialized) return;
 
     const filters: MatchFilters = {
-      search: searchTerm || undefined,
+      search: debouncedSearchTerm || undefined,
       status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
       tournament: filterTournament !== "all" ? filterTournament : undefined,
       category: filterCategory !== "all" ? filterCategory : undefined,
@@ -177,7 +187,7 @@ const MatchesManagement: React.FC = () => {
     fetchData(filters);
   }, [
     isInitialized,
-    searchTerm,
+    debouncedSearchTerm,
     filterStatus,
     filterTournament,
     filterCategory,
@@ -194,7 +204,7 @@ const MatchesManagement: React.FC = () => {
     setCurrentPage(1);
   }, [
     isInitialized,
-    searchTerm,
+    debouncedSearchTerm,
     filterStatus,
     filterTournament,
     filterCategory,
@@ -227,7 +237,7 @@ const MatchesManagement: React.FC = () => {
     setFilterVenue("all");
   }, [isInitialized, filterTournament, filterCategory]);
 
-  const fetchData = async (filters?: MatchFilters) => {
+  const fetchData = useCallback(async (filters?: MatchFilters) => {
     try {
       setLoading(true);
       const [matchesResponse, refereesResponse] = await Promise.all([
@@ -264,7 +274,7 @@ const MatchesManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Pagination handlers
   const handlePageChange = (page: number) => {
