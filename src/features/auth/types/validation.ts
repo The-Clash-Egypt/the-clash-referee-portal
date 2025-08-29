@@ -35,6 +35,7 @@ export const signupSchema = z
       .string()
       .min(1, "Phone number is required")
       .regex(/^\+?[\d\s\-\(\)]+$/, "Please enter a valid phone number"),
+    role: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",

@@ -4,6 +4,7 @@ import { Referee } from "../../matches/api/matches";
 import RefereeCard from "../../shared/components/RefereeCard";
 import AddRefereeModal from "../components/AddRefereeModal";
 import RemoveRefereeDialog from "../components/RemoveRefereeDialog";
+import ShareRefereeLinkModal from "../components/ShareRefereeLinkModal";
 import "./RefereesManagement.scss";
 
 const RefereesManagement: React.FC = () => {
@@ -14,6 +15,7 @@ const RefereesManagement: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [showShareLinkModal, setShowShareLinkModal] = useState(false);
   const [selectedReferee, setSelectedReferee] = useState<Referee | null>(null);
   const [addingReferee, setAddingReferee] = useState(false);
   const [removingReferee, setRemovingReferee] = useState(false);
@@ -55,6 +57,10 @@ const RefereesManagement: React.FC = () => {
 
   const handleAddReferee = () => {
     setShowAddModal(true);
+  };
+
+  const handleShareRefereeLink = () => {
+    setShowShareLinkModal(true);
   };
 
   const handleSubmitAddReferee = async (userId: string) => {
@@ -151,6 +157,9 @@ const RefereesManagement: React.FC = () => {
           </div>
 
           <div className="action-filter">
+            {/* <button className="btn btn-secondary" onClick={handleShareRefereeLink}>
+              Share Signup Link
+            </button> */}
             <button className="btn btn-primary" onClick={handleAddReferee}>
               Add New Referee
             </button>
@@ -207,6 +216,9 @@ const RefereesManagement: React.FC = () => {
         onConfirm={confirmRemoveReferee}
         loading={removingReferee}
       />
+
+      {/* Share Referee Link Modal */}
+      <ShareRefereeLinkModal isOpen={showShareLinkModal} onClose={() => setShowShareLinkModal(false)} />
     </div>
   );
 };

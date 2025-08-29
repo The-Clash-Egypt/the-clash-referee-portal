@@ -119,6 +119,38 @@
         flex-direction: column;
         gap: 20px;
 
+        .role-display {
+          margin-bottom: 20px;
+
+          label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--black);
+            margin-bottom: 8px;
+          }
+
+          .role-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 8px;
+            font-weight: 500;
+
+            .role-icon {
+              font-size: 16px;
+            }
+
+            .role-text {
+              font-size: 14px;
+              text-transform: capitalize;
+            }
+          }
+        }
+
         .form-group {
           display: flex;
           flex-direction: column;

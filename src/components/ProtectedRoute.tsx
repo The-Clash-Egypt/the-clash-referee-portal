@@ -16,7 +16,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAuth =
   // If user is authenticated and trying to access login/signup, redirect to appropriate dashboard
   if (
     isAuthenticated &&
-    (location.pathname === "/" || location.pathname === "/login" || location.pathname === "/signup")
+    (location.pathname === "/" ||
+      location.pathname === "/login" ||
+      location.pathname.startsWith("/signup") ||
+      location.pathname.startsWith("/signup/referee"))
   ) {
     const redirectPath = user?.role === "admin" ? "/admin/matches" : "/matches";
     return <Navigate to={redirectPath} replace />;

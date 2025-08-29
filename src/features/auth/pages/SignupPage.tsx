@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { Link, useSearchParams, useNavigate, useParams } from "react-router-dom";
 import { signupSchema, SignupFormData } from "../types/validation";
 import { signup } from "../api";
 import "./AuthPages.scss";
@@ -9,32 +9,58 @@ import "./AuthPages.scss";
 const SignupPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const params = useParams();
   const [invitationToken, setInvitationToken] = useState<string | null>(null);
   const [isValidInvitation, setIsValidInvitation] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string>("referee");
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
   });
 
   useEffect(() => {
     const token = searchParams.get("token");
+    const role = searchParams.get("role");
+    const pathRole = params.role;
+
     setInvitationToken(token);
 
-    // TODO: Validate invitation token with backend
-    // For now, we'll assume any token is valid
+    // Set role if provided in URL query params or path params
+    if (role) {
+      setSelectedRole(role);
+    } else if (pathRole) {
+      setSelectedRole(pathRole);
+    }
+
+    // Handle different signup scenarios
     if (token) {
+      // Token-based invitation (existing flow)
+      setIsValidInvitation(true);
+    } else if (role === "referee" || pathRole === "referee") {
+      // Role-based signup (new flow for referee recruitment)
+      setIsValidInvitation(true);
+    } else if (pathRole) {
+      // Any role-based signup (for future extensibility)
       setIsValidInvitation(true);
     } else {
-      // Redirect to login if no token
+      // No token and no valid role - redirect to login
       window.location.href = "/";
     }
-  }, [searchParams]);
+  }, [searchParams, params]);
+
+  // Set role value in form when selectedRole changes
+  useEffect(() => {
+    if (selectedRole) {
+      setValue("role", selectedRole);
+    }
+  }, [selectedRole, setValue]);
 
   const onSubmit = async (data: SignupFormData) => {
     try {
@@ -44,7 +70,9 @@ const SignupPage: React.FC = () => {
       console.log("Signup data:", data);
       console.log("Invitation token:", invitationToken);
 
-      const response = await signup(data, invitationToken || undefined);
+      // Add role to signup data if not provided in token-based invitation
+      const signupData = invitationToken ? data : { ...data, role: selectedRole };
+      const response = await signup(signupData, invitationToken || undefined);
 
       // Handle successful signup
       console.log("Signup successful:", response);
@@ -171,6 +199,16 @@ const SignupPage: React.FC = () => {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
+            {selectedRole && (
+              <div className="role-display">
+                <label>Role</label>
+                <div className="role-badge">
+                  <span className="role-icon">👨‍⚖️</span>
+                  <span className="role-text">{selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}</span>
+                </div>
+              </div>
+            )}
+
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="firstName">First Name</label>
