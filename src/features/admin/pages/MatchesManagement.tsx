@@ -9,7 +9,7 @@ import {
   updateLeagueMatch,
   updateGroupMatch,
 } from "../api";
-import { Match, Referee, MatchGameScore } from "../../matches/api/matches";
+import { Match, Referee, MatchGameScore, MatchFilters } from "../../matches/api/matches";
 import MatchCard from "../../shared/components/MatchCard";
 import AssignRefereeModal from "../components/AssignRefereeModal";
 import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
@@ -17,9 +17,38 @@ import UpdateScoreDialog from "../components/UpdateScoreDialog";
 import BulkUpdateScoreModal from "../components/BulkUpdateScoreModal";
 import "./MatchesManagement.scss";
 
+interface FilterOptions {
+  tournaments: string[];
+  categories: string[];
+  formats: string[];
+  rounds: string[];
+  venues: string[];
+}
+
+interface AdminMatchesResponse {
+  data: {
+    data: {
+      matches: {
+        items: Match[];
+        pagination: {
+          total: number;
+          pageNumber: number;
+          pageSize: number;
+          totalPages: number;
+        };
+      };
+      filters: FilterOptions;
+    };
+  };
+  success: boolean;
+  message: string;
+  errors: string[];
+}
+
 const MatchesManagement: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [referees, setReferees] = useState<Referee[]>([]);
+  const [totalMatches, setTotalMatches] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -42,49 +71,209 @@ const MatchesManagement: React.FC = () => {
   const [showBulkUpdateScoreModal, setShowBulkUpdateScoreModal] = useState(false);
   const [bulkUpdatingScores, setBulkUpdatingScores] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(30);
+  const [totalPages, setTotalPages] = useState<number>(0);
+
+  // Filter options from API
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    tournaments: [],
+    categories: [],
+    formats: [],
+    rounds: [],
+    venues: [],
+  });
+
+  // URL params sync state
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize filters from URL params on component mount
   useEffect(() => {
-    fetchData();
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // Load filters from URL params
+    const urlSearchTerm = urlParams.get("search") || "";
+    const urlStatus = urlParams.get("status") || "all";
+    const urlTournament = urlParams.get("tournament") || "all";
+    const urlCategory = urlParams.get("category") || "all";
+    const urlFormat = urlParams.get("format") || "all";
+    const urlRound = urlParams.get("round") || "all";
+    const urlVenue = urlParams.get("venue") || "all";
+    const urlPage = parseInt(urlParams.get("page") || "1", 10);
+    const urlPageSize = parseInt(urlParams.get("pageSize") || "30", 10);
+
+    // Set state from URL params
+    setSearchTerm(urlSearchTerm);
+    setFilterStatus(urlStatus);
+    setFilterTournament(urlTournament);
+    setFilterCategory(urlCategory);
+    setFilterFormat(urlFormat);
+    setFilterRound(urlRound);
+    setFilterVenue(urlVenue);
+    setCurrentPage(urlPage);
+    setPageSize(urlPageSize);
+
+    setIsInitialized(true);
   }, []);
+
+  // Update URL params when filters or pagination change
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const urlParams = new URLSearchParams();
+
+    // Add filters to URL params
+    if (searchTerm) urlParams.set("search", searchTerm);
+    if (filterStatus !== "all") urlParams.set("status", filterStatus);
+    if (filterTournament !== "all") urlParams.set("tournament", filterTournament);
+    if (filterCategory !== "all") urlParams.set("category", filterCategory);
+    if (filterFormat !== "all") urlParams.set("format", filterFormat);
+    if (filterRound !== "all") urlParams.set("round", filterRound);
+    if (filterVenue !== "all") urlParams.set("venue", filterVenue);
+
+    // Add pagination to URL params
+    if (currentPage > 1) urlParams.set("page", currentPage.toString());
+    if (pageSize !== 30) urlParams.set("pageSize", pageSize.toString());
+
+    // Update URL without reloading the page
+    const newUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ""}`;
+    window.history.replaceState({}, "", newUrl);
+  }, [
+    isInitialized,
+    searchTerm,
+    filterStatus,
+    filterTournament,
+    filterCategory,
+    filterFormat,
+    filterRound,
+    filterVenue,
+    currentPage,
+    pageSize,
+  ]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      fetchData();
+    }
+  }, [isInitialized]);
+
+  // Apply filters when they change
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const filters: MatchFilters = {
+      search: searchTerm || undefined,
+      status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+      tournament: filterTournament !== "all" ? filterTournament : undefined,
+      category: filterCategory !== "all" ? filterCategory : undefined,
+      format: filterFormat !== "all" ? filterFormat : undefined,
+      round: filterRound !== "all" ? filterRound : undefined,
+      venue: filterVenue !== "all" ? filterVenue : undefined,
+      pageSize: pageSize,
+      pageNumber: currentPage,
+    };
+
+    fetchData(filters);
+  }, [
+    isInitialized,
+    searchTerm,
+    filterStatus,
+    filterTournament,
+    filterCategory,
+    filterFormat,
+    filterRound,
+    filterVenue,
+    currentPage,
+    pageSize,
+  ]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    if (!isInitialized) return;
+    setCurrentPage(1);
+  }, [
+    isInitialized,
+    searchTerm,
+    filterStatus,
+    filterTournament,
+    filterCategory,
+    filterFormat,
+    filterRound,
+    filterVenue,
+  ]);
 
   // Reset round filter when format changes to avoid invalid selections
   useEffect(() => {
+    if (!isInitialized) return;
     setFilterRound("all");
-  }, [filterFormat]);
+  }, [isInitialized, filterFormat]);
 
   // Reset category filter when tournament changes
   useEffect(() => {
+    if (!isInitialized) return;
     setFilterCategory("all");
-  }, [filterTournament]);
+  }, [isInitialized, filterTournament]);
 
   // Reset format filter when tournament or category changes
   useEffect(() => {
+    if (!isInitialized) return;
     setFilterFormat("all");
-  }, [filterTournament, filterCategory]);
+  }, [isInitialized, filterTournament, filterCategory]);
 
   // Reset venue filter when tournament or category changes
   useEffect(() => {
+    if (!isInitialized) return;
     setFilterVenue("all");
-  }, [filterTournament, filterCategory]);
+  }, [isInitialized, filterTournament, filterCategory]);
 
-  const fetchData = async () => {
+  const fetchData = async (filters?: MatchFilters) => {
     try {
       setLoading(true);
       const [matchesResponse, refereesResponse] = await Promise.all([
-        getAllMatchesForAdmin(),
+        getAllMatchesForAdmin(filters),
         getAllRefereesForAdmin(),
       ]);
 
-      const allMatches: Match[] = matchesResponse.data;
-      const allReferees: Referee[] = refereesResponse.data.data;
+      // Cast the response to the new structure
+      const adminResponse = matchesResponse as unknown as AdminMatchesResponse;
+
+      // Extract data from new response structure
+      const allMatches: Match[] = adminResponse.data.data.matches?.items || [];
+      const allReferees: Referee[] = refereesResponse.data?.data || [];
+      const totalCount: number = adminResponse.data.data.matches?.pagination.total || 0;
+      const totalPagesCount: number = adminResponse.data.data.matches.pagination.totalPages || 1;
+
+      // Extract filter options from response
+      const apiFilterOptions: FilterOptions = adminResponse.data.data.filters || {
+        tournaments: [],
+        categories: [],
+        formats: [],
+        rounds: [],
+        venues: [],
+      };
 
       setMatches(allMatches);
       setReferees(allReferees);
+      setTotalMatches(totalCount);
+      setTotalPages(totalPagesCount);
+      setFilterOptions(apiFilterOptions);
     } catch (error: any) {
       console.error("Error fetching data:", error);
       setError("An error occurred while loading data");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1); // Reset to first page when changing page size
   };
 
   const getMatchStatus = (match: Match) => {
@@ -97,40 +286,9 @@ const MatchesManagement: React.FC = () => {
     return "upcoming";
   };
 
-  // Get unique values for filter options
-  const getUniqueTournaments = () => {
-    const tournaments = matches.map((match) => match.tournamentName).filter(Boolean);
-    return Array.from(new Set(tournaments)) as string[];
-  };
-
-  const getUniqueCategories = () => {
-    // If a tournament is selected, only show categories for that tournament
-    const filteredMatches =
-      filterTournament === "all" ? matches : matches.filter((match) => match.tournamentName === filterTournament);
-
-    const categories = filteredMatches.map((match) => match.categoryName).filter(Boolean);
-    return Array.from(new Set(categories)) as string[];
-  };
-
-  const getUniqueFormats = () => {
-    // Filter matches based on selected tournament and category
-    let filteredMatches = matches;
-
-    if (filterTournament !== "all") {
-      filteredMatches = filteredMatches.filter((match) => match.tournamentName === filterTournament);
-    }
-
-    if (filterCategory !== "all") {
-      filteredMatches = filteredMatches.filter((match) => match.categoryName === filterCategory);
-    }
-
-    const formats = filteredMatches.map((match) => match.format).filter(Boolean);
-    return Array.from(new Set(formats)) as string[];
-  };
-
-  const getUniqueRounds = () => {
-    const rounds = matches.map((match) => match.round).filter(Boolean);
-    const allRounds = Array.from(new Set(rounds)) as string[];
+  // Get filtered rounds based on selected format
+  const getFilteredRounds = () => {
+    const allRounds = filterOptions.rounds || [];
 
     const knockoutRounds = [
       "Round of 128",
@@ -158,59 +316,6 @@ const MatchesManagement: React.FC = () => {
         .sort((a, b) => a.localeCompare(b));
     }
   };
-
-  const getUniqueVenues = () => {
-    // Filter matches based on selected tournament and category
-    let filteredMatches = matches;
-
-    if (filterTournament !== "all") {
-      filteredMatches = filteredMatches.filter((match) => match.tournamentName === filterTournament);
-    }
-
-    if (filterCategory !== "all") {
-      filteredMatches = filteredMatches.filter((match) => match.categoryName === filterCategory);
-    }
-
-    const venues = filteredMatches.map((match) => match.venue).filter(Boolean);
-    return Array.from(new Set(venues)) as string[];
-  };
-
-  const filteredMatches = matches.filter((match) => {
-    // Search filter
-    const matchesSearch =
-      match.homeTeamName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.awayTeamName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.venue?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.tournamentName?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    // Status filter
-    const matchesStatus = filterStatus === "all" || getMatchStatus(match) === filterStatus;
-
-    // Tournament filter
-    const matchesTournament = filterTournament === "all" || match.tournamentName === filterTournament;
-
-    // Category filter
-    const matchesCategory = filterCategory === "all" || match.categoryName === filterCategory;
-
-    // Format filter
-    const matchesFormat = filterFormat === "all" || match.format === filterFormat;
-
-    // Round filter
-    const matchesRound = filterRound === "all" || match.round === filterRound;
-
-    // Venue filter
-    const matchesVenue = filterVenue === "all" || match.venue === filterVenue;
-
-    return (
-      matchesSearch &&
-      matchesStatus &&
-      matchesTournament &&
-      matchesCategory &&
-      matchesFormat &&
-      matchesRound &&
-      matchesVenue
-    );
-  });
 
   const handleAssignReferee = async (refereeId: string) => {
     if (!selectedMatch) return;
@@ -255,7 +360,7 @@ const MatchesManagement: React.FC = () => {
 
       // Update each match with its scores
       const updatePromises = matchScores.map(async ({ matchId, gameScores }) => {
-        const match = matches.find((m) => m.id === matchId);
+        const match = matches?.find((m) => m.id === matchId);
         if (!match) return;
 
         if (match.format === "Group") {
@@ -356,6 +461,34 @@ const MatchesManagement: React.FC = () => {
     setShowFilters(!showFilters);
   };
 
+  // Generate pagination page numbers
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages if total is small
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Show pages around current page
+      let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+      let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+      // Adjust if we're near the end
+      if (endPage - startPage + 1 < maxVisiblePages) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+      }
+    }
+
+    return pages;
+  };
+
   if (loading) {
     return (
       <div className="matches-management">
@@ -373,7 +506,7 @@ const MatchesManagement: React.FC = () => {
         <div className="error-container">
           <h2>Error</h2>
           <p>{error}</p>
-          <button onClick={fetchData} className="retry-button">
+          <button onClick={() => fetchData()} className="retry-button">
             Try Again
           </button>
         </div>
@@ -381,10 +514,7 @@ const MatchesManagement: React.FC = () => {
     );
   }
 
-  const uniqueTournaments = getUniqueTournaments();
-  const uniqueCategories = getUniqueCategories();
-  const uniqueFormats = getUniqueFormats();
-  const uniqueRounds = getUniqueRounds();
+  const pageNumbers = getPageNumbers();
 
   return (
     <div className="matches-management">
@@ -417,7 +547,7 @@ const MatchesManagement: React.FC = () => {
               className="filter-select"
             >
               <option value="all">All Tournaments</option>
-              {uniqueTournaments.map((tournament) => (
+              {filterOptions.tournaments?.map((tournament) => (
                 <option key={tournament} value={tournament}>
                   {tournament}
                 </option>
@@ -432,7 +562,7 @@ const MatchesManagement: React.FC = () => {
               className="filter-select"
             >
               <option value="all">All Categories</option>
-              {uniqueCategories.map((category) => (
+              {filterOptions.categories?.map((category) => (
                 <option key={category} value={category}>
                   {category}
                 </option>
@@ -443,7 +573,7 @@ const MatchesManagement: React.FC = () => {
           <div className="filter-group">
             <select value={filterFormat} onChange={(e) => setFilterFormat(e.target.value)} className="filter-select">
               <option value="all">All Formats</option>
-              {uniqueFormats.map((format) => (
+              {filterOptions.formats?.map((format) => (
                 <option key={format} value={format}>
                   {format}
                 </option>
@@ -454,7 +584,7 @@ const MatchesManagement: React.FC = () => {
           <div className="filter-group">
             <select value={filterRound} onChange={(e) => setFilterRound(e.target.value)} className="filter-select">
               <option value="all">All Rounds</option>
-              {uniqueRounds.map((round) => (
+              {getFilteredRounds().map((round) => (
                 <option key={round} value={round}>
                   {round}
                 </option>
@@ -465,7 +595,7 @@ const MatchesManagement: React.FC = () => {
           <div className="filter-group">
             <select value={filterVenue} onChange={(e) => setFilterVenue(e.target.value)} className="filter-select">
               <option value="all">All Venues</option>
-              {getUniqueVenues().map((venue) => (
+              {filterOptions.venues?.map((venue) => (
                 <option key={venue} value={venue}>
                   {venue}
                 </option>
@@ -508,11 +638,11 @@ const MatchesManagement: React.FC = () => {
               <button
                 className="select-all-btn"
                 onClick={() => {
-                  const allMatchIds = new Set(filteredMatches.map((match) => match.id));
+                  const allMatchIds = new Set(matches?.map((match) => match.id) || []);
                   setSelectedMatches(allMatchIds);
                 }}
               >
-                Select All ({filteredMatches.length})
+                Select All ({matches.length})
               </button>
             </>
           )}
@@ -532,29 +662,27 @@ const MatchesManagement: React.FC = () => {
       <div className="matches-stats">
         <div className="matches-count">
           <span className="stat-label">Total Matches</span>
-          <span className="stat-value">{filteredMatches.length}</span>
+          <span className="stat-value">{totalMatches}</span>
         </div>
         <div className="status-stats">
           <div className="stat-item">
             <span className="stat-label">Upcoming</span>
-            <span className="stat-value">{filteredMatches.filter((m) => getMatchStatus(m) === "upcoming").length}</span>
+            <span className="stat-value">{matches?.filter((m) => getMatchStatus(m) === "upcoming").length || 0}</span>
           </div>
           <div className="stat-item">
             <span className="stat-label">In Progress</span>
             <span className="stat-value">
-              {filteredMatches.filter((m) => getMatchStatus(m) === "in-progress").length}
+              {matches?.filter((m) => getMatchStatus(m) === "in-progress").length || 0}
             </span>
           </div>
           <div className="stat-item">
             <span className="stat-label">Completed</span>
-            <span className="stat-value">
-              {filteredMatches.filter((m) => getMatchStatus(m) === "completed").length}
-            </span>
+            <span className="stat-value">{matches?.filter((m) => getMatchStatus(m) === "completed").length || 0}</span>
           </div>
         </div>
       </div>
 
-      {filteredMatches.length === 0 ? (
+      {!matches || matches.length === 0 ? (
         <div className="no-matches">
           <div className="empty-state">
             <h2>No Matches Found</h2>
@@ -583,24 +711,90 @@ const MatchesManagement: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="matches-grid">
-          {filteredMatches
-            .sort((a, b) => new Date(b.startTime || "").getTime() - new Date(a.startTime || "").getTime())
-            .map((match) => (
-              <MatchCard
-                key={match.id}
-                match={match}
-                onUpdateScore={handleUpdateScore}
-                onAssignReferee={openAssignmentModal}
-                onUnassignReferee={handleUnassignReferee}
-                showAdminActions={true}
-                showUpdateScore={true}
-                isSelectable={true}
-                isSelected={selectedMatches.has(match.id)}
-                onSelectionChange={handleMatchSelection}
-              />
-            ))}
-        </div>
+        <>
+          <div className="matches-grid">
+            {matches
+              ?.sort((a, b) => new Date(b.startTime || "").getTime() - new Date(a.startTime || "").getTime())
+              ?.map((match) => (
+                <MatchCard
+                  key={match.id}
+                  match={match}
+                  onUpdateScore={handleUpdateScore}
+                  onAssignReferee={openAssignmentModal}
+                  onUnassignReferee={handleUnassignReferee}
+                  showAdminActions={true}
+                  showUpdateScore={true}
+                  isSelectable={true}
+                  isSelected={selectedMatches.has(match.id)}
+                  onSelectionChange={handleMatchSelection}
+                />
+              ))}
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="pagination-container">
+            <div className="pagination-info">
+              <span>
+                Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalMatches)} of{" "}
+                {totalMatches} matches
+              </span>
+              <div className="page-size-selector">
+                <label htmlFor="page-size">Show:</label>
+                <select
+                  id="page-size"
+                  value={pageSize}
+                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                  className="page-size-select"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={30}>30</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span>per page</span>
+              </div>
+            </div>
+
+            <div className="pagination-controls">
+              <button className="pagination-btn" onClick={() => handlePageChange(1)} disabled={currentPage === 1}>
+                First
+              </button>
+              <button
+                className="pagination-btn"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+
+              {pageNumbers.map((page) => (
+                <button
+                  key={page}
+                  className={`pagination-btn ${page === currentPage ? "active" : ""}`}
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                className="pagination-btn"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+              <button
+                className="pagination-btn"
+                onClick={() => handlePageChange(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                Last
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Assignment Modal */}
@@ -616,7 +810,7 @@ const MatchesManagement: React.FC = () => {
       {/* Bulk Assignment Modal */}
       <BulkAssignRefereeModal
         isOpen={showBulkAssignmentModal}
-        selectedMatches={matches.filter((match) => selectedMatches.has(match.id))}
+        selectedMatches={matches?.filter((match) => selectedMatches.has(match.id)) || []}
         referees={referees}
         onClose={() => setShowBulkAssignmentModal(false)}
         onAssign={handleBulkAssignReferee}
@@ -638,7 +832,7 @@ const MatchesManagement: React.FC = () => {
       {/* Bulk Update Score Modal */}
       <BulkUpdateScoreModal
         isOpen={showBulkUpdateScoreModal}
-        selectedMatches={matches.filter((match) => selectedMatches.has(match.id))}
+        selectedMatches={matches?.filter((match) => selectedMatches.has(match.id)) || []}
         onClose={() => setShowBulkUpdateScoreModal(false)}
         onSubmit={handleBulkUpdateScores}
         loading={bulkUpdatingScores}

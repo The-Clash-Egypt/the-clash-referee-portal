@@ -66,8 +66,72 @@ export interface UpdateMatchDTO {
   gameScores?: GameScoreDTO[];
 }
 
+export interface PaginationInfo {
+  total: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: {
+    items: T[];
+    pagination: PaginationInfo;
+  };
+  success: boolean;
+  message: string;
+  errors: string[];
+}
+
+export interface MatchFilters {
+  search?: string;
+  status?: "all" | "completed" | "in-progress" | "upcoming";
+  tournament?: string;
+  category?: string;
+  format?: string;
+  round?: string;
+  venue?: string;
+  pageNumber?: number;
+  pageSize?: number;
+}
+
 // Get referee matches
-export const getRefereeMatches = (): Promise<{ data: Match[] }> => api.get("/Referee/matches");
+export const getRefereeMatches = (filters?: MatchFilters): Promise<PaginatedResponse<Match>> => {
+  const params = new URLSearchParams();
+
+  if (filters?.search) {
+    params.append("search", filters.search);
+  }
+  if (filters?.status && filters.status !== "all") {
+    params.append("status", filters.status);
+  }
+  if (filters?.tournament && filters.tournament !== "all") {
+    params.append("tournament", filters.tournament);
+  }
+  if (filters?.category && filters.category !== "all") {
+    params.append("category", filters.category);
+  }
+  if (filters?.format && filters.format !== "all") {
+    params.append("format", filters.format);
+  }
+  if (filters?.round && filters.round !== "all") {
+    params.append("round", filters.round);
+  }
+  if (filters?.venue && filters.venue !== "all") {
+    params.append("venue", filters.venue);
+  }
+  if (filters?.pageNumber) {
+    params.append("pageNumber", filters.pageNumber.toString());
+  }
+  if (filters?.pageSize) {
+    params.append("pageSize", filters.pageSize.toString());
+  }
+
+  const queryString = params.toString();
+  const url = `/Referee/matches${queryString ? `?${queryString}` : ""}`;
+
+  return api.get(url);
+};
 
 // Submit match result
 export const submitMatchResult = (matchId: string, data: UpdateMatchDTO) =>

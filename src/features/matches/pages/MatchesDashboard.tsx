@@ -9,15 +9,45 @@ import {
   updateLeagueMatch,
   updateKnockoutMatch,
   updateMatch,
+  MatchFilters,
 } from "../api/matches";
 import { RootState } from "../../../store";
 import MatchCard from "../../shared/components/MatchCard";
 import UpdateScoreDialog from "../../admin/components/UpdateScoreDialog";
 import "./MatchesDashboard.scss";
 
+interface FilterOptions {
+  tournaments: string[];
+  categories: string[];
+  formats: string[];
+  rounds: string[];
+  venues: string[];
+}
+
+interface RefereeMatchesResponse {
+  data: {
+    data: {
+      matches: {
+        items: Match[];
+        pagination: {
+          total: number;
+          pageNumber: number;
+          pageSize: number;
+          totalPages: number;
+        };
+      };
+      filters: FilterOptions;
+    };
+  };
+  success: boolean;
+  message: string;
+  errors: string[];
+}
+
 const MatchesDashboard: React.FC = () => {
   const user = useSelector((state: RootState) => state.user.user);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [totalMatches, setTotalMatches] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -37,9 +67,33 @@ const MatchesDashboard: React.FC = () => {
   });
   const [updateScoreLoading, setUpdateScoreLoading] = useState(false);
 
+  // Filter options from API
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    tournaments: [],
+    categories: [],
+    formats: [],
+    rounds: [],
+    venues: [],
+  });
+
   useEffect(() => {
     fetchMatches();
   }, []);
+
+  // Apply filters when they change
+  useEffect(() => {
+    const filters: MatchFilters = {
+      search: searchTerm || undefined,
+      status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+      tournament: filterTournament !== "all" ? filterTournament : undefined,
+      category: filterCategory !== "all" ? filterCategory : undefined,
+      format: filterFormat !== "all" ? filterFormat : undefined,
+      round: filterRound !== "all" ? filterRound : undefined,
+      venue: filterVenue !== "all" ? filterVenue : undefined,
+    };
+
+    fetchMatches(filters);
+  }, [searchTerm, filterStatus, filterTournament, filterCategory, filterFormat, filterRound, filterVenue]);
 
   // Reset round filter when format changes
   useEffect(() => {
@@ -61,12 +115,30 @@ const MatchesDashboard: React.FC = () => {
     setFilterVenue("all");
   }, [filterTournament, filterCategory]);
 
-  const fetchMatches = async () => {
+  const fetchMatches = async (filters?: MatchFilters) => {
     try {
       setLoading(true);
-      const response = await getRefereeMatches();
-      const allMatches: Match[] = response.data;
+      const response = await getRefereeMatches(filters);
+
+      // Cast the response to the new structure
+      const refereeResponse = response as unknown as RefereeMatchesResponse;
+
+      // Extract data from new response structure
+      const allMatches: Match[] = refereeResponse.data.data.matches.items || [];
+      const totalCount: number = refereeResponse.data.data.matches.pagination.total || 0;
+
+      // Extract filter options from response
+      const apiFilterOptions: FilterOptions = refereeResponse.data.data.filters || {
+        tournaments: [],
+        categories: [],
+        formats: [],
+        rounds: [],
+        venues: [],
+      };
+
       setMatches(allMatches);
+      setTotalMatches(totalCount);
+      setFilterOptions(apiFilterOptions);
     } catch (error: any) {
       console.error("Error fetching matches:", error);
       setError("An error occurred while loading matches");
@@ -85,38 +157,9 @@ const MatchesDashboard: React.FC = () => {
     return "upcoming";
   };
 
-  // Get unique values for filter options
-  const getUniqueTournaments = () => {
-    const tournaments = matches.map((match) => match.tournamentName).filter(Boolean);
-    return Array.from(new Set(tournaments)) as string[];
-  };
-
-  const getUniqueCategories = () => {
-    const filteredMatches =
-      filterTournament === "all" ? matches : matches.filter((match) => match.tournamentName === filterTournament);
-
-    const categories = filteredMatches.map((match) => match.categoryName).filter(Boolean);
-    return Array.from(new Set(categories)) as string[];
-  };
-
-  const getUniqueFormats = () => {
-    let filteredMatches = matches;
-
-    if (filterTournament !== "all") {
-      filteredMatches = filteredMatches.filter((match) => match.tournamentName === filterTournament);
-    }
-
-    if (filterCategory !== "all") {
-      filteredMatches = filteredMatches.filter((match) => match.categoryName === filterCategory);
-    }
-
-    const formats = filteredMatches.map((match) => match.format).filter(Boolean);
-    return Array.from(new Set(formats)) as string[];
-  };
-
-  const getUniqueRounds = () => {
-    const rounds = matches.map((match) => match.round).filter(Boolean);
-    const allRounds = Array.from(new Set(rounds)) as string[];
+  // Get filtered rounds based on selected format
+  const getFilteredRounds = () => {
+    const allRounds = filterOptions.rounds || [];
 
     const knockoutRounds = [
       "Round of 128",
@@ -143,46 +186,6 @@ const MatchesDashboard: React.FC = () => {
         .sort((a, b) => a.localeCompare(b));
     }
   };
-
-  const getUniqueVenues = () => {
-    let filteredMatches = matches;
-
-    if (filterTournament !== "all") {
-      filteredMatches = filteredMatches.filter((match) => match.tournamentName === filterTournament);
-    }
-
-    if (filterCategory !== "all") {
-      filteredMatches = filteredMatches.filter((match) => match.categoryName === filterCategory);
-    }
-
-    const venues = filteredMatches.map((match) => match.venue).filter(Boolean);
-    return Array.from(new Set(venues)) as string[];
-  };
-
-  const filteredMatches = matches.filter((match) => {
-    const matchesSearch =
-      match.homeTeamName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.awayTeamName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.venue?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.tournamentName?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus = filterStatus === "all" || getMatchStatus(match) === filterStatus;
-    const matchesTournament = filterTournament === "all" || match.tournamentName === filterTournament;
-    const matchesCategory = filterCategory === "all" || match.categoryName === filterCategory;
-    const matchesFormat = filterFormat === "all" || match.format === filterFormat;
-    const matchesRound = filterRound === "all" || match.round === filterRound;
-    const matchesVenue = filterVenue === "all" || match.venue === filterVenue;
-
-    return (
-      matchesSearch &&
-      matchesStatus &&
-      matchesTournament &&
-      matchesCategory &&
-      matchesFormat &&
-      matchesRound &&
-      matchesVenue
-    );
-  });
 
   const clearAllFilters = () => {
     setSearchTerm("");
@@ -256,18 +259,13 @@ const MatchesDashboard: React.FC = () => {
         <div className="error-container">
           <h2>Error</h2>
           <p>{error}</p>
-          <button onClick={fetchMatches} className="retry-button">
+          <button onClick={() => fetchMatches()} className="retry-button">
             Try Again
           </button>
         </div>
       </div>
     );
   }
-
-  const uniqueTournaments = getUniqueTournaments();
-  const uniqueCategories = getUniqueCategories();
-  const uniqueFormats = getUniqueFormats();
-  const uniqueRounds = getUniqueRounds();
 
   return (
     <div className="matches-dashboard">
@@ -301,7 +299,7 @@ const MatchesDashboard: React.FC = () => {
                 className="filter-select"
               >
                 <option value="all">All Tournaments</option>
-                {uniqueTournaments.map((tournament) => (
+                {filterOptions.tournaments?.map((tournament) => (
                   <option key={tournament} value={tournament}>
                     {tournament}
                   </option>
@@ -316,7 +314,7 @@ const MatchesDashboard: React.FC = () => {
                 className="filter-select"
               >
                 <option value="all">All Categories</option>
-                {uniqueCategories.map((category) => (
+                {filterOptions.categories?.map((category) => (
                   <option key={category} value={category}>
                     {category}
                   </option>
@@ -327,7 +325,7 @@ const MatchesDashboard: React.FC = () => {
             <div className="filter-group">
               <select value={filterFormat} onChange={(e) => setFilterFormat(e.target.value)} className="filter-select">
                 <option value="all">All Formats</option>
-                {uniqueFormats.map((format) => (
+                {filterOptions.formats?.map((format) => (
                   <option key={format} value={format}>
                     {format}
                   </option>
@@ -338,7 +336,7 @@ const MatchesDashboard: React.FC = () => {
             <div className="filter-group">
               <select value={filterRound} onChange={(e) => setFilterRound(e.target.value)} className="filter-select">
                 <option value="all">All Rounds</option>
-                {uniqueRounds.map((round) => (
+                {getFilteredRounds().map((round) => (
                   <option key={round} value={round}>
                     {round}
                   </option>
@@ -349,7 +347,7 @@ const MatchesDashboard: React.FC = () => {
             <div className="filter-group">
               <select value={filterVenue} onChange={(e) => setFilterVenue(e.target.value)} className="filter-select">
                 <option value="all">All Venues</option>
-                {getUniqueVenues().map((venue) => (
+                {filterOptions.venues?.map((venue) => (
                   <option key={venue} value={venue}>
                     {venue}
                   </option>
@@ -375,7 +373,7 @@ const MatchesDashboard: React.FC = () => {
         </div>
       )}
 
-      {matches.length > 0 && (
+      {matches && matches.length > 0 && (
         <div className="matches-stats">
           <div className="matches-count">
             <span className="stat-label">Total Assigned Matches</span>
@@ -398,7 +396,7 @@ const MatchesDashboard: React.FC = () => {
         </div>
       )}
 
-      {filteredMatches.length === 0 ? (
+      {!matches || matches.length === 0 ? (
         <div className="no-matches">
           <div className="empty-state">
             <h2>No Matches Found</h2>
@@ -428,9 +426,9 @@ const MatchesDashboard: React.FC = () => {
         </div>
       ) : (
         <div className="matches-grid">
-          {filteredMatches
-            .sort((a, b) => new Date(b.startTime || "").getTime() - new Date(a.startTime || "").getTime())
-            .map((match) => (
+          {matches
+            ?.sort((a, b) => new Date(b.startTime || "").getTime() - new Date(a.startTime || "").getTime())
+            ?.map((match) => (
               <MatchCard
                 key={match.id}
                 match={match}

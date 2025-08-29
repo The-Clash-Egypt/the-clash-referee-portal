@@ -1,11 +1,55 @@
 import api from "../../../api/axios";
-import { Match, Referee, UpdateMatchDTO, MatchGameScore } from "../../matches/api/matches";
+import {
+  Match,
+  Referee,
+  UpdateMatchDTO,
+  MatchGameScore,
+  PaginatedResponse,
+  MatchFilters,
+} from "../../matches/api/matches";
 
 // Get all referees for admin
 export const getAllRefereesForAdmin = (): Promise<{ data: { data: Referee[] } }> => api.get("/Referee/all");
 
 // Get all matches for admin (same as referee matches but for admin view)
-export const getAllMatchesForAdmin = (): Promise<{ data: Match[] }> => api.get("/Referee/matches");
+export const getAllMatchesForAdmin = (
+  filters?: MatchFilters
+): Promise<{ data: { data: PaginatedResponse<Match> } }> => {
+  const params = new URLSearchParams();
+
+  if (filters?.search) {
+    params.append("search", filters.search);
+  }
+  if (filters?.status && filters.status !== "all") {
+    params.append("status", filters.status);
+  }
+  if (filters?.tournament && filters.tournament !== "all") {
+    params.append("tournament", filters.tournament);
+  }
+  if (filters?.category && filters.category !== "all") {
+    params.append("category", filters.category);
+  }
+  if (filters?.format && filters.format !== "all") {
+    params.append("format", filters.format);
+  }
+  if (filters?.round && filters.round !== "all") {
+    params.append("round", filters.round);
+  }
+  if (filters?.venue && filters.venue !== "all") {
+    params.append("venue", filters.venue);
+  }
+  if (filters?.pageNumber) {
+    params.append("pageNumber", filters.pageNumber.toString());
+  }
+  if (filters?.pageSize) {
+    params.append("pageSize", filters.pageSize.toString());
+  }
+
+  const queryString = params.toString();
+  const url = `/Referee/matches${queryString ? `?${queryString}` : ""}`;
+
+  return api.get(url);
+};
 
 // Assign referee to match
 export const assignRefereeToMatch = (refereeId: string, matchId: string) =>
@@ -55,6 +99,6 @@ export const bulkUpdateMatchScores = async (matchScores: { matchId: string; game
     // This will be handled in the component by calling the appropriate update function
     return { matchId, data };
   });
-  
+
   return promises;
 };
