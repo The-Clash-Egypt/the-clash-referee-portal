@@ -9,7 +9,7 @@ import {
   updateLeagueMatch,
   updateGroupMatch,
 } from "../api";
-import { Match, Referee, MatchGameScore, MatchFilters } from "../../matches/api/matches";
+import { Match, Referee, MatchGameScore, MatchFilters, AdminMatchesResponse } from "../../matches/api/matches";
 import MatchCard from "../../shared/components/MatchCard";
 import AssignRefereeModal from "../components/AssignRefereeModal";
 import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
@@ -23,26 +23,6 @@ interface FilterOptions {
   formats: string[];
   rounds: string[];
   venues: string[];
-}
-
-interface AdminMatchesResponse {
-  data: {
-    data: {
-      matches: {
-        items: Match[];
-        pagination: {
-          total: number;
-          pageNumber: number;
-          pageSize: number;
-          totalPages: number;
-        };
-      };
-      filters: FilterOptions;
-    };
-  };
-  success: boolean;
-  message: string;
-  errors: string[];
 }
 
 const MatchesManagement: React.FC = () => {
@@ -76,6 +56,11 @@ const MatchesManagement: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(30);
   const [totalPages, setTotalPages] = useState<number>(0);
+
+  // Match status counts from API
+  const [inProgressCount, setInProgressCount] = useState<number>(0);
+  const [incomingCount, setIncomingCount] = useState<number>(0);
+  const [completedCount, setCompletedCount] = useState<number>(0);
 
   // Filter options from API
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
@@ -162,10 +147,23 @@ const MatchesManagement: React.FC = () => {
     pageSize,
   ]);
 
+  // Initial load when component is initialized
   useEffect(() => {
-    if (isInitialized) {
-      fetchData();
-    }
+    if (!isInitialized) return;
+
+    const initialFilters: MatchFilters = {
+      search: searchTerm || undefined,
+      status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+      tournament: filterTournament !== "all" ? filterTournament : undefined,
+      category: filterCategory !== "all" ? filterCategory : undefined,
+      format: filterFormat !== "all" ? filterFormat : undefined,
+      round: filterRound !== "all" ? filterRound : undefined,
+      venue: filterVenue !== "all" ? filterVenue : undefined,
+      pageSize: pageSize,
+      pageNumber: currentPage,
+    };
+
+    fetchData(initialFilters);
   }, [isInitialized]);
 
   // Apply filters when they change (using debounced search term)
@@ -186,7 +184,6 @@ const MatchesManagement: React.FC = () => {
 
     fetchData(filters);
   }, [
-    isInitialized,
     debouncedSearchTerm,
     filterStatus,
     filterTournament,
@@ -202,16 +199,7 @@ const MatchesManagement: React.FC = () => {
   useEffect(() => {
     if (!isInitialized) return;
     setCurrentPage(1);
-  }, [
-    isInitialized,
-    debouncedSearchTerm,
-    filterStatus,
-    filterTournament,
-    filterCategory,
-    filterFormat,
-    filterRound,
-    filterVenue,
-  ]);
+  }, [isInitialized, filterStatus, filterTournament, filterCategory, filterFormat, filterRound, filterVenue]);
 
   // Reset round filter when format changes to avoid invalid selections
   useEffect(() => {
@@ -245,17 +233,19 @@ const MatchesManagement: React.FC = () => {
         getAllRefereesForAdmin(),
       ]);
 
-      // Cast the response to the new structure
-      const adminResponse = matchesResponse as unknown as AdminMatchesResponse;
-
       // Extract data from new response structure
-      const allMatches: Match[] = adminResponse.data.data.matches?.items || [];
+      const allMatches: Match[] = matchesResponse.data.data.matches.items || [];
       const allReferees: Referee[] = refereesResponse.data?.data || [];
-      const totalCount: number = adminResponse.data.data.matches?.pagination.total || 0;
-      const totalPagesCount: number = adminResponse.data.data.matches.pagination.totalPages || 1;
+      const totalCount: number = matchesResponse.data.data.matches.pagination.total || 0;
+      const totalPagesCount: number = matchesResponse.data.data.matches.pagination.totalPages || 1;
 
-      // Extract filter options from response
-      const apiFilterOptions: FilterOptions = adminResponse.data.data.filters || {
+      // Extract match status counts from response
+      const inProgressCount: number = matchesResponse.data.data.inProgressCount || 0;
+      const incomingCount: number = matchesResponse.data.data.incomingCount || 0;
+      const completedCount: number = matchesResponse.data.data.completedCount || 0;
+
+      // Extract filter options from response (if available)
+      const apiFilterOptions: FilterOptions = matchesResponse.data.data.filters || {
         tournaments: [],
         categories: [],
         formats: [],
@@ -267,6 +257,9 @@ const MatchesManagement: React.FC = () => {
       setReferees(allReferees);
       setTotalMatches(totalCount);
       setTotalPages(totalPagesCount);
+      setInProgressCount(inProgressCount);
+      setIncomingCount(incomingCount);
+      setCompletedCount(completedCount);
       setFilterOptions(apiFilterOptions);
     } catch (error: any) {
       console.error("Error fetching data:", error);
@@ -673,21 +666,22 @@ const MatchesManagement: React.FC = () => {
         <div className="matches-count">
           <span className="stat-label">Total Matches</span>
           <span className="stat-value">{totalMatches}</span>
+          {matches.length > 0 && matches.length !== totalMatches && (
+            <span className="current-page-info">(Showing {matches.length} on this page)</span>
+          )}
         </div>
         <div className="status-stats">
           <div className="stat-item">
             <span className="stat-label">Upcoming</span>
-            <span className="stat-value">{matches?.filter((m) => getMatchStatus(m) === "upcoming").length || 0}</span>
+            <span className="stat-value">{incomingCount}</span>
           </div>
           <div className="stat-item">
             <span className="stat-label">In Progress</span>
-            <span className="stat-value">
-              {matches?.filter((m) => getMatchStatus(m) === "in-progress").length || 0}
-            </span>
+            <span className="stat-value">{inProgressCount}</span>
           </div>
           <div className="stat-item">
             <span className="stat-label">Completed</span>
-            <span className="stat-value">{matches?.filter((m) => getMatchStatus(m) === "completed").length || 0}</span>
+            <span className="stat-value">{completedCount}</span>
           </div>
         </div>
       </div>

@@ -83,6 +83,46 @@ export interface PaginatedResponse<T> {
   errors: string[];
 }
 
+export interface FilterOptions {
+  tournaments: string[];
+  categories: string[];
+  formats: string[];
+  rounds: string[];
+  venues: string[];
+}
+
+export interface AdminMatchesResponse {
+  data: {
+    matches: {
+      items: Match[];
+      pagination: PaginationInfo;
+    };
+    inProgressCount: number;
+    incomingCount: number;
+    completedCount: number;
+    filters: FilterOptions;
+  };
+  success: boolean;
+  message: string;
+  errors: string[];
+}
+
+export interface RefereeMatchesResponse {
+  data: {
+    matches: {
+      items: Match[];
+      pagination: PaginationInfo;
+    };
+    inProgressCount: number;
+    incomingCount: number;
+    completedCount: number;
+    filters: FilterOptions;
+  };
+  success: boolean;
+  message: string;
+  errors: string[];
+}
+
 export interface MatchFilters {
   search?: string;
   status?: "all" | "completed" | "in-progress" | "upcoming";
@@ -96,7 +136,7 @@ export interface MatchFilters {
 }
 
 // Get referee matches
-export const getRefereeMatches = (filters?: MatchFilters): Promise<PaginatedResponse<Match>> => {
+export const getRefereeMatches = (filters?: MatchFilters): Promise<{ data: RefereeMatchesResponse }> => {
   const params = new URLSearchParams();
 
   if (filters?.search) {

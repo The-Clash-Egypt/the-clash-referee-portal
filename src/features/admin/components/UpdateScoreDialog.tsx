@@ -15,7 +15,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
   const [errors, setErrors] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"quick" | "detailed">("quick");
   const [showSwitchReminder, setShowSwitchReminder] = useState(false);
-  const [switchSideInterval, setSwitchSideInterval] = useState(11);
+  const [switchSideInterval, setSwitchSideInterval] = useState<string>("7");
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -57,7 +57,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
     if (activeTab === "quick" && gameScores.length > 0) {
       const currentGame = gameScores[gameScores.length - 1];
       const totalPoints = currentGame.homeScore + currentGame.awayScore;
-      if (totalPoints > 0 && totalPoints % switchSideInterval === 0) {
+      const interval = parseInt(switchSideInterval) || 7;
+      if (totalPoints > 0 && totalPoints % interval === 0) {
         setShowSwitchReminder(true);
         const timer = setTimeout(() => setShowSwitchReminder(false), 5000);
         return () => clearTimeout(timer);
@@ -145,6 +146,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
   const handleClose = () => {
     setGameScores([]);
     setErrors([]);
+    setSwitchSideInterval("7");
     onClose();
   };
 
@@ -359,12 +361,23 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
               <div className="switch-interval-config">
                 <label>Switch every:</label>
                 <input
-                  type="number"
-                  min="1"
-                  max="50"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={switchSideInterval}
-                  onChange={(e) => setSwitchSideInterval(parseInt(e.target.value) || 11)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "" || /^\d+$/.test(value)) {
+                      setSwitchSideInterval(value);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === "") {
+                      setSwitchSideInterval("7");
+                    }
+                  }}
                   className="interval-input"
+                  placeholder="11"
                 />
                 <span>points</span>
               </div>

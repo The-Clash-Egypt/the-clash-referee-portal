@@ -4,11 +4,9 @@ import {
   getRefereeMatches,
   Match,
   MatchGameScore,
-  submitMatchResult,
   updateGroupMatch,
   updateLeagueMatch,
   updateKnockoutMatch,
-  updateMatch,
   MatchFilters,
 } from "../api/matches";
 import { RootState } from "../../../store";
@@ -22,26 +20,6 @@ interface FilterOptions {
   formats: string[];
   rounds: string[];
   venues: string[];
-}
-
-interface RefereeMatchesResponse {
-  data: {
-    data: {
-      matches: {
-        items: Match[];
-        pagination: {
-          total: number;
-          pageNumber: number;
-          pageSize: number;
-          totalPages: number;
-        };
-      };
-      filters: FilterOptions;
-    };
-  };
-  success: boolean;
-  message: string;
-  errors: string[];
 }
 
 const MatchesDashboard: React.FC = () => {
@@ -67,6 +45,11 @@ const MatchesDashboard: React.FC = () => {
     match: null,
   });
   const [updateScoreLoading, setUpdateScoreLoading] = useState(false);
+
+  // Match status counts from API
+  const [inProgressCount, setInProgressCount] = useState<number>(0);
+  const [incomingCount, setIncomingCount] = useState<number>(0);
+  const [completedCount, setCompletedCount] = useState<number>(0);
 
   // Filter options from API
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
@@ -130,24 +113,39 @@ const MatchesDashboard: React.FC = () => {
       setLoading(true);
       const response = await getRefereeMatches(filters);
 
-      // Cast the response to the new structure
-      const refereeResponse = response as unknown as RefereeMatchesResponse;
-
       // Extract data from new response structure
-      const allMatches: Match[] = refereeResponse.data.data.matches.items || [];
-      const totalCount: number = refereeResponse.data.data.matches.pagination.total || 0;
+      const allMatches: Match[] = response.data.data.matches.items || [];
+      const totalCount: number = response.data.data.matches.pagination.total || 0;
 
-      // Extract filter options from response
-      const apiFilterOptions: FilterOptions = refereeResponse.data.data.filters || {
-        tournaments: [],
-        categories: [],
-        formats: [],
-        rounds: [],
-        venues: [],
+      // Extract match status counts from response
+      const inProgressCount: number = response.data.data.inProgressCount || 0;
+      const incomingCount: number = response.data.data.incomingCount || 0;
+      const completedCount: number = response.data.data.completedCount || 0;
+
+      // Extract filter options from matches data
+      const apiFilterOptions: FilterOptions = response.data.data.filters || {
+        tournaments: response.data.data.filters
+          ? (Array.from(new Set(allMatches.map((match) => match.tournamentName).filter(Boolean))) as string[])
+          : [],
+        categories: response.data.data.filters
+          ? (Array.from(new Set(allMatches.map((match) => match.categoryName).filter(Boolean))) as string[])
+          : [],
+        formats: response.data.data.filters
+          ? (Array.from(new Set(allMatches.map((match) => match.format).filter(Boolean))) as string[])
+          : [],
+        rounds: response.data.data.filters
+          ? (Array.from(new Set(allMatches.map((match) => match.round).filter(Boolean))) as string[])
+          : [],
+        venues: response.data.data.filters
+          ? (Array.from(new Set(allMatches.map((match) => match.venue).filter(Boolean))) as string[])
+          : [],
       };
 
       setMatches(allMatches);
       setTotalMatches(totalCount);
+      setInProgressCount(inProgressCount);
+      setIncomingCount(incomingCount);
+      setCompletedCount(completedCount);
       setFilterOptions(apiFilterOptions);
     } catch (error: any) {
       console.error("Error fetching matches:", error);
@@ -156,16 +154,6 @@ const MatchesDashboard: React.FC = () => {
       setLoading(false);
     }
   }, []);
-
-  const getMatchStatus = (match: Match) => {
-    if (match.isCompleted) {
-      return "completed";
-    }
-    if (match.startTime && new Date(match.startTime) < new Date()) {
-      return "in-progress";
-    }
-    return "upcoming";
-  };
 
   // Get filtered rounds based on selected format
   const getFilteredRounds = () => {
@@ -383,28 +371,29 @@ const MatchesDashboard: React.FC = () => {
         </div>
       )}
 
-      {matches && matches.length > 0 && (
-        <div className="matches-stats">
-          <div className="matches-count">
-            <span className="stat-label">Total Assigned Matches</span>
-            <span className="stat-value">{matches.length}</span>
+      <div className="matches-stats">
+        <div className="matches-count">
+          <span className="stat-label">Total Assigned Matches</span>
+          <span className="stat-value">{totalMatches}</span>
+          {matches.length > 0 && matches.length !== totalMatches && (
+            <span className="current-page-info">(Showing {matches.length} on this page)</span>
+          )}
+        </div>
+        <div className="status-stats">
+          <div className="stat-item">
+            <span className="stat-label">Upcoming</span>
+            <span className="stat-value">{incomingCount}</span>
           </div>
-          <div className="status-stats">
-            <div className="stat-item">
-              <span className="stat-label">Upcoming</span>
-              <span className="stat-value">{matches.filter((m) => getMatchStatus(m) === "upcoming").length}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">In Progress</span>
-              <span className="stat-value">{matches.filter((m) => getMatchStatus(m) === "in-progress").length}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Completed</span>
-              <span className="stat-value">{matches.filter((m) => getMatchStatus(m) === "completed").length}</span>
-            </div>
+          <div className="stat-item">
+            <span className="stat-label">In Progress</span>
+            <span className="stat-value">{inProgressCount}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Completed</span>
+            <span className="stat-value">{completedCount}</span>
           </div>
         </div>
-      )}
+      </div>
 
       {!matches || matches.length === 0 ? (
         <div className="no-matches">

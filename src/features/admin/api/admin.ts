@@ -1,20 +1,11 @@
 import api from "../../../api/axios";
-import {
-  Match,
-  Referee,
-  UpdateMatchDTO,
-  MatchGameScore,
-  PaginatedResponse,
-  MatchFilters,
-} from "../../matches/api/matches";
+import { Referee, UpdateMatchDTO, MatchGameScore, MatchFilters, AdminMatchesResponse } from "../../matches/api/matches";
 
 // Get all referees for admin
 export const getAllRefereesForAdmin = (): Promise<{ data: { data: Referee[] } }> => api.get("/Referee/all");
 
 // Get all matches for admin (same as referee matches but for admin view)
-export const getAllMatchesForAdmin = (
-  filters?: MatchFilters
-): Promise<{ data: { data: PaginatedResponse<Match> } }> => {
+export const getAllMatchesForAdmin = (filters?: MatchFilters): Promise<{ data: AdminMatchesResponse }> => {
   const params = new URLSearchParams();
 
   if (filters?.search) {
