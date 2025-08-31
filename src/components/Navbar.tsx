@@ -47,7 +47,11 @@ const Navbar: React.FC = () => {
     <nav className="navbar">
       <div className="navbar-container">
         {/* Logo and Brand */}
-        <div className="navbar-brand">
+        <div
+          className="navbar-brand"
+          onClick={() => handleNavigation(user.role === "admin" ? "/admin/matches" : "/matches")}
+          style={{ cursor: "pointer" }}
+        >
           <img src={require("../assets/images/logo.png")} alt="The Clash" className="navbar-logo" />
           <div className="navbar-title-container">
             <span className="navbar-title">The Clash Referees Portal</span>

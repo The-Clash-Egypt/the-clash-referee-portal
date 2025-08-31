@@ -13,9 +13,21 @@ interface UpdateScoreDialogProps {
 const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, onClose, onSubmit, loading }) => {
   const [gameScores, setGameScores] = useState<MatchGameScore[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<"quick" | "detailed">("quick");
-  const [showSwitchReminder, setShowSwitchReminder] = useState(false);
-  const [switchSideInterval, setSwitchSideInterval] = useState<string>("7");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedSetIndex, setSelectedSetIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -49,25 +61,33 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
 
       setGameScores(initialScores);
       setErrors([]);
+      setSelectedSetIndex(0);
     }
   }, [match]);
 
-  // Check for switch side reminder
-  useEffect(() => {
-    if (activeTab === "quick" && gameScores.length > 0) {
-      const currentGame = gameScores[gameScores.length - 1];
-      const totalPoints = currentGame.homeScore + currentGame.awayScore;
-      const interval = parseInt(switchSideInterval) || 7;
-      if (totalPoints > 0 && totalPoints % interval === 0) {
-        setShowSwitchReminder(true);
-        const timer = setTimeout(() => setShowSwitchReminder(false), 5000);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [gameScores, activeTab, switchSideInterval]);
-
   const getBestOfValue = (match: Match): number => {
     return match.bestOf || 1;
+  };
+
+  const canAddMoreSets = (): boolean => {
+    if (!match) return false;
+    const bestOf = getBestOfValue(match);
+    // For best of N, we can have up to N games
+    // We can add more games if we haven't reached the maximum possible games
+    // Check if match is already decided (one team has won majority of sets)
+    const homeWins = gameScores.filter((score) => score.homeScore > score.awayScore).length;
+    const awayWins = gameScores.filter((score) => score.homeScore < score.awayScore).length;
+    const setsNeededToWin = Math.ceil(bestOf / 2);
+
+    // If either team has already won the required number of sets, don't allow more games
+    if (homeWins >= setsNeededToWin || awayWins >= setsNeededToWin) {
+      return false;
+    }
+    return gameScores.length < bestOf;
+  };
+
+  const isBestOfOne = (match: Match): boolean => {
+    return getBestOfValue(match) === 1;
   };
 
   const updateGameScore = (gameNumber: number, field: "homeScore" | "awayScore", value: string) => {
@@ -78,18 +98,34 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
   };
 
   const quickUpdateScore = (team: "home" | "away", action: "add" | "subtract") => {
-    const currentGame = gameScores[gameScores.length - 1];
+    const currentGame = gameScores[selectedSetIndex];
     if (!currentGame) return;
-
-    // Hide switch reminder when adding scores
-    if (showSwitchReminder) {
-      setShowSwitchReminder(false);
-    }
 
     const currentScore = team === "home" ? currentGame.homeScore : currentGame.awayScore;
     const newScore = action === "add" ? currentScore + 1 : Math.max(0, currentScore - 1);
 
     updateGameScore(currentGame.gameNumber, `${team}Score` as "homeScore" | "awayScore", newScore.toString());
+  };
+
+  const addGame = () => {
+    const nextGameNumber = gameScores.length + 1;
+    setGameScores((prev) => [
+      ...prev,
+      {
+        gameNumber: nextGameNumber,
+        homeScore: 0,
+        awayScore: 0,
+      },
+    ]);
+
+    // In fullscreen mode, automatically select the newly added game
+    if (isFullscreen) {
+      setSelectedSetIndex(nextGameNumber - 1);
+    }
+  };
+
+  const removeGame = (gameNumber: number) => {
+    setGameScores((prev) => prev.filter((score) => score.gameNumber !== gameNumber));
   };
 
   const validateScores = (): boolean => {
@@ -127,262 +163,250 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
     }
   };
 
-  const addGame = () => {
-    const nextGameNumber = gameScores.length + 1;
-    setGameScores((prev) => [
-      ...prev,
-      {
-        gameNumber: nextGameNumber,
-        homeScore: 0,
-        awayScore: 0,
-      },
-    ]);
-  };
-
-  const removeGame = (gameNumber: number) => {
-    setGameScores((prev) => prev.filter((score) => score.gameNumber !== gameNumber));
-  };
-
   const handleClose = () => {
     setGameScores([]);
     setErrors([]);
-    setSwitchSideInterval("7");
+    setIsFullscreen(false);
+    setSelectedSetIndex(0);
     onClose();
   };
 
-  if (!isOpen || !match) return null;
+  const exitFullscreen = () => {
+    setIsFullscreen(false);
+  };
 
-  const currentGame = gameScores[gameScores.length - 1] || { gameNumber: 1, homeScore: 0, awayScore: 0 };
+  if (!isOpen || !match) return null;
 
   // Only count completed sets (sets that have been played)
   const completedSets = gameScores.filter((score) => score.homeScore > 0 || score.awayScore > 0);
   const homeWins = completedSets.filter((score) => score.homeScore > score.awayScore).length;
   const awayWins = completedSets.filter((score) => score.awayScore > score.homeScore).length;
+  const currentGame = gameScores[selectedSetIndex] || { gameNumber: 1, homeScore: 0, awayScore: 0 };
 
-  return (
-    <div className="update-score-modal-overlay" onClick={handleClose}>
-      {/* Switch Side Reminder */}
-      {showSwitchReminder && (
-        <div className="switch-reminder" onClick={(e) => e.stopPropagation()}>
-          <div className="reminder-content">
-            <span className="reminder-icon">🔄</span>
-            <span>Switch Sides!</span>
+  // Fullscreen Scoreboard View (Mobile Only)
+  if (isFullscreen && isMobile) {
+    return (
+      <div className="fullscreen-scoreboard">
+        <div className="scoreboard-content">
+          {/* Header */}
+          <div className="scoreboard-header">
+            <button className="back-btn" onClick={exitFullscreen}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" />
+              </svg>
+            </button>
+
+            {/* Set Selector in Header */}
+            <div className="header-set-selector">
+              {gameScores.map((score, index) => (
+                <button
+                  key={index}
+                  className={`set-tab ${index === selectedSetIndex ? "active" : ""} ${
+                    score.homeScore > 0 || score.awayScore > 0 ? "completed" : ""
+                  }`}
+                  onClick={() => setSelectedSetIndex(index)}
+                >
+                  Set {score.gameNumber}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Scoreboard */}
+          <div className="scoreboard-main">
+            <div className="team-section home">
+              <div className="team-name">{match.homeTeamName}</div>
+              <div className="score-display">{currentGame.homeScore}</div>
+              <div className="score-controls">
+                <button className="score-btn add" onClick={() => quickUpdateScore("home", "add")}>
+                  +
+                </button>
+                <button
+                  className="score-btn subtract"
+                  onClick={() => quickUpdateScore("home", "subtract")}
+                  disabled={currentGame.homeScore === 0}
+                >
+                  -
+                </button>
+              </div>
+            </div>
+
+            <div className="team-section away">
+              <div className="team-name">{match.awayTeamName}</div>
+              <div className="score-display">{currentGame.awayScore}</div>
+              <div className="score-controls">
+                <button className="score-btn add" onClick={() => quickUpdateScore("away", "add")}>
+                  +
+                </button>
+                <button
+                  className="score-btn subtract"
+                  onClick={() => quickUpdateScore("away", "subtract")}
+                  disabled={currentGame.awayScore === 0}
+                >
+                  -
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Match Progress */}
+          {!isBestOfOne(match) && (
+            <div className="match-progress">
+              <div className="progress-item">
+                <span className="label">Home Wins</span>
+                <span className="value">{homeWins}</span>
+              </div>
+              <div className="progress-item">
+                <span className="label">Sets</span>
+                <span className="value">
+                  {completedSets.length}/{getBestOfValue(match)}
+                </span>
+              </div>
+              <div className="progress-item">
+                <span className="label">Away Wins</span>
+                <span className="value">{awayWins}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Save Button */}
+          <div className="save-section">
+            {!isBestOfOne(match) && canAddMoreSets() && (
+              <button className="add-game-btn" onClick={addGame}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" />
+                </svg>
+                Add Set {gameScores.length + 1}
+              </button>
+            )}
+            <button className="save-btn" onClick={handleSubmit} disabled={loading}>
+              {loading ? "Saving..." : "Save Scores"}
+            </button>
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
 
+  // Regular Modal View
+  return (
+    <div className="update-score-modal-overlay" onClick={handleClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="header-content">
-            <h3>Match Score</h3>
+            <h3>Enter Match Scores</h3>
             <p className="match-teams">
               {match.homeTeamName} vs {match.awayTeamName}
             </p>
+            <div className="match-info">
+              <span className="best-of-badge">Best of {getBestOfValue(match)}</span>
+              {!isBestOfOne(match) && (
+                <span className="sets-progress">
+                  {completedSets.length} of {getBestOfValue(match)} sets completed
+                </span>
+              )}
+            </div>
           </div>
-          <button className="modal-close" onClick={handleClose}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
+          <div className="header-actions">
+            {/* Show fullscreen button only on mobile */}
+            {isMobile && (
+              <button
+                className="fullscreen-toggle"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsFullscreen(true);
+                }}
+                title="Enter fullscreen scoreboard"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            )}
+            <button className="modal-close" onClick={handleClose}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div className="modal-body" onClick={(e) => e.stopPropagation()}>
-          {/* Quick Score Update */}
-          {activeTab === "quick" && (
-            <div className="quick-score-section">
-              <div className="score-display">
-                <div className="team-score home">
-                  <div className="team-name">{match.homeTeamName}</div>
-                  <div className="score-value">{currentGame.homeScore}</div>
-                  <div className="score-controls">
-                    <button
-                      className="score-btn add"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        quickUpdateScore("home", "add");
-                      }}
-                    >
-                      +
-                    </button>
-                    <button
-                      className="score-btn subtract"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        quickUpdateScore("home", "subtract");
-                      }}
-                      disabled={currentGame.homeScore === 0}
-                    >
-                      -
-                    </button>
+          {/* Score Inputs */}
+          <div className="score-inputs">
+            {gameScores.map((score, index) => (
+              <div key={score.gameNumber} className="score-row">
+                <div className="set-label">Set {score.gameNumber}</div>
+                <div className="score-inputs-container">
+                  <div className="team-input">
+                    <label>{match.homeTeamName}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={score.homeScore === 0 ? "" : score.homeScore}
+                      onChange={(e) => updateGameScore(score.gameNumber, "homeScore", e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="score-input"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="score-divider">-</div>
+                  <div className="team-input">
+                    <label>{match.awayTeamName}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={score.awayScore === 0 ? "" : score.awayScore}
+                      onChange={(e) => updateGameScore(score.gameNumber, "awayScore", e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="score-input"
+                      placeholder="0"
+                    />
                   </div>
                 </div>
-
-                <div className="score-divider">
-                  <span>VS</span>
-                </div>
-
-                <div className="team-score away">
-                  <div className="team-name">{match.awayTeamName}</div>
-                  <div className="score-value">{currentGame.awayScore}</div>
-                  <div className="score-controls">
-                    <button
-                      className="score-btn add"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        quickUpdateScore("away", "add");
-                      }}
-                    >
-                      +
-                    </button>
-                    <button
-                      className="score-btn subtract"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        quickUpdateScore("away", "subtract");
-                      }}
-                      disabled={currentGame.awayScore === 0}
-                    >
-                      -
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="match-summary">
-                <div className="summary-item">
-                  <span>Home Wins {homeWins}</span>
-                </div>
-                <div className="summary-item">
-                  <span>Away Wins {awayWins}</span>
-                </div>
-                <div className="summary-item">
-                  <span>Current Set {currentGame.gameNumber}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Detailed Score Update */}
-          {activeTab === "detailed" && (
-            <div className="detailed-score-section">
-              <div className="games-grid">
-                {gameScores.map((score) => (
-                  <div key={score.gameNumber} className="game-score-card">
-                    <div className="game-header">
-                      <h5>Set {score.gameNumber}</h5>
-                      {gameScores.length > 1 && (
-                        <button
-                          className="remove-game-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeGame(score.gameNumber);
-                          }}
-                          type="button"
-                          title="Remove set"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                    <div className="score-inputs">
-                      <div className="team-score">
-                        <label>{match.homeTeamName}</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={score.homeScore === 0 ? "" : score.homeScore}
-                          onChange={(e) => updateGameScore(score.gameNumber, "homeScore", e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="score-input"
-                          placeholder="0"
-                        />
-                      </div>
-                      <div className="score-divider">-</div>
-                      <div className="team-score">
-                        <label>{match.awayTeamName}</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={score.awayScore === 0 ? "" : score.awayScore}
-                          onChange={(e) => updateGameScore(score.gameNumber, "awayScore", e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="score-input"
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {gameScores.length < getBestOfValue(match) && (
-                <div className="add-game-section">
+                {!isBestOfOne(match) && gameScores.length > 1 && (
                   <button
-                    className="add-game-btn"
+                    className="remove-set-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      addGame();
+                      removeGame(score.gameNumber);
                     }}
                     type="button"
+                    title="Remove set"
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" />
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" />
                     </svg>
-                    Add Set
                   </button>
-                </div>
-              )}
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Add Set Button */}
+          {!isBestOfOne(match) && canAddMoreSets() && (
+            <div className="add-set-section">
+              <button
+                className="add-set-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  addGame();
+                }}
+                type="button"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" />
+                </svg>
+                Add Another Set
+              </button>
             </div>
           )}
-
-          {/* Tab Navigation */}
-          <div className="tab-navigation">
-            <button
-              className={`tab-btn ${activeTab === "quick" ? "active" : ""}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveTab("quick");
-              }}
-            >
-              Detailed
-            </button>
-            <button
-              className={`tab-btn ${activeTab === "detailed" ? "active" : ""}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveTab("detailed");
-              }}
-            >
-              Quick Update
-            </button>
-            {activeTab === "quick" && (
-              <div className="switch-interval-config">
-                <label>Switch every:</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={switchSideInterval}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === "" || /^\d+$/.test(value)) {
-                      setSwitchSideInterval(value);
-                    }
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === "") {
-                      setSwitchSideInterval("7");
-                    }
-                  }}
-                  className="interval-input"
-                  placeholder="11"
-                />
-                <span>points</span>
-              </div>
-            )}
-          </div>
 
           {errors.length > 0 && (
             <div className="error-messages">
@@ -413,7 +437,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
               }}
               disabled={loading}
             >
-              {loading ? "Updating..." : "Save Score"}
+              {loading ? "Saving..." : "Save Scores"}
             </button>
           </div>
         </div>

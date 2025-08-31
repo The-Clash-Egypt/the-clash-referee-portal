@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   getAllMatchesForAdmin,
   getAllRefereesForAdmin,
@@ -74,8 +74,20 @@ const MatchesManagement: React.FC = () => {
   // URL params sync state
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // Refs to track if filters are being restored from URL vs changed by user
+  const isRestoringFromURL = useRef(false);
+  const previousFilters = useRef({
+    tournament: "all",
+    category: "all",
+    format: "all",
+    round: "all",
+    venue: "all",
+  });
+
   // Initialize filters from URL params on component mount
   useEffect(() => {
+    isRestoringFromURL.current = true;
+
     const urlParams = new URLSearchParams(window.location.search);
 
     // Load filters from URL params
@@ -100,7 +112,21 @@ const MatchesManagement: React.FC = () => {
     setCurrentPage(urlPage);
     setPageSize(urlPageSize);
 
+    // Update previous filters ref
+    previousFilters.current = {
+      tournament: urlTournament,
+      category: urlCategory,
+      format: urlFormat,
+      round: urlRound,
+      venue: urlVenue,
+    };
+
     setIsInitialized(true);
+
+    // Reset the flag after a short delay to allow state updates to complete
+    setTimeout(() => {
+      isRestoringFromURL.current = false;
+    }, 100);
   }, []);
 
   // Debounce search term
@@ -197,37 +223,70 @@ const MatchesManagement: React.FC = () => {
 
   // Reset to first page when filters change
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized || isRestoringFromURL.current) return;
     setCurrentPage(1);
   }, [isInitialized, filterStatus, filterTournament, filterCategory, filterFormat, filterRound, filterVenue]);
 
   // Reset round filter when format changes to avoid invalid selections
   useEffect(() => {
-    if (!isInitialized) return;
-    setFilterRound("all");
+    if (!isInitialized || isRestoringFromURL.current) return;
+
+    // Only reset if format actually changed (not when restoring from URL)
+    if (previousFilters.current.format !== filterFormat) {
+      setFilterRound("all");
+      previousFilters.current.format = filterFormat;
+    }
   }, [isInitialized, filterFormat]);
 
   // Reset category filter when tournament changes
   useEffect(() => {
-    if (!isInitialized) return;
-    setFilterCategory("all");
+    if (!isInitialized || isRestoringFromURL.current) return;
+
+    // Only reset if tournament actually changed (not when restoring from URL)
+    if (previousFilters.current.tournament !== filterTournament) {
+      setFilterCategory("all");
+      previousFilters.current.tournament = filterTournament;
+    }
   }, [isInitialized, filterTournament]);
 
   // Reset format filter when tournament or category changes
   useEffect(() => {
-    if (!isInitialized) return;
-    setFilterFormat("all");
+    if (!isInitialized || isRestoringFromURL.current) return;
+
+    // Only reset if tournament or category actually changed (not when restoring from URL)
+    if (
+      previousFilters.current.tournament !== filterTournament ||
+      previousFilters.current.category !== filterCategory
+    ) {
+      setFilterFormat("all");
+      previousFilters.current.tournament = filterTournament;
+      previousFilters.current.category = filterCategory;
+    }
   }, [isInitialized, filterTournament, filterCategory]);
 
   // Reset venue filter when tournament or category changes
   useEffect(() => {
-    if (!isInitialized) return;
-    setFilterVenue("all");
+    if (!isInitialized || isRestoringFromURL.current) return;
+
+    // Only reset if tournament or category actually changed (not when restoring from URL)
+    if (
+      previousFilters.current.tournament !== filterTournament ||
+      previousFilters.current.category !== filterCategory
+    ) {
+      setFilterVenue("all");
+      previousFilters.current.tournament = filterTournament;
+      previousFilters.current.category = filterCategory;
+    }
   }, [isInitialized, filterTournament, filterCategory]);
 
   const fetchData = useCallback(async (filters?: MatchFilters) => {
+    // Temporarily disable filter resets during data refresh
+    const wasRestoringFromURL = isRestoringFromURL.current;
+    isRestoringFromURL.current = true;
+
     try {
       setLoading(true);
+
       const [matchesResponse, refereesResponse] = await Promise.all([
         getAllMatchesForAdmin(filters),
         getAllRefereesForAdmin(),
@@ -266,6 +325,8 @@ const MatchesManagement: React.FC = () => {
       setError("An error occurred while loading data");
     } finally {
       setLoading(false);
+      // Restore the previous state of the flag
+      isRestoringFromURL.current = wasRestoringFromURL;
     }
   }, []);
 
@@ -327,8 +388,19 @@ const MatchesManagement: React.FC = () => {
       setAssigningReferee(true);
       await assignRefereeToMatch(refereeId, selectedMatch.id);
 
+      const currentFilters: MatchFilters = {
+        search: debouncedSearchTerm || undefined,
+        status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+        tournament: filterTournament !== "all" ? filterTournament : undefined,
+        category: filterCategory !== "all" ? filterCategory : undefined,
+        format: filterFormat !== "all" ? filterFormat : undefined,
+        round: filterRound !== "all" ? filterRound : undefined,
+        venue: filterVenue !== "all" ? filterVenue : undefined,
+        pageSize: pageSize,
+        pageNumber: currentPage,
+      };
       // Refresh data to show updated assignments
-      await fetchData();
+      await fetchData(currentFilters);
       setShowAssignmentModal(false);
       setSelectedMatch(null);
     } catch (error: any) {
@@ -345,7 +417,18 @@ const MatchesManagement: React.FC = () => {
       await bulkAssignRefereeToMatches(refereeId, matchIds);
 
       // Refresh data to show updated assignments
-      await fetchData();
+      const currentFilters: MatchFilters = {
+        search: debouncedSearchTerm || undefined,
+        status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+        tournament: filterTournament !== "all" ? filterTournament : undefined,
+        category: filterCategory !== "all" ? filterCategory : undefined,
+        format: filterFormat !== "all" ? filterFormat : undefined,
+        round: filterRound !== "all" ? filterRound : undefined,
+        venue: filterVenue !== "all" ? filterVenue : undefined,
+        pageSize: pageSize,
+        pageNumber: currentPage,
+      };
+      await fetchData(currentFilters);
       setShowBulkAssignmentModal(false);
       setSelectedMatches(new Set());
     } catch (error: any) {
@@ -378,7 +461,18 @@ const MatchesManagement: React.FC = () => {
       await Promise.all(updatePromises);
 
       // Refresh data to show updated scores
-      await fetchData();
+      const currentFilters: MatchFilters = {
+        search: debouncedSearchTerm || undefined,
+        status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+        tournament: filterTournament !== "all" ? filterTournament : undefined,
+        category: filterCategory !== "all" ? filterCategory : undefined,
+        format: filterFormat !== "all" ? filterFormat : undefined,
+        round: filterRound !== "all" ? filterRound : undefined,
+        venue: filterVenue !== "all" ? filterVenue : undefined,
+        pageSize: pageSize,
+        pageNumber: currentPage,
+      };
+      await fetchData(currentFilters);
       setShowBulkUpdateScoreModal(false);
       setSelectedMatches(new Set());
     } catch (error: any) {
@@ -392,7 +486,19 @@ const MatchesManagement: React.FC = () => {
   const handleUnassignReferee = async (refereeId: string, matchId: string) => {
     try {
       await unassignRefereeFromMatch(refereeId, matchId);
-      await fetchData();
+
+      const currentFilters: MatchFilters = {
+        search: debouncedSearchTerm || undefined,
+        status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+        tournament: filterTournament !== "all" ? filterTournament : undefined,
+        category: filterCategory !== "all" ? filterCategory : undefined,
+        format: filterFormat !== "all" ? filterFormat : undefined,
+        round: filterRound !== "all" ? filterRound : undefined,
+        venue: filterVenue !== "all" ? filterVenue : undefined,
+        pageSize: pageSize,
+        pageNumber: currentPage,
+      };
+      await fetchData(currentFilters);
     } catch (error: any) {
       console.error("Error unassigning referee:", error);
       alert("Failed to unassign referee. Please try again.");
@@ -425,7 +531,18 @@ const MatchesManagement: React.FC = () => {
       }
 
       // Refresh data to show updated scores
-      await fetchData();
+      const currentFilters: MatchFilters = {
+        search: debouncedSearchTerm || undefined,
+        status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+        tournament: filterTournament !== "all" ? filterTournament : undefined,
+        category: filterCategory !== "all" ? filterCategory : undefined,
+        format: filterFormat !== "all" ? filterFormat : undefined,
+        round: filterRound !== "all" ? filterRound : undefined,
+        venue: filterVenue !== "all" ? filterVenue : undefined,
+        pageSize: pageSize,
+        pageNumber: currentPage,
+      };
+      await fetchData(currentFilters);
       setShowUpdateScoreModal(false);
       setSelectedMatchForScore(null);
     } catch (error: any) {
@@ -444,6 +561,15 @@ const MatchesManagement: React.FC = () => {
     setFilterFormat("all");
     setFilterRound("all");
     setFilterVenue("all");
+
+    // Update previous filters ref to prevent unwanted resets
+    previousFilters.current = {
+      tournament: "all",
+      category: "all",
+      format: "all",
+      round: "all",
+      venue: "all",
+    };
   };
 
   const handleMatchSelection = (matchId: string, selected: boolean) => {
@@ -462,6 +588,36 @@ const MatchesManagement: React.FC = () => {
 
   const toggleFilters = () => {
     setShowFilters(!showFilters);
+  };
+
+  // Wrapper functions for filter changes that update the previousFilters ref
+  const handleFilterTournamentChange = (value: string) => {
+    setFilterTournament(value);
+    previousFilters.current.tournament = value;
+  };
+
+  const handleFilterCategoryChange = (value: string) => {
+    setFilterCategory(value);
+    previousFilters.current.category = value;
+  };
+
+  const handleFilterFormatChange = (value: string) => {
+    setFilterFormat(value);
+    previousFilters.current.format = value;
+  };
+
+  const handleFilterRoundChange = (value: string) => {
+    setFilterRound(value);
+    previousFilters.current.round = value;
+  };
+
+  const handleFilterVenueChange = (value: string) => {
+    setFilterVenue(value);
+    previousFilters.current.venue = value;
+  };
+
+  const handleFilterStatusChange = (value: string) => {
+    setFilterStatus(value);
   };
 
   // Generate pagination page numbers
@@ -509,7 +665,18 @@ const MatchesManagement: React.FC = () => {
         <div className="error-container">
           <h2>Error</h2>
           <p>{error}</p>
-          <button onClick={() => fetchData()} className="retry-button">
+          <button
+            onClick={() =>
+              fetchData({
+                search: debouncedSearchTerm || undefined,
+                status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+                tournament: filterTournament !== "all" ? filterTournament : undefined,
+                category: filterCategory !== "all" ? filterCategory : undefined,
+                format: filterFormat !== "all" ? filterFormat : undefined,
+              })
+            }
+            className="retry-button"
+          >
             Try Again
           </button>
         </div>
@@ -546,7 +713,7 @@ const MatchesManagement: React.FC = () => {
           <div className="filter-group">
             <select
               value={filterTournament}
-              onChange={(e) => setFilterTournament(e.target.value)}
+              onChange={(e) => handleFilterTournamentChange(e.target.value)}
               className="filter-select"
             >
               <option value="all">All Tournaments</option>
@@ -561,7 +728,7 @@ const MatchesManagement: React.FC = () => {
           <div className="filter-group">
             <select
               value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
+              onChange={(e) => handleFilterCategoryChange(e.target.value)}
               className="filter-select"
             >
               <option value="all">All Categories</option>
@@ -574,7 +741,11 @@ const MatchesManagement: React.FC = () => {
           </div>
 
           <div className="filter-group">
-            <select value={filterFormat} onChange={(e) => setFilterFormat(e.target.value)} className="filter-select">
+            <select
+              value={filterFormat}
+              onChange={(e) => handleFilterFormatChange(e.target.value)}
+              className="filter-select"
+            >
               <option value="all">All Formats</option>
               {filterOptions.formats?.map((format) => (
                 <option key={format} value={format}>
@@ -585,7 +756,11 @@ const MatchesManagement: React.FC = () => {
           </div>
 
           <div className="filter-group">
-            <select value={filterRound} onChange={(e) => setFilterRound(e.target.value)} className="filter-select">
+            <select
+              value={filterRound}
+              onChange={(e) => handleFilterRoundChange(e.target.value)}
+              className="filter-select"
+            >
               <option value="all">All Rounds</option>
               {getFilteredRounds().map((round) => (
                 <option key={round} value={round}>
@@ -596,7 +771,11 @@ const MatchesManagement: React.FC = () => {
           </div>
 
           <div className="filter-group">
-            <select value={filterVenue} onChange={(e) => setFilterVenue(e.target.value)} className="filter-select">
+            <select
+              value={filterVenue}
+              onChange={(e) => handleFilterVenueChange(e.target.value)}
+              className="filter-select"
+            >
               <option value="all">All Venues</option>
               {filterOptions.venues?.map((venue) => (
                 <option key={venue} value={venue}>
@@ -607,7 +786,11 @@ const MatchesManagement: React.FC = () => {
           </div>
 
           <div className="filter-group">
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="filter-select">
+            <select
+              value={filterStatus}
+              onChange={(e) => handleFilterStatusChange(e.target.value)}
+              className="filter-select"
+            >
               <option value="all">All Status</option>
               <option value="upcoming">Upcoming</option>
               <option value="in-progress">In Progress</option>
