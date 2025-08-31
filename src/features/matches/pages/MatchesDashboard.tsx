@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSelector } from "react-redux";
 import {
   getRefereeMatches,
@@ -60,9 +60,105 @@ const MatchesDashboard: React.FC = () => {
     venues: [],
   });
 
+  // URL params sync state
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Refs to track if filters are being restored from URL vs changed by user
+  const isRestoringFromURL = useRef(false);
+  const previousFilters = useRef({
+    tournament: "all",
+    category: "all",
+    format: "all",
+    round: "all",
+    venue: "all",
+  });
+
+  // Initialize filters from URL params on component mount
   useEffect(() => {
-    fetchMatches();
+    isRestoringFromURL.current = true;
+
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // Load filters from URL params
+    const urlSearchTerm = urlParams.get("search") || "";
+    const urlStatus = urlParams.get("status") || "all";
+    const urlTournament = urlParams.get("tournament") || "all";
+    const urlCategory = urlParams.get("category") || "all";
+    const urlFormat = urlParams.get("format") || "all";
+    const urlRound = urlParams.get("round") || "all";
+    const urlVenue = urlParams.get("venue") || "all";
+
+    // Set state from URL params
+    setSearchTerm(urlSearchTerm);
+    setFilterStatus(urlStatus);
+    setFilterTournament(urlTournament);
+    setFilterCategory(urlCategory);
+    setFilterFormat(urlFormat);
+    setFilterRound(urlRound);
+    setFilterVenue(urlVenue);
+
+    // Update previous filters ref
+    previousFilters.current = {
+      tournament: urlTournament,
+      category: urlCategory,
+      format: urlFormat,
+      round: urlRound,
+      venue: urlVenue,
+    };
+
+    setIsInitialized(true);
+
+    // Reset the flag after a short delay to allow state updates to complete
+    setTimeout(() => {
+      isRestoringFromURL.current = false;
+    }, 100);
   }, []);
+
+  // Initial load when component is initialized
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const initialFilters: MatchFilters = {
+      search: searchTerm || undefined,
+      status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+      tournament: filterTournament !== "all" ? filterTournament : undefined,
+      category: filterCategory !== "all" ? filterCategory : undefined,
+      format: filterFormat !== "all" ? filterFormat : undefined,
+      round: filterRound !== "all" ? filterRound : undefined,
+      venue: filterVenue !== "all" ? filterVenue : undefined,
+    };
+
+    fetchMatches(initialFilters);
+  }, [isInitialized]);
+
+  // Update URL params when filters change
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const urlParams = new URLSearchParams();
+
+    // Add filters to URL params
+    if (searchTerm) urlParams.set("search", searchTerm);
+    if (filterStatus !== "all") urlParams.set("status", filterStatus);
+    if (filterTournament !== "all") urlParams.set("tournament", filterTournament);
+    if (filterCategory !== "all") urlParams.set("category", filterCategory);
+    if (filterFormat !== "all") urlParams.set("format", filterFormat);
+    if (filterRound !== "all") urlParams.set("round", filterRound);
+    if (filterVenue !== "all") urlParams.set("venue", filterVenue);
+
+    // Update URL without reloading the page
+    const newUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ""}`;
+    window.history.replaceState({}, "", newUrl);
+  }, [
+    isInitialized,
+    searchTerm,
+    filterStatus,
+    filterTournament,
+    filterCategory,
+    filterFormat,
+    filterRound,
+    filterVenue,
+  ]);
 
   // Debounce search term
   useEffect(() => {
@@ -75,6 +171,8 @@ const MatchesDashboard: React.FC = () => {
 
   // Apply filters when they change (using debounced search term)
   useEffect(() => {
+    if (!isInitialized) return;
+
     const filters: MatchFilters = {
       search: debouncedSearchTerm || undefined,
       status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
@@ -86,29 +184,74 @@ const MatchesDashboard: React.FC = () => {
     };
 
     fetchMatches(filters);
-  }, [debouncedSearchTerm, filterStatus, filterTournament, filterCategory, filterFormat, filterRound, filterVenue]);
+  }, [
+    isInitialized,
+    debouncedSearchTerm,
+    filterStatus,
+    filterTournament,
+    filterCategory,
+    filterFormat,
+    filterRound,
+    filterVenue,
+  ]);
 
   // Reset round filter when format changes
   useEffect(() => {
-    setFilterRound("all");
-  }, [filterFormat]);
+    if (!isInitialized || isRestoringFromURL.current) return;
+
+    // Only reset if format actually changed (not when restoring from URL)
+    if (previousFilters.current.format !== filterFormat) {
+      setFilterRound("all");
+      previousFilters.current.format = filterFormat;
+    }
+  }, [isInitialized, filterFormat]);
 
   // Reset category filter when tournament changes
   useEffect(() => {
-    setFilterCategory("all");
-  }, [filterTournament]);
+    if (!isInitialized || isRestoringFromURL.current) return;
+
+    // Only reset if tournament actually changed (not when restoring from URL)
+    if (previousFilters.current.tournament !== filterTournament) {
+      setFilterCategory("all");
+      previousFilters.current.tournament = filterTournament;
+    }
+  }, [isInitialized, filterTournament]);
 
   // Reset format filter when tournament or category changes
   useEffect(() => {
-    setFilterFormat("all");
-  }, [filterTournament, filterCategory]);
+    if (!isInitialized || isRestoringFromURL.current) return;
+
+    // Only reset if tournament or category actually changed (not when restoring from URL)
+    if (
+      previousFilters.current.tournament !== filterTournament ||
+      previousFilters.current.category !== filterCategory
+    ) {
+      setFilterFormat("all");
+      previousFilters.current.tournament = filterTournament;
+      previousFilters.current.category = filterCategory;
+    }
+  }, [isInitialized, filterTournament, filterCategory]);
 
   // Reset venue filter when tournament or category changes
   useEffect(() => {
-    setFilterVenue("all");
-  }, [filterTournament, filterCategory]);
+    if (!isInitialized || isRestoringFromURL.current) return;
+
+    // Only reset if tournament or category actually changed (not when restoring from URL)
+    if (
+      previousFilters.current.tournament !== filterTournament ||
+      previousFilters.current.category !== filterCategory
+    ) {
+      setFilterVenue("all");
+      previousFilters.current.tournament = filterTournament;
+      previousFilters.current.category = filterCategory;
+    }
+  }, [isInitialized, filterTournament, filterCategory]);
 
   const fetchMatches = useCallback(async (filters?: MatchFilters) => {
+    // Temporarily disable filter resets during data refresh
+    const wasRestoringFromURL = isRestoringFromURL.current;
+    isRestoringFromURL.current = true;
+
     try {
       setLoading(true);
       const response = await getRefereeMatches(filters);
@@ -152,6 +295,8 @@ const MatchesDashboard: React.FC = () => {
       setError("An error occurred while loading matches");
     } finally {
       setLoading(false);
+      // Restore the previous state of the flag
+      isRestoringFromURL.current = wasRestoringFromURL;
     }
   }, []);
 
@@ -193,10 +338,49 @@ const MatchesDashboard: React.FC = () => {
     setFilterFormat("all");
     setFilterRound("all");
     setFilterVenue("all");
+
+    // Update previous filters ref to prevent unwanted resets
+    previousFilters.current = {
+      tournament: "all",
+      category: "all",
+      format: "all",
+      round: "all",
+      venue: "all",
+    };
   };
 
   const toggleFilters = () => {
     setShowFilters(!showFilters);
+  };
+
+  // Wrapper functions for filter changes that update the previousFilters ref
+  const handleFilterTournamentChange = (value: string) => {
+    setFilterTournament(value);
+    previousFilters.current.tournament = value;
+  };
+
+  const handleFilterCategoryChange = (value: string) => {
+    setFilterCategory(value);
+    previousFilters.current.category = value;
+  };
+
+  const handleFilterFormatChange = (value: string) => {
+    setFilterFormat(value);
+    previousFilters.current.format = value;
+  };
+
+  const handleFilterRoundChange = (value: string) => {
+    setFilterRound(value);
+    previousFilters.current.round = value;
+  };
+
+  const handleFilterVenueChange = (value: string) => {
+    setFilterVenue(value);
+    previousFilters.current.venue = value;
+  };
+
+  const handleFilterStatusChange = (value: string) => {
+    setFilterStatus(value);
   };
 
   const handleUpdateScore = (match: Match) => {
@@ -227,7 +411,16 @@ const MatchesDashboard: React.FC = () => {
       }
 
       // Refresh matches to show updated scores
-      await fetchMatches();
+      const currentFilters: MatchFilters = {
+        search: debouncedSearchTerm || undefined,
+        status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+        tournament: filterTournament !== "all" ? filterTournament : undefined,
+        category: filterCategory !== "all" ? filterCategory : undefined,
+        format: filterFormat !== "all" ? filterFormat : undefined,
+        round: filterRound !== "all" ? filterRound : undefined,
+        venue: filterVenue !== "all" ? filterVenue : undefined,
+      };
+      await fetchMatches(currentFilters);
 
       // Show success message (you can add a toast notification here)
       console.log("Score updated successfully");
@@ -257,7 +450,21 @@ const MatchesDashboard: React.FC = () => {
         <div className="error-container">
           <h2>Error</h2>
           <p>{error}</p>
-          <button onClick={() => fetchMatches()} className="retry-button">
+          <button
+            onClick={() => {
+              const currentFilters: MatchFilters = {
+                search: debouncedSearchTerm || undefined,
+                status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+                tournament: filterTournament !== "all" ? filterTournament : undefined,
+                category: filterCategory !== "all" ? filterCategory : undefined,
+                format: filterFormat !== "all" ? filterFormat : undefined,
+                round: filterRound !== "all" ? filterRound : undefined,
+                venue: filterVenue !== "all" ? filterVenue : undefined,
+              };
+              fetchMatches(currentFilters);
+            }}
+            className="retry-button"
+          >
             Try Again
           </button>
         </div>
@@ -293,7 +500,7 @@ const MatchesDashboard: React.FC = () => {
             <div className="filter-group">
               <select
                 value={filterTournament}
-                onChange={(e) => setFilterTournament(e.target.value)}
+                onChange={(e) => handleFilterTournamentChange(e.target.value)}
                 className="filter-select"
               >
                 <option value="all">All Tournaments</option>
@@ -308,7 +515,7 @@ const MatchesDashboard: React.FC = () => {
             <div className="filter-group">
               <select
                 value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
+                onChange={(e) => handleFilterCategoryChange(e.target.value)}
                 className="filter-select"
               >
                 <option value="all">All Categories</option>
@@ -321,7 +528,11 @@ const MatchesDashboard: React.FC = () => {
             </div>
 
             <div className="filter-group">
-              <select value={filterFormat} onChange={(e) => setFilterFormat(e.target.value)} className="filter-select">
+              <select
+                value={filterFormat}
+                onChange={(e) => handleFilterFormatChange(e.target.value)}
+                className="filter-select"
+              >
                 <option value="all">All Formats</option>
                 {filterOptions.formats?.map((format) => (
                   <option key={format} value={format}>
@@ -332,7 +543,11 @@ const MatchesDashboard: React.FC = () => {
             </div>
 
             <div className="filter-group">
-              <select value={filterRound} onChange={(e) => setFilterRound(e.target.value)} className="filter-select">
+              <select
+                value={filterRound}
+                onChange={(e) => handleFilterRoundChange(e.target.value)}
+                className="filter-select"
+              >
                 <option value="all">All Rounds</option>
                 {getFilteredRounds().map((round) => (
                   <option key={round} value={round}>
@@ -343,7 +558,11 @@ const MatchesDashboard: React.FC = () => {
             </div>
 
             <div className="filter-group">
-              <select value={filterVenue} onChange={(e) => setFilterVenue(e.target.value)} className="filter-select">
+              <select
+                value={filterVenue}
+                onChange={(e) => handleFilterVenueChange(e.target.value)}
+                className="filter-select"
+              >
                 <option value="all">All Venues</option>
                 {filterOptions.venues?.map((venue) => (
                   <option key={venue} value={venue}>
@@ -354,7 +573,11 @@ const MatchesDashboard: React.FC = () => {
             </div>
 
             <div className="filter-group">
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="filter-select">
+              <select
+                value={filterStatus}
+                onChange={(e) => handleFilterStatusChange(e.target.value)}
+                className="filter-select"
+              >
                 <option value="all">All Status</option>
                 <option value="upcoming">Upcoming</option>
                 <option value="in-progress">In Progress</option>
