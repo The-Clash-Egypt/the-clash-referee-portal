@@ -1,6 +1,7 @@
 import React from "react";
 import { Match } from "../../matches/api/matches";
 import "./MatchCard.scss";
+import moment from "moment";
 
 interface MatchCardProps {
   match: Match;
@@ -68,7 +69,9 @@ const MatchCard: React.FC<MatchCardProps> = ({
           <div className="round-section">
             <span className="round-badge">{match.round}</span>
             <div className="match-time-venue">
-              <span className="match-time">{match.startTime ? new Date(match.startTime).toLocaleString() : "TBD"}</span>
+              <span className="match-time">
+                {match.startTime ? moment(match.startTime).format("DD/MM/YYYY hh:mm A") : "TBD"}
+              </span>
               {match.venue && <span className="match-time-divider">•</span>}
               {match.venue && <span className="match-venue">{match.venue}</span>}
             </div>
