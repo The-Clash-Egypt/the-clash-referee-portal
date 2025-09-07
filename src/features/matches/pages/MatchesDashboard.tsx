@@ -649,8 +649,17 @@ const MatchesDashboard: React.FC = () => {
       ) : (
         <div className="matches-grid">
           {matches
-            ?.sort((a, b) => new Date(b.startTime || "").getTime() - new Date(a.startTime || "").getTime())
-            ?.map((match) => (
+            ?.sort((a, b) => {
+              // First sort by start time
+              const timeComparison = new Date(a.startTime || "").getTime() - new Date(b.startTime || "").getTime();
+              if (timeComparison !== 0) return timeComparison;
+
+              // Then sort by venue with proper numeric ordering
+              const venueA = a.venue || "";
+              const venueB = b.venue || "";
+              return venueA.localeCompare(venueB, undefined, { numeric: true, sensitivity: "base" });
+            })
+            .map((match) => (
               <MatchCard
                 key={match.id}
                 match={match}

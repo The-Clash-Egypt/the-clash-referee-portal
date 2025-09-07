@@ -8,8 +8,6 @@ import NotFoundPage from "./pages/not-found";
 import Home from "./pages/home";
 import { LoginPage, SignupPage } from "./features/auth/pages";
 import MatchesDashboard from "./features/matches/pages/MatchesDashboard";
-import ScoreboardPage from "./features/matches/pages/ScoreboardPage";
-import ScoreboardDemo from "./features/matches/pages/ScoreboardDemo";
 import MatchesManagement from "./features/admin/pages/MatchesManagement";
 import RefereesManagement from "./features/admin/pages/RefereesManagement";
 import AppInitializer from "./components/AppInitializer";
@@ -81,22 +79,6 @@ const App: React.FC = () => {
                 element={
                   <ProtectedRoute>
                     <MatchesDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/scoreboard/:matchId"
-                element={
-                  <ProtectedRoute>
-                    <ScoreboardPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/demo/scoreboard"
-                element={
-                  <ProtectedRoute>
-                    <ScoreboardDemo />
                   </ProtectedRoute>
                 }
               />

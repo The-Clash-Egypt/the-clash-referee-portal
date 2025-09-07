@@ -9,7 +9,7 @@ import {
   updateLeagueMatch,
   updateGroupMatch,
 } from "../api";
-import { Match, Referee, MatchGameScore, MatchFilters, AdminMatchesResponse } from "../../matches/api/matches";
+import { Match, Referee, MatchGameScore, MatchFilters } from "../../matches/api/matches";
 import MatchCard from "../../shared/components/MatchCard";
 import AssignRefereeModal from "../components/AssignRefereeModal";
 import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
@@ -303,6 +303,8 @@ const MatchesManagement: React.FC = () => {
       const incomingCount: number = matchesResponse.data.data.incomingCount || 0;
       const completedCount: number = matchesResponse.data.data.completedCount || 0;
 
+      console.log(matchesResponse.data.data.filters);
+
       // Extract filter options from response (if available)
       const apiFilterOptions: FilterOptions = matchesResponse.data.data.filters || {
         tournaments: [],
@@ -311,6 +313,8 @@ const MatchesManagement: React.FC = () => {
         rounds: [],
         venues: [],
       };
+
+      console.log(apiFilterOptions);
 
       setMatches(allMatches);
       setReferees(allReferees);
@@ -354,31 +358,7 @@ const MatchesManagement: React.FC = () => {
   const getFilteredRounds = () => {
     const allRounds = filterOptions.rounds || [];
 
-    const knockoutRounds = [
-      "Round of 128",
-      "Round of 64",
-      "Round of 32",
-      "Round of 16",
-      "Quarterfinals",
-      "Semifinals",
-      "Final",
-      "Third place",
-    ];
-
-    // If format filter is set to "knockout", only show knockout-specific rounds
-    if (filterFormat === "Knockout") {
-      return allRounds
-        .filter((round) =>
-          knockoutRounds.some((knockoutRound) => round.toLowerCase().includes(knockoutRound.toLowerCase()))
-        )
-        .sort((a, b) => knockoutRounds.indexOf(a) - knockoutRounds.indexOf(b));
-    } else {
-      return allRounds
-        .filter(
-          (round) => !knockoutRounds.some((knockoutRound) => round.toLowerCase().includes(knockoutRound.toLowerCase()))
-        )
-        .sort((a, b) => a.localeCompare(b));
-    }
+    return allRounds.sort((a, b) => a.localeCompare(b));
   };
 
   const handleAssignReferee = async (refereeId: string) => {
@@ -901,7 +881,16 @@ const MatchesManagement: React.FC = () => {
         <>
           <div className="matches-grid">
             {matches
-              ?.sort((a, b) => new Date(b.startTime || "").getTime() - new Date(a.startTime || "").getTime())
+              ?.sort((a, b) => {
+                // First sort by start time
+                const timeComparison = new Date(a.startTime || "").getTime() - new Date(b.startTime || "").getTime();
+                if (timeComparison !== 0) return timeComparison;
+
+                // Then sort by venue with proper numeric ordering
+                const venueA = a.venue || "";
+                const venueB = b.venue || "";
+                return venueA.localeCompare(venueB, undefined, { numeric: true, sensitivity: "base" });
+              })
               ?.map((match) => (
                 <MatchCard
                   key={match.id}
