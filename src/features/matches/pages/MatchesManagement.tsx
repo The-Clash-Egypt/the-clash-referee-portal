@@ -1,20 +1,23 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  getAllMatchesForAdmin,
-  getAllRefereesForAdmin,
   assignRefereeToMatch,
   bulkAssignRefereeToMatches,
   unassignRefereeFromMatch,
   updateKnockoutMatch,
   updateLeagueMatch,
   updateGroupMatch,
-} from "../api";
-import { Match, Referee, MatchGameScore, MatchFilters } from "../../matches/api/matches";
+  getRefereeMatches,
+} from "../api/matches";
 import MatchCard from "../../shared/components/MatchCard";
 import AssignRefereeModal from "../components/AssignRefereeModal";
 import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
 import UpdateScoreDialog from "../components/UpdateScoreDialog";
 import BulkUpdateScoreModal from "../components/BulkUpdateScoreModal";
+import VolleyballLoading from "../../../components/VolleyballLoading";
+import { useParams, useSearchParams } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { RootState } from "../../../store";
+import { Match, MatchGameScore, MatchFilters } from "../types/match";
 import "./MatchesManagement.scss";
 
 interface FilterOptions {
@@ -26,8 +29,12 @@ interface FilterOptions {
 }
 
 const MatchesManagement: React.FC = () => {
+  const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const tournamentName = searchParams.get("name");
+  const user = useSelector((state: RootState) => state.user.user);
+
   const [matches, setMatches] = useState<Match[]>([]);
-  const [referees, setReferees] = useState<Referee[]>([]);
   const [totalMatches, setTotalMatches] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -40,7 +47,6 @@ const MatchesManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterTournament, setFilterTournament] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterFormat, setFilterFormat] = useState<string>("all");
   const [filterRound, setFilterRound] = useState<string>("all");
@@ -77,12 +83,13 @@ const MatchesManagement: React.FC = () => {
   // Refs to track if filters are being restored from URL vs changed by user
   const isRestoringFromURL = useRef(false);
   const previousFilters = useRef({
-    tournament: "all",
     category: "all",
     format: "all",
     round: "all",
     venue: "all",
   });
+
+  const isAdmin = user?.role === "admin";
 
   // Initialize filters from URL params on component mount
   useEffect(() => {
@@ -93,7 +100,6 @@ const MatchesManagement: React.FC = () => {
     // Load filters from URL params
     const urlSearchTerm = urlParams.get("search") || "";
     const urlStatus = urlParams.get("status") || "all";
-    const urlTournament = urlParams.get("tournament") || "all";
     const urlCategory = urlParams.get("category") || "all";
     const urlFormat = urlParams.get("format") || "all";
     const urlRound = urlParams.get("round") || "all";
@@ -104,7 +110,6 @@ const MatchesManagement: React.FC = () => {
     // Set state from URL params
     setSearchTerm(urlSearchTerm);
     setFilterStatus(urlStatus);
-    setFilterTournament(urlTournament);
     setFilterCategory(urlCategory);
     setFilterFormat(urlFormat);
     setFilterRound(urlRound);
@@ -114,7 +119,6 @@ const MatchesManagement: React.FC = () => {
 
     // Update previous filters ref
     previousFilters.current = {
-      tournament: urlTournament,
       category: urlCategory,
       format: urlFormat,
       round: urlRound,
@@ -146,8 +150,8 @@ const MatchesManagement: React.FC = () => {
 
     // Add filters to URL params
     if (searchTerm) urlParams.set("search", searchTerm);
+    if (tournamentName) urlParams.set("name", tournamentName);
     if (filterStatus !== "all") urlParams.set("status", filterStatus);
-    if (filterTournament !== "all") urlParams.set("tournament", filterTournament);
     if (filterCategory !== "all") urlParams.set("category", filterCategory);
     if (filterFormat !== "all") urlParams.set("format", filterFormat);
     if (filterRound !== "all") urlParams.set("round", filterRound);
@@ -164,7 +168,6 @@ const MatchesManagement: React.FC = () => {
     isInitialized,
     searchTerm,
     filterStatus,
-    filterTournament,
     filterCategory,
     filterFormat,
     filterRound,
@@ -180,7 +183,7 @@ const MatchesManagement: React.FC = () => {
     const initialFilters: MatchFilters = {
       search: searchTerm || undefined,
       status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
-      tournament: filterTournament !== "all" ? filterTournament : undefined,
+      tournament: id,
       category: filterCategory !== "all" ? filterCategory : undefined,
       format: filterFormat !== "all" ? filterFormat : undefined,
       round: filterRound !== "all" ? filterRound : undefined,
@@ -199,7 +202,7 @@ const MatchesManagement: React.FC = () => {
     const filters: MatchFilters = {
       search: debouncedSearchTerm || undefined,
       status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
-      tournament: filterTournament !== "all" ? filterTournament : undefined,
+      tournament: id!,
       category: filterCategory !== "all" ? filterCategory : undefined,
       format: filterFormat !== "all" ? filterFormat : undefined,
       round: filterRound !== "all" ? filterRound : undefined,
@@ -212,7 +215,7 @@ const MatchesManagement: React.FC = () => {
   }, [
     debouncedSearchTerm,
     filterStatus,
-    filterTournament,
+    id,
     filterCategory,
     filterFormat,
     filterRound,
@@ -225,7 +228,7 @@ const MatchesManagement: React.FC = () => {
   useEffect(() => {
     if (!isInitialized || isRestoringFromURL.current) return;
     setCurrentPage(1);
-  }, [isInitialized, filterStatus, filterTournament, filterCategory, filterFormat, filterRound, filterVenue]);
+  }, [isInitialized, filterStatus, filterCategory, filterFormat, filterRound, filterVenue]);
 
   // Reset round filter when format changes to avoid invalid selections
   useEffect(() => {
@@ -238,46 +241,27 @@ const MatchesManagement: React.FC = () => {
     }
   }, [isInitialized, filterFormat]);
 
-  // Reset category filter when tournament changes
+  // Reset format filter when category changes
   useEffect(() => {
     if (!isInitialized || isRestoringFromURL.current) return;
 
-    // Only reset if tournament actually changed (not when restoring from URL)
-    if (previousFilters.current.tournament !== filterTournament) {
-      setFilterCategory("all");
-      previousFilters.current.tournament = filterTournament;
-    }
-  }, [isInitialized, filterTournament]);
-
-  // Reset format filter when tournament or category changes
-  useEffect(() => {
-    if (!isInitialized || isRestoringFromURL.current) return;
-
-    // Only reset if tournament or category actually changed (not when restoring from URL)
-    if (
-      previousFilters.current.tournament !== filterTournament ||
-      previousFilters.current.category !== filterCategory
-    ) {
+    // Only reset if category actually changed (not when restoring from URL)
+    if (previousFilters.current.category !== filterCategory) {
       setFilterFormat("all");
-      previousFilters.current.tournament = filterTournament;
       previousFilters.current.category = filterCategory;
     }
-  }, [isInitialized, filterTournament, filterCategory]);
+  }, [isInitialized, filterCategory]);
 
-  // Reset venue filter when tournament or category changes
+  // Reset venue filter when category changes
   useEffect(() => {
     if (!isInitialized || isRestoringFromURL.current) return;
 
     // Only reset if tournament or category actually changed (not when restoring from URL)
-    if (
-      previousFilters.current.tournament !== filterTournament ||
-      previousFilters.current.category !== filterCategory
-    ) {
+    if (previousFilters.current.category !== filterCategory) {
       setFilterVenue("all");
-      previousFilters.current.tournament = filterTournament;
       previousFilters.current.category = filterCategory;
     }
-  }, [isInitialized, filterTournament, filterCategory]);
+  }, [isInitialized, filterCategory]);
 
   const fetchData = useCallback(async (filters?: MatchFilters) => {
     // Temporarily disable filter resets during data refresh
@@ -287,26 +271,20 @@ const MatchesManagement: React.FC = () => {
     try {
       setLoading(true);
 
-      const [matchesResponse, refereesResponse] = await Promise.all([
-        getAllMatchesForAdmin(filters),
-        getAllRefereesForAdmin(),
-      ]);
+      const [matchesResponse] = await Promise.all([(await getRefereeMatches(filters)).data]);
 
       // Extract data from new response structure
-      const allMatches: Match[] = matchesResponse.data.data.matches.items || [];
-      const allReferees: Referee[] = refereesResponse.data?.data || [];
-      const totalCount: number = matchesResponse.data.data.matches.pagination.total || 0;
-      const totalPagesCount: number = matchesResponse.data.data.matches.pagination.totalPages || 1;
+      const allMatches: Match[] = matchesResponse.data.matches.items || [];
+      const totalCount: number = matchesResponse.data.matches.pagination.total || 0;
+      const totalPagesCount: number = matchesResponse.data.matches.pagination.totalPages || 1;
 
       // Extract match status counts from response
-      const inProgressCount: number = matchesResponse.data.data.inProgressCount || 0;
-      const incomingCount: number = matchesResponse.data.data.incomingCount || 0;
-      const completedCount: number = matchesResponse.data.data.completedCount || 0;
-
-      console.log(matchesResponse.data.data.filters);
+      const inProgressCount: number = matchesResponse.data.inProgressCount || 0;
+      const incomingCount: number = matchesResponse.data.incomingCount || 0;
+      const completedCount: number = matchesResponse.data.completedCount || 0;
 
       // Extract filter options from response (if available)
-      const apiFilterOptions: FilterOptions = matchesResponse.data.data.filters || {
+      const apiFilterOptions: FilterOptions = matchesResponse.data.filters || {
         tournaments: [],
         categories: [],
         formats: [],
@@ -314,10 +292,7 @@ const MatchesManagement: React.FC = () => {
         venues: [],
       };
 
-      console.log(apiFilterOptions);
-
       setMatches(allMatches);
-      setReferees(allReferees);
       setTotalMatches(totalCount);
       setTotalPages(totalPagesCount);
       setInProgressCount(inProgressCount);
@@ -334,7 +309,6 @@ const MatchesManagement: React.FC = () => {
     }
   }, []);
 
-  // Pagination handlers
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -344,25 +318,8 @@ const MatchesManagement: React.FC = () => {
     setCurrentPage(1); // Reset to first page when changing page size
   };
 
-  const getMatchStatus = (match: Match) => {
-    if (match.isCompleted) {
-      return "completed";
-    }
-    if (match.startTime && new Date(match.startTime) < new Date()) {
-      return "in-progress";
-    }
-    return "upcoming";
-  };
-
-  // Get filtered rounds based on selected format
-  const getFilteredRounds = () => {
-    const allRounds = filterOptions.rounds || [];
-
-    return allRounds.sort((a, b) => a.localeCompare(b));
-  };
-
   const handleAssignReferee = async (refereeId: string) => {
-    if (!selectedMatch) return;
+    if (!selectedMatch || !isAdmin) return;
 
     try {
       setAssigningReferee(true);
@@ -371,7 +328,7 @@ const MatchesManagement: React.FC = () => {
       const currentFilters: MatchFilters = {
         search: debouncedSearchTerm || undefined,
         status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
-        tournament: filterTournament !== "all" ? filterTournament : undefined,
+        tournament: id,
         category: filterCategory !== "all" ? filterCategory : undefined,
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
@@ -392,6 +349,7 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleBulkAssignReferee = async (refereeId: string, matchIds: string[]) => {
+    if (!isAdmin) return;
     try {
       setBulkAssigningReferee(true);
       await bulkAssignRefereeToMatches(refereeId, matchIds);
@@ -400,7 +358,7 @@ const MatchesManagement: React.FC = () => {
       const currentFilters: MatchFilters = {
         search: debouncedSearchTerm || undefined,
         status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
-        tournament: filterTournament !== "all" ? filterTournament : undefined,
+        tournament: id,
         category: filterCategory !== "all" ? filterCategory : undefined,
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
@@ -421,6 +379,7 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleBulkUpdateScores = async (matchScores: { matchId: string; gameScores: MatchGameScore[] }[]) => {
+    if (!isAdmin) return;
     try {
       setBulkUpdatingScores(true);
 
@@ -444,7 +403,7 @@ const MatchesManagement: React.FC = () => {
       const currentFilters: MatchFilters = {
         search: debouncedSearchTerm || undefined,
         status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
-        tournament: filterTournament !== "all" ? filterTournament : undefined,
+        tournament: id,
         category: filterCategory !== "all" ? filterCategory : undefined,
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
@@ -464,13 +423,14 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleUnassignReferee = async (refereeId: string, matchId: string) => {
+    if (!isAdmin) return;
     try {
       await unassignRefereeFromMatch(refereeId, matchId);
 
       const currentFilters: MatchFilters = {
         search: debouncedSearchTerm || undefined,
         status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
-        tournament: filterTournament !== "all" ? filterTournament : undefined,
+        tournament: id,
         category: filterCategory !== "all" ? filterCategory : undefined,
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
@@ -514,7 +474,7 @@ const MatchesManagement: React.FC = () => {
       const currentFilters: MatchFilters = {
         search: debouncedSearchTerm || undefined,
         status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
-        tournament: filterTournament !== "all" ? filterTournament : undefined,
+        tournament: id,
         category: filterCategory !== "all" ? filterCategory : undefined,
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
@@ -536,7 +496,6 @@ const MatchesManagement: React.FC = () => {
   const clearAllFilters = () => {
     setSearchTerm("");
     setFilterStatus("all");
-    setFilterTournament("all");
     setFilterCategory("all");
     setFilterFormat("all");
     setFilterRound("all");
@@ -544,7 +503,6 @@ const MatchesManagement: React.FC = () => {
 
     // Update previous filters ref to prevent unwanted resets
     previousFilters.current = {
-      tournament: "all",
       category: "all",
       format: "all",
       round: "all",
@@ -568,12 +526,6 @@ const MatchesManagement: React.FC = () => {
 
   const toggleFilters = () => {
     setShowFilters(!showFilters);
-  };
-
-  // Wrapper functions for filter changes that update the previousFilters ref
-  const handleFilterTournamentChange = (value: string) => {
-    setFilterTournament(value);
-    previousFilters.current.tournament = value;
   };
 
   const handleFilterCategoryChange = (value: string) => {
@@ -629,14 +581,7 @@ const MatchesManagement: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="matches-management">
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading matches...</p>
-        </div>
-      </div>
-    );
+    return <VolleyballLoading message="Loading matches..." size="medium" />;
   }
 
   if (error) {
@@ -650,7 +595,7 @@ const MatchesManagement: React.FC = () => {
               fetchData({
                 search: debouncedSearchTerm || undefined,
                 status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
-                tournament: filterTournament !== "all" ? filterTournament : undefined,
+                tournament: id,
                 category: filterCategory !== "all" ? filterCategory : undefined,
                 format: filterFormat !== "all" ? filterFormat : undefined,
               })
@@ -669,42 +614,17 @@ const MatchesManagement: React.FC = () => {
   return (
     <div className="matches-management">
       <div className="dashboard-header">
-        <h1>Matches Management</h1>
+        <h1>{tournamentName}</h1>
         <p>Manage all matches and referee assignments</p>
       </div>
 
       <div className="filters-section">
-        <div className="search-filter">
-          <input
-            type="text"
-            placeholder="Search matches by team, venue, or tournament..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-        </div>
-
         <button className={`filters-toggle ${showFilters ? "expanded" : ""}`} onClick={toggleFilters}>
           <span>Filters & Search</span>
           <span className="toggle-icon">▼</span>
         </button>
 
         <div className={`filters-row ${showFilters ? "visible" : ""}`}>
-          <div className="filter-group">
-            <select
-              value={filterTournament}
-              onChange={(e) => handleFilterTournamentChange(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">All Tournaments</option>
-              {filterOptions.tournaments?.map((tournament) => (
-                <option key={tournament} value={tournament}>
-                  {tournament}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="filter-group">
             <select
               value={filterCategory}
@@ -742,7 +662,7 @@ const MatchesManagement: React.FC = () => {
               className="filter-select"
             >
               <option value="all">All Rounds</option>
-              {getFilteredRounds().map((round) => (
+              {filterOptions.rounds?.map((round) => (
                 <option key={round} value={round}>
                   {round}
                 </option>
@@ -856,7 +776,6 @@ const MatchesManagement: React.FC = () => {
             <p>
               {searchTerm ||
               filterStatus !== "all" ||
-              filterTournament !== "all" ||
               filterCategory !== "all" ||
               filterFormat !== "all" ||
               filterRound !== "all" ||
@@ -866,7 +785,6 @@ const MatchesManagement: React.FC = () => {
             </p>
             {(searchTerm ||
               filterStatus !== "all" ||
-              filterTournament !== "all" ||
               filterCategory !== "all" ||
               filterFormat !== "all" ||
               filterRound !== "all" ||
@@ -977,7 +895,6 @@ const MatchesManagement: React.FC = () => {
       <AssignRefereeModal
         isOpen={showAssignmentModal}
         match={selectedMatch}
-        referees={referees}
         onClose={() => setShowAssignmentModal(false)}
         onAssign={handleAssignReferee}
         loading={assigningReferee}
@@ -987,7 +904,6 @@ const MatchesManagement: React.FC = () => {
       <BulkAssignRefereeModal
         isOpen={showBulkAssignmentModal}
         selectedMatches={matches?.filter((match) => selectedMatches.has(match.id)) || []}
-        referees={referees}
         onClose={() => setShowBulkAssignmentModal(false)}
         onAssign={handleBulkAssignReferee}
         loading={bulkAssigningReferee}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Match, MatchGameScore } from "../../matches/api/matches";
+import { Match, MatchGameScore } from "../types/match";
 import "./UpdateScoreDialog.scss";
 
 interface UpdateScoreDialogProps {

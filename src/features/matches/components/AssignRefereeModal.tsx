@@ -1,27 +1,20 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Match, Referee } from "../../matches/api/matches";
+import { Match, Referee } from "../types/match";
 import "./AssignRefereeModal.scss";
 
 interface AssignRefereeModalProps {
   isOpen: boolean;
   match: Match | null;
-  referees: Referee[];
   onClose: () => void;
   onAssign: (refereeId: string) => Promise<void>;
   loading: boolean;
 }
 
-const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({
-  isOpen,
-  match,
-  referees,
-  onClose,
-  onAssign,
-  loading,
-}) => {
+const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({ isOpen, match, onClose, onAssign, loading }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Prevent background scrolling when modal is open
+  const [filteredReferees, setFilteredReferees] = useState<Referee[]>([]);
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -39,21 +32,6 @@ const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({
     const date = new Date(dateTimeString);
     return date.toLocaleString();
   };
-
-  const filteredReferees = useMemo(() => {
-    if (!searchTerm.trim()) {
-      // Only show all referees if there are 3 or fewer
-      return referees.length <= 3 ? referees : [];
-    }
-
-    return referees.filter(
-      (referee) =>
-        referee.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        referee.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [referees, searchTerm]);
-
-  const shouldShowAllReferees = referees.length <= 3;
 
   if (!isOpen || !match) return null;
 
@@ -84,35 +62,29 @@ const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({
           <div className="referees-section">
             <div className="search-section">
               <h4>Search Referees</h4>
-              {!shouldShowAllReferees && !searchTerm && (
+              {!searchTerm && (
                 <div className="search-prompt">
                   <p>Please search for a referee to assign to this match.</p>
                 </div>
               )}
               <input
                 type="text"
-                placeholder={shouldShowAllReferees ? "Search by name or email..." : "Type to search referees..."}
+                placeholder="Search by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="referee-search-input"
               />
               <div className="search-info">
-                <span className="total-referees">Total: {referees.length}</span>
                 {searchTerm && <span className="filtered-count">Showing: {filteredReferees.length}</span>}
-                {!shouldShowAllReferees && !searchTerm && <span className="search-required">Search required</span>}
+                {!searchTerm && <span className="search-required">Search required</span>}
               </div>
             </div>
 
             <div className="referees-list">
               {filteredReferees.length === 0 ? (
                 <div className="no-results">
-                  {searchTerm ? (
-                    <p>No referees found matching "{searchTerm}"</p>
-                  ) : shouldShowAllReferees ? (
-                    <p>No referees available</p>
-                  ) : (
-                    <p>Please search for a referee to see available options</p>
-                  )}
+                  {searchTerm ? <p>No referees found matching "{searchTerm}"</p> : <p>No referees available</p>}
+                  {!searchTerm && <p>Please search for a referee to see available options</p>}
                 </div>
               ) : (
                 <div className="referees-grid">

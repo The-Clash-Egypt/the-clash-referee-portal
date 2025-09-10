@@ -1,13 +1,7 @@
 /* Import shared styles */
+@import "./styles/colors.scss";
 @import "./styles/utilities.scss";
 @import "./styles/components.scss";
-
-:root {
-  --primary-color: #004aad;
-  --accent-color: #fcc353;
-  --black: #121212;
-  --grey: #5d5d5d;
-}
 
 body {
   margin: 0;

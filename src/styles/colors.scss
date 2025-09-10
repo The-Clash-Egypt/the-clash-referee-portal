@@ -1,0 +1,135 @@
+/* Brand Colors - Centralized Color System */
+
+:root {
+  /* Primary Brand Colors */
+  --primary-color: #004aad;
+  --primary-color-hover: #003d8a;
+  --primary-color-light: #e6f0ff;
+  --primary-color-dark: #002d66;
+
+  /* Secondary Brand Colors */
+  --secondary-color: #fcc353;
+  --secondary-color-hover: #f9b735;
+  --secondary-color-light: #fef7e0;
+  --secondary-color-dark: #e6a000;
+
+  /* Tertiary Brand Colors */
+  --tertiary-color: #fcc353;
+  --tertiary-color-hover: #f9b735;
+  --tertiary-color-light: #fef7e0;
+  --tertiary-color-dark: #e6a000;
+
+  /* Neutral Colors */
+  --white: #ffffff;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* Status Colors */
+  --success-color: #10b981;
+  --success-color-hover: #059669;
+  --success-color-light: #d1fae5;
+
+  --warning-color: #f59e0b;
+  --warning-color-hover: #d97706;
+  --warning-color-light: #fef3c7;
+
+  --error-color: #ef4444;
+  --error-color-hover: #dc2626;
+  --error-color-light: #fee2e2;
+
+  --info-color: #3b82f6;
+  --info-color-hover: #2563eb;
+  --info-color-light: #dbeafe;
+
+  /* Background Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+
+  /* Text Colors */
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
+  --text-inverse: #ffffff;
+
+  /* Border Colors */
+  --border-primary: #e5e7eb;
+  --border-secondary: #d1d5db;
+  --border-focus: var(--primary-color);
+
+  /* Shadow Colors */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* SCSS Variables for easier usage */
+$primary-color: var(--primary-color);
+$primary-color-hover: var(--primary-color-hover);
+$primary-color-light: var(--primary-color-light);
+$primary-color-dark: var(--primary-color-dark);
+
+$secondary-color: var(--secondary-color);
+$secondary-color-hover: var(--secondary-color-hover);
+$secondary-color-light: var(--secondary-color-light);
+$secondary-color-dark: var(--secondary-color-dark);
+
+$tertiary-color: var(--tertiary-color);
+$tertiary-color-hover: var(--tertiary-color-hover);
+$tertiary-color-light: var(--tertiary-color-light);
+$tertiary-color-dark: var(--tertiary-color-dark);
+
+$white: var(--white);
+$gray-50: var(--gray-50);
+$gray-100: var(--gray-100);
+$gray-200: var(--gray-200);
+$gray-300: var(--gray-300);
+$gray-400: var(--gray-400);
+$gray-500: var(--gray-500);
+$gray-600: var(--gray-600);
+$gray-700: var(--gray-700);
+$gray-800: var(--gray-800);
+$gray-900: var(--gray-900);
+
+$success-color: var(--success-color);
+$success-color-hover: var(--success-color-hover);
+$success-color-light: var(--success-color-light);
+
+$warning-color: var(--warning-color);
+$warning-color-hover: var(--warning-color-hover);
+$warning-color-light: var(--warning-color-light);
+
+$error-color: var(--error-color);
+$error-color-hover: var(--error-color-hover);
+$error-color-light: var(--error-color-light);
+
+$info-color: var(--info-color);
+$info-color-hover: var(--info-color-hover);
+$info-color-light: var(--info-color-light);
+
+$bg-primary: var(--bg-primary);
+$bg-secondary: var(--bg-secondary);
+$bg-tertiary: var(--bg-tertiary);
+
+$text-primary: var(--text-primary);
+$text-secondary: var(--text-secondary);
+$text-tertiary: var(--text-tertiary);
+$text-inverse: var(--text-inverse);
+
+$border-primary: var(--border-primary);
+$border-secondary: var(--border-secondary);
+$border-focus: var(--border-focus);
+
+$shadow-sm: var(--shadow-sm);
+$shadow-md: var(--shadow-md);
+$shadow-lg: var(--shadow-lg);
+$shadow-xl: var(--shadow-xl);

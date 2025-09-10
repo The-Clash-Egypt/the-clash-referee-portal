@@ -1,11 +1,10 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Match, Referee } from "../../matches/api/matches";
+import { Match, Referee } from "../types/match";
 import "./BulkAssignRefereeModal.scss";
 
 interface BulkAssignRefereeModalProps {
   isOpen: boolean;
   selectedMatches: Match[];
-  referees: Referee[];
   onClose: () => void;
   onAssign: (refereeId: string, matchIds: string[]) => Promise<void>;
   loading: boolean;
@@ -14,15 +13,14 @@ interface BulkAssignRefereeModalProps {
 const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
   isOpen,
   selectedMatches,
-  referees,
   onClose,
   onAssign,
   loading,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReferee, setSelectedReferee] = useState<Referee | null>(null);
+  const [filteredReferees, setFilteredReferees] = useState<Referee[]>([]);
 
-  // Prevent background scrolling when modal is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -40,18 +38,6 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
     const date = new Date(dateTimeString);
     return date.toLocaleString();
   };
-
-  const filteredReferees = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return referees;
-    }
-
-    return referees.filter(
-      (referee) =>
-        referee.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        referee.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [referees, searchTerm]);
 
   const handleAssign = async () => {
     if (!selectedReferee) return;

@@ -34,6 +34,8 @@ const Navbar: React.FC = () => {
         return "Matches";
       case "/dashboard":
         return "Dashboard";
+      case "/tournaments":
+        return "Tournaments";
       default:
         return "The Clash";
     }
@@ -47,11 +49,7 @@ const Navbar: React.FC = () => {
     <nav className="navbar">
       <div className="navbar-container">
         {/* Logo and Brand */}
-        <div
-          className="navbar-brand"
-          onClick={() => handleNavigation(user.role === "admin" ? "/admin/matches" : "/matches")}
-          style={{ cursor: "pointer" }}
-        >
+        <div className="navbar-brand" onClick={() => handleNavigation("/dashboard")} style={{ cursor: "pointer" }}>
           <img src={require("../assets/images/logo.png")} alt="The Clash" className="navbar-logo" />
           <div className="navbar-title-container">
             <span className="navbar-title">The Clash Referees Portal</span>
@@ -61,6 +59,18 @@ const Navbar: React.FC = () => {
 
         {/* Desktop Navigation */}
         <div className="navbar-nav desktop-only">
+          <button
+            className={`nav-link ${location.pathname === "/dashboard" ? "active" : ""}`}
+            onClick={() => handleNavigation("/dashboard")}
+          >
+            Dashboard
+          </button>
+          <button
+            className={`nav-link ${location.pathname === "/tournaments" ? "active" : ""}`}
+            onClick={() => handleNavigation("/tournaments")}
+          >
+            Tournaments
+          </button>
           {user.role === "admin" ? (
             <>
               <button
@@ -106,6 +116,18 @@ const Navbar: React.FC = () => {
           </div>
         </div>
         <div className="mobile-nav-links">
+          <button
+            className={`mobile-nav-link ${location.pathname === "/dashboard" ? "active" : ""}`}
+            onClick={() => handleNavigation("/dashboard")}
+          >
+            Dashboard
+          </button>
+          <button
+            className={`mobile-nav-link ${location.pathname === "/tournaments" ? "active" : ""}`}
+            onClick={() => handleNavigation("/tournaments")}
+          >
+            Tournaments
+          </button>
           {user.role === "admin" ? (
             <>
               <button

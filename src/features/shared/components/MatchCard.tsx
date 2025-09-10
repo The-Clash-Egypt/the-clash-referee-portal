@@ -1,5 +1,5 @@
 import React from "react";
-import { Match } from "../../matches/api/matches";
+import { Match } from "../../matches/types/match";
 import "./MatchCard.scss";
 import moment from "moment";
 

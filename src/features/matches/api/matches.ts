@@ -1,139 +1,5 @@
 import api from "../../../api/axios";
-
-export interface Team {
-  id: string;
-  name: string;
-  // Add other team properties as needed
-}
-
-export interface MatchGameScore {
-  gameNumber: number;
-  homeScore: number;
-  awayScore: number;
-}
-
-export interface Match {
-  id: string;
-  venue?: string;
-  tournamentName?: string;
-  categoryName?: string;
-  format?: string;
-  bestOf?: number;
-  startTime?: string;
-  round?: string;
-  homeTeamId?: string;
-  homeTeamName?: string;
-  awayTeamId?: string;
-  awayTeamName?: string;
-  homeScore?: number;
-  awayScore?: number;
-  gameScores?: MatchGameScore[];
-  referees?: Referee[];
-  isCompleted: boolean;
-}
-
-export interface MatchReferee {
-  id: string;
-  refereeId: string;
-  referee: Referee;
-  matchId: string;
-  match: Match;
-  assignedAt: string;
-}
-
-export interface Referee {
-  id: string;
-  userId: string;
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-}
-
-export interface User {
-  id: string;
-  firstName: string;
-  lastName?: string;
-  email: string;
-}
-
-export interface GameScoreDTO {
-  gameNumber: number;
-  homeScore: number;
-  awayScore: number;
-}
-
-export interface UpdateMatchDTO {
-  gameScores?: GameScoreDTO[];
-}
-
-export interface PaginationInfo {
-  total: number;
-  pageNumber: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-export interface PaginatedResponse<T> {
-  data: {
-    items: T[];
-    pagination: PaginationInfo;
-  };
-  success: boolean;
-  message: string;
-  errors: string[];
-}
-
-export interface FilterOptions {
-  tournaments: string[];
-  categories: string[];
-  formats: string[];
-  rounds: string[];
-  venues: string[];
-}
-
-export interface AdminMatchesResponse {
-  data: {
-    matches: {
-      items: Match[];
-      pagination: PaginationInfo;
-    };
-    inProgressCount: number;
-    incomingCount: number;
-    completedCount: number;
-    filters: FilterOptions;
-  };
-  success: boolean;
-  message: string;
-  errors: string[];
-}
-
-export interface RefereeMatchesResponse {
-  data: {
-    matches: {
-      items: Match[];
-      pagination: PaginationInfo;
-    };
-    inProgressCount: number;
-    incomingCount: number;
-    completedCount: number;
-    filters: FilterOptions;
-  };
-  success: boolean;
-  message: string;
-  errors: string[];
-}
-
-export interface MatchFilters {
-  search?: string;
-  status?: "all" | "completed" | "in-progress" | "upcoming";
-  tournament?: string;
-  category?: string;
-  format?: string;
-  round?: string;
-  venue?: string;
-  pageNumber?: number;
-  pageSize?: number;
-}
+import { MatchFilters, MatchGameScore, RefereeMatchesResponse, UpdateMatchDTO } from "../types/match";
 
 // Get referee matches
 export const getRefereeMatches = (filters?: MatchFilters): Promise<{ data: RefereeMatchesResponse }> => {
@@ -145,7 +11,7 @@ export const getRefereeMatches = (filters?: MatchFilters): Promise<{ data: Refer
   if (filters?.status && filters.status !== "all") {
     params.append("status", filters.status);
   }
-  if (filters?.tournament && filters.tournament !== "all") {
+  if (filters?.tournament) {
     params.append("tournament", filters.tournament);
   }
   if (filters?.category && filters.category !== "all") {
@@ -187,3 +53,35 @@ export const updateLeagueMatch = (matchId: string, data: UpdateMatchDTO) => api.
 
 export const updateKnockoutMatch = (matchId: string, data: UpdateMatchDTO) =>
   api.put(`/Knockout/match/${matchId}`, data);
+
+export const assignRefereeToMatch = (refereeId: string, matchId: string) =>
+  api.post(`/Referee/${refereeId}/assign/${matchId}`);
+
+export const bulkAssignRefereeToMatches = async (refereeId: string, matchIds: string[]) => {
+  const promises = matchIds.map((matchId) => assignRefereeToMatch(refereeId, matchId));
+  const results = await Promise.allSettled(promises);
+
+  // Check if any assignments failed
+  const failedAssignments = results.filter((result) => result.status === "rejected");
+
+  if (failedAssignments.length > 0) {
+    throw new Error(`${failedAssignments.length} assignment(s) failed`);
+  }
+
+  return results.map((result) => (result as PromiseFulfilledResult<any>).value);
+};
+
+export const unassignRefereeFromMatch = (refereeId: string, matchId: string) =>
+  api.delete(`/Referee/${refereeId}/unassign/${matchId}`);
+
+export const getPlayerSuggestions = (search?: string) =>
+  api.get(`/Player/suggestions/all${search ? `?search=${encodeURIComponent(search)}` : ""}`);
+
+export const bulkUpdateMatchScores = async (matchScores: { matchId: string; gameScores: MatchGameScore[] }[]) => {
+  const promises = matchScores.map(({ matchId, gameScores }) => {
+    const data = { gameScores };
+    return { matchId, data };
+  });
+
+  return promises;
+};

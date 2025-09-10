@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Match, MatchGameScore } from "../api/matches";
+import { Match, MatchGameScore } from "../types/match";
 import "./Scoreboard.scss";
 
 interface ScoreboardProps {
