@@ -87,6 +87,8 @@ export interface FilterOptions {
   formats: string[];
   rounds: string[];
   venues: string[];
+  teams: (string | { id: string; name?: string; fullName?: string })[];
+  referees: (string | { id: string; fullName?: string; name?: string })[];
 }
 
 export interface AdminMatchesResponse {
@@ -129,6 +131,8 @@ export interface MatchFilters {
   format?: string;
   round?: string;
   venue?: string;
+  team?: string;
+  referee?: string;
   pageNumber?: number;
   pageSize?: number;
 }

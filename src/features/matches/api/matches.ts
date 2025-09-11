@@ -26,6 +26,12 @@ export const getRefereeMatches = (filters?: MatchFilters): Promise<{ data: Refer
   if (filters?.venue && filters.venue !== "all") {
     params.append("venue", filters.venue);
   }
+  if (filters?.team && filters.team !== "all") {
+    params.append("teamName", filters.team);
+  }
+  if (filters?.referee && filters.referee !== "all") {
+    params.append("referee", filters.referee);
+  }
   if (filters?.pageNumber) {
     params.append("pageNumber", filters.pageNumber.toString());
   }

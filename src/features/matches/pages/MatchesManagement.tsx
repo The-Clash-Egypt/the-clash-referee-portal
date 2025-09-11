@@ -13,20 +13,16 @@ import AssignRefereeModal from "../components/AssignRefereeModal";
 import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
 import UpdateScoreDialog from "../components/UpdateScoreDialog";
 import BulkUpdateScoreModal from "../components/BulkUpdateScoreModal";
+import PDFExport from "../components/PDFExport";
+import SearchableDropdown from "../components/SearchableDropdown";
 import VolleyballLoading from "../../../components/VolleyballLoading";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../store";
-import { Match, MatchGameScore, MatchFilters } from "../types/match";
+import { Match, MatchGameScore, MatchFilters, FilterOptions } from "../types/match";
 import "./MatchesManagement.scss";
-
-interface FilterOptions {
-  tournaments: string[];
-  categories: string[];
-  formats: string[];
-  rounds: string[];
-  venues: string[];
-}
+import "../components/PDFExport.scss";
+import "../components/SearchableDropdown.scss";
 
 const MatchesManagement: React.FC = () => {
   const { id } = useParams();
@@ -51,12 +47,15 @@ const MatchesManagement: React.FC = () => {
   const [filterFormat, setFilterFormat] = useState<string>("all");
   const [filterRound, setFilterRound] = useState<string>("all");
   const [filterVenue, setFilterVenue] = useState<string>("all");
+  const [filterTeam, setFilterTeam] = useState<string>("all");
+  const [filterReferee, setFilterReferee] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedMatches, setSelectedMatches] = useState<Set<string>>(new Set());
   const [showBulkAssignmentModal, setShowBulkAssignmentModal] = useState(false);
   const [bulkAssigningReferee, setBulkAssigningReferee] = useState(false);
   const [showBulkUpdateScoreModal, setShowBulkUpdateScoreModal] = useState(false);
   const [bulkUpdatingScores, setBulkUpdatingScores] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -75,6 +74,8 @@ const MatchesManagement: React.FC = () => {
     formats: [],
     rounds: [],
     venues: [],
+    teams: [],
+    referees: [],
   });
 
   // URL params sync state
@@ -87,6 +88,8 @@ const MatchesManagement: React.FC = () => {
     format: "all",
     round: "all",
     venue: "all",
+    team: "all",
+    referee: "all",
   });
 
   const isAdmin = user?.role === "admin";
@@ -104,6 +107,8 @@ const MatchesManagement: React.FC = () => {
     const urlFormat = urlParams.get("format") || "all";
     const urlRound = urlParams.get("round") || "all";
     const urlVenue = urlParams.get("venue") || "all";
+    const urlTeam = urlParams.get("team") || "all";
+    const urlReferee = urlParams.get("referee") || "all";
     const urlPage = parseInt(urlParams.get("page") || "1", 10);
     const urlPageSize = parseInt(urlParams.get("pageSize") || "30", 10);
 
@@ -114,6 +119,8 @@ const MatchesManagement: React.FC = () => {
     setFilterFormat(urlFormat);
     setFilterRound(urlRound);
     setFilterVenue(urlVenue);
+    setFilterTeam(urlTeam);
+    setFilterReferee(urlReferee);
     setCurrentPage(urlPage);
     setPageSize(urlPageSize);
 
@@ -123,6 +130,8 @@ const MatchesManagement: React.FC = () => {
       format: urlFormat,
       round: urlRound,
       venue: urlVenue,
+      team: urlTeam,
+      referee: urlReferee,
     };
 
     setIsInitialized(true);
@@ -156,6 +165,8 @@ const MatchesManagement: React.FC = () => {
     if (filterFormat !== "all") urlParams.set("format", filterFormat);
     if (filterRound !== "all") urlParams.set("round", filterRound);
     if (filterVenue !== "all") urlParams.set("venue", filterVenue);
+    if (filterTeam !== "all") urlParams.set("team", filterTeam);
+    if (filterReferee !== "all") urlParams.set("referee", filterReferee);
 
     // Add pagination to URL params
     if (currentPage > 1) urlParams.set("page", currentPage.toString());
@@ -172,8 +183,11 @@ const MatchesManagement: React.FC = () => {
     filterFormat,
     filterRound,
     filterVenue,
+    filterTeam,
+    filterReferee,
     currentPage,
     pageSize,
+    tournamentName,
   ]);
 
   // Initial load when component is initialized
@@ -188,6 +202,8 @@ const MatchesManagement: React.FC = () => {
       format: filterFormat !== "all" ? filterFormat : undefined,
       round: filterRound !== "all" ? filterRound : undefined,
       venue: filterVenue !== "all" ? filterVenue : undefined,
+      team: filterTeam !== "all" ? filterTeam : undefined,
+      referee: filterReferee !== "all" ? filterReferee : undefined,
       pageSize: pageSize,
       pageNumber: currentPage,
     };
@@ -207,6 +223,8 @@ const MatchesManagement: React.FC = () => {
       format: filterFormat !== "all" ? filterFormat : undefined,
       round: filterRound !== "all" ? filterRound : undefined,
       venue: filterVenue !== "all" ? filterVenue : undefined,
+      team: filterTeam !== "all" ? filterTeam : undefined,
+      referee: filterReferee !== "all" ? filterReferee : undefined,
       pageSize: pageSize,
       pageNumber: currentPage,
     };
@@ -220,6 +238,8 @@ const MatchesManagement: React.FC = () => {
     filterFormat,
     filterRound,
     filterVenue,
+    filterTeam,
+    filterReferee,
     currentPage,
     pageSize,
   ]);
@@ -228,7 +248,7 @@ const MatchesManagement: React.FC = () => {
   useEffect(() => {
     if (!isInitialized || isRestoringFromURL.current) return;
     setCurrentPage(1);
-  }, [isInitialized, filterStatus, filterCategory, filterFormat, filterRound, filterVenue]);
+  }, [isInitialized, filterStatus, filterCategory, filterFormat, filterRound, filterVenue, filterTeam, filterReferee]);
 
   // Reset round filter when format changes to avoid invalid selections
   useEffect(() => {
@@ -290,7 +310,19 @@ const MatchesManagement: React.FC = () => {
         formats: [],
         rounds: [],
         venues: [],
+        teams: [],
+        referees: [],
       };
+
+      // Debug: Log the filter options to see the actual structure
+      console.log("Filter options from API:", {
+        teams: apiFilterOptions.teams,
+        referees: apiFilterOptions.referees,
+        teamsType: typeof apiFilterOptions.teams,
+        refereesType: typeof apiFilterOptions.referees,
+        teamsLength: apiFilterOptions.teams?.length,
+        refereesLength: apiFilterOptions.referees?.length,
+      });
 
       setMatches(allMatches);
       setTotalMatches(totalCount);
@@ -337,6 +369,8 @@ const MatchesManagement: React.FC = () => {
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
         venue: filterVenue !== "all" ? filterVenue : undefined,
+        team: filterTeam !== "all" ? filterTeam : undefined,
+        referee: filterReferee !== "all" ? filterReferee : undefined,
         pageSize: pageSize,
         pageNumber: currentPage,
       };
@@ -371,6 +405,8 @@ const MatchesManagement: React.FC = () => {
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
         venue: filterVenue !== "all" ? filterVenue : undefined,
+        team: filterTeam !== "all" ? filterTeam : undefined,
+        referee: filterReferee !== "all" ? filterReferee : undefined,
         pageSize: pageSize,
         pageNumber: currentPage,
       };
@@ -418,6 +454,8 @@ const MatchesManagement: React.FC = () => {
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
         venue: filterVenue !== "all" ? filterVenue : undefined,
+        team: filterTeam !== "all" ? filterTeam : undefined,
+        referee: filterReferee !== "all" ? filterReferee : undefined,
         pageSize: pageSize,
         pageNumber: currentPage,
       };
@@ -445,6 +483,8 @@ const MatchesManagement: React.FC = () => {
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
         venue: filterVenue !== "all" ? filterVenue : undefined,
+        team: filterTeam !== "all" ? filterTeam : undefined,
+        referee: filterReferee !== "all" ? filterReferee : undefined,
         pageSize: pageSize,
         pageNumber: currentPage,
       };
@@ -489,6 +529,8 @@ const MatchesManagement: React.FC = () => {
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
         venue: filterVenue !== "all" ? filterVenue : undefined,
+        team: filterTeam !== "all" ? filterTeam : undefined,
+        referee: filterReferee !== "all" ? filterReferee : undefined,
         pageSize: pageSize,
         pageNumber: currentPage,
       };
@@ -510,6 +552,8 @@ const MatchesManagement: React.FC = () => {
     setFilterFormat("all");
     setFilterRound("all");
     setFilterVenue("all");
+    setFilterTeam("all");
+    setFilterReferee("all");
 
     // Update previous filters ref to prevent unwanted resets
     previousFilters.current = {
@@ -517,6 +561,8 @@ const MatchesManagement: React.FC = () => {
       format: "all",
       round: "all",
       venue: "all",
+      team: "all",
+      referee: "all",
     };
   };
 
@@ -560,6 +606,68 @@ const MatchesManagement: React.FC = () => {
 
   const handleFilterStatusChange = (value: string) => {
     setFilterStatus(value);
+  };
+
+  const handleFilterTeamChange = (value: string) => {
+    setFilterTeam(value);
+    previousFilters.current.team = value;
+  };
+
+  const handleFilterRefereeChange = (value: string) => {
+    setFilterReferee(value);
+    previousFilters.current.referee = value;
+  };
+
+  const handlePDFExport = () => {
+    setIsExportingPDF(true);
+    // The PDFExport component will handle the actual export
+    // This is just for loading state management
+    setTimeout(() => {
+      setIsExportingPDF(false);
+    }, 2000); // Simulate export time
+  };
+
+  const getExportType = (): "venue" | "referee" | "team" | "general" => {
+    if (filterVenue !== "all") return "venue";
+    if (filterTeam !== "all") return "team";
+    if (filterReferee !== "all") return "referee";
+    return "general";
+  };
+
+  const getRefereeName = (refereeId: string) => {
+    if (refereeId === "all") return "All Referees";
+    const referee = filterOptions.referees?.find((ref) => {
+      const id = typeof ref === "string" ? ref : ref.id;
+      return id === refereeId;
+    });
+    return referee
+      ? typeof referee === "string"
+        ? referee
+        : referee.fullName || referee.name || refereeId
+      : refereeId;
+  };
+
+  const getTeamName = (teamId: string) => {
+    if (teamId === "all") return "All Teams";
+    const team = filterOptions.teams?.find((team) => {
+      const id = typeof team === "string" ? team : team.id;
+      return id === teamId;
+    });
+    return team ? (typeof team === "string" ? team : team.name || team.fullName || teamId) : teamId;
+  };
+
+  const getExportTitle = () => {
+    const type = getExportType();
+    switch (type) {
+      case "venue":
+        return `Venue: ${filterVenue}`;
+      case "referee":
+        return `Referee: ${getRefereeName(filterReferee)}`;
+      case "team":
+        return `Team: ${getTeamName(filterTeam)}`;
+      default:
+        return "All Matches";
+    }
   };
 
   // Generate pagination page numbers
@@ -627,6 +735,29 @@ const MatchesManagement: React.FC = () => {
         <h1>{tournamentName}</h1>
         <p>Manage all matches and referee assignments</p>
       </div>
+
+      {/* PDF Export Controls - Admin Only */}
+      {/* {isAdmin && (
+        <div className="export-controls">
+          <div className="export-info">
+            <h3 className="export-title">Export Matches</h3>
+            <p className="export-description">Export current matches to PDF. {getExportTitle()}</p>
+          </div>
+          <div className="export-actions">
+            <PDFExport
+              matches={matches}
+              tournamentName={tournamentName || "Tournament"}
+              categoryName={filterCategory !== "all" ? filterCategory : undefined}
+              venueName={filterVenue !== "all" ? filterVenue : undefined}
+              teamName={filterTeam !== "all" ? filterTeam : undefined}
+              refereeName={filterReferee !== "all" ? filterReferee : undefined}
+              exportType={getExportType()}
+              onExport={handlePDFExport}
+              loading={isExportingPDF}
+            />
+          </div>
+        </div>
+      )} */}
 
       <div className="filters-section">
         <button className={`filters-toggle ${showFilters ? "expanded" : ""}`} onClick={toggleFilters}>
@@ -706,6 +837,30 @@ const MatchesManagement: React.FC = () => {
               <option value="in-progress">In Progress</option>
               <option value="completed">Completed</option>
             </select>
+          </div>
+
+          <div className="filter-group">
+            <SearchableDropdown
+              options={filterOptions.teams || []}
+              value={filterTeam}
+              onChange={handleFilterTeamChange}
+              placeholder="All Teams"
+              className="filter-select"
+              showAllOption={true}
+              allOptionText="All Teams"
+            />
+          </div>
+
+          <div className="filter-group">
+            <SearchableDropdown
+              options={filterOptions.referees || []}
+              value={filterReferee}
+              onChange={handleFilterRefereeChange}
+              placeholder="All Referees"
+              className="filter-select"
+              showAllOption={true}
+              allOptionText="All Referees"
+            />
           </div>
 
           <div className="filter-group">
@@ -789,7 +944,9 @@ const MatchesManagement: React.FC = () => {
               filterCategory !== "all" ||
               filterFormat !== "all" ||
               filterRound !== "all" ||
-              filterVenue !== "all"
+              filterVenue !== "all" ||
+              filterTeam !== "all" ||
+              filterReferee !== "all"
                 ? "No matches match your current filters. Try adjusting your search or filters."
                 : "There are no matches available to manage."}
             </p>
@@ -798,7 +955,9 @@ const MatchesManagement: React.FC = () => {
               filterCategory !== "all" ||
               filterFormat !== "all" ||
               filterRound !== "all" ||
-              filterVenue !== "all") && (
+              filterVenue !== "all" ||
+              filterTeam !== "all" ||
+              filterReferee !== "all") && (
               <button onClick={clearAllFilters} className="btn btn-primary">
                 Clear All Filters
               </button>
