@@ -10,24 +10,15 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAuth = true }) => {
   const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
-  const user = useSelector((state: RootState) => state.user.user);
   const location = useLocation();
 
-  // If user is authenticated and trying to access login/signup, redirect to appropriate dashboard
-  if (
-    isAuthenticated &&
-    (location.pathname === "/" ||
-      location.pathname === "/login" ||
-      location.pathname.startsWith("/signup") ||
-      location.pathname.startsWith("/signup/referee"))
-  ) {
-    const redirectPath = user?.role === "admin" ? "/admin/matches" : "/matches";
+  if (isAuthenticated && location.pathname === "/login") {
+    const redirectPath = "/";
     return <Navigate to={redirectPath} replace />;
   }
 
-  // If route requires authentication and user is not authenticated, redirect to login
   if (requireAuth && !isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;

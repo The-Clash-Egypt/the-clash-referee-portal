@@ -1,0 +1,1 @@
+export { useTournaments } from "./useTournaments";

@@ -1,110 +1,73 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Provider } from "react-redux";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { store } from "./store";
+import { setQueryClient } from "./api/axios";
 import "./App.scss";
 
 import NotFoundPage from "./pages/not-found";
-import Home from "./pages/home";
-import { LoginPage, SignupPage } from "./features/auth/pages";
-import MatchesDashboard from "./features/matches/pages/MatchesDashboard";
-import MatchesManagement from "./features/admin/pages/MatchesManagement";
-import RefereesManagement from "./features/admin/pages/RefereesManagement";
+import { LoginPage } from "./features/auth/pages";
 import AppInitializer from "./components/AppInitializer";
-import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Navbar from "./components/Navbar";
+import Tournaments from "./features/tournaments/pages";
+import MatchesManagement from "./features/matches/pages/MatchesManagement";
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 1,
+    },
+  },
+});
+
+// Set the QueryClient instance for axios interceptors
+setQueryClient(queryClient);
 
 const App: React.FC = () => {
   return (
-    <Provider store={store}>
-      <AppInitializer />
-      <Router>
-        <div className="app">
-          <Navbar />
-          <main className="app-main">
-            <Routes>
-              {/* Public routes */}
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute requireAuth={false}>
-                    <LoginPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/login"
-                element={
-                  <ProtectedRoute requireAuth={false}>
-                    <LoginPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/signup"
-                element={
-                  <ProtectedRoute requireAuth={false}>
-                    <SignupPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/signup/referee"
-                element={
-                  <ProtectedRoute requireAuth={false}>
-                    <SignupPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/signup/:role"
-                element={
-                  <ProtectedRoute requireAuth={false}>
-                    <SignupPage />
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Protected routes */}
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Home />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/matches"
-                element={
-                  <ProtectedRoute>
-                    <MatchesDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/matches"
-                element={
-                  <ProtectedRoute>
-                    <MatchesManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/referees"
-                element={
-                  <ProtectedRoute>
-                    <RefereesManagement />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </main>
-        </div>
-      </Router>
-    </Provider>
+    <QueryClientProvider client={queryClient}>
+      <Provider store={store}>
+        <AppInitializer />
+        <Router>
+          <div className="app">
+            <Navbar />
+            <main className="app-main">
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute requireAuth={true}>
+                      <Tournaments />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/login"
+                  element={
+                    <ProtectedRoute requireAuth={false}>
+                      <LoginPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="tournaments/:id/matches"
+                  element={
+                    <ProtectedRoute>
+                      <MatchesManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </main>
+          </div>
+        </Router>
+      </Provider>
+    </QueryClientProvider>
   );
 };
 
