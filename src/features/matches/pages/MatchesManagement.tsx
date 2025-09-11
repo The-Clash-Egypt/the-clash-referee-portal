@@ -318,12 +318,16 @@ const MatchesManagement: React.FC = () => {
     setCurrentPage(1); // Reset to first page when changing page size
   };
 
-  const handleAssignReferee = async (refereeId: string) => {
-    if (!selectedMatch || !isAdmin) return;
+  const handleAssignReferee = async (refereeIds: string[]) => {
+    if (!selectedMatch || !isAdmin || refereeIds.length === 0) return;
 
     try {
       setAssigningReferee(true);
-      await assignRefereeToMatch(refereeId, selectedMatch.id);
+
+      // Assign each referee to the match
+      const assignPromises = refereeIds.map((refereeId) => assignRefereeToMatch(refereeId, selectedMatch.id));
+
+      await Promise.all(assignPromises);
 
       const currentFilters: MatchFilters = {
         search: debouncedSearchTerm || undefined,
@@ -341,18 +345,22 @@ const MatchesManagement: React.FC = () => {
       setShowAssignmentModal(false);
       setSelectedMatch(null);
     } catch (error: any) {
-      console.error("Error assigning referee:", error);
-      alert("Failed to assign referee. Please try again.");
+      console.error("Error assigning referees:", error);
+      alert(`Failed to assign ${refereeIds.length > 1 ? "referees" : "referee"}. Please try again.`);
     } finally {
       setAssigningReferee(false);
     }
   };
 
-  const handleBulkAssignReferee = async (refereeId: string, matchIds: string[]) => {
+  const handleBulkAssignReferee = async (refereeIds: string[], matchIds: string[]) => {
     if (!isAdmin) return;
     try {
       setBulkAssigningReferee(true);
-      await bulkAssignRefereeToMatches(refereeId, matchIds);
+
+      // Assign each referee to all selected matches
+      const assignPromises = refereeIds.map((refereeId) => bulkAssignRefereeToMatches(refereeId, matchIds));
+
+      await Promise.all(assignPromises);
 
       // Refresh data to show updated assignments
       const currentFilters: MatchFilters = {
@@ -370,8 +378,10 @@ const MatchesManagement: React.FC = () => {
       setShowBulkAssignmentModal(false);
       setSelectedMatches(new Set());
     } catch (error: any) {
-      console.error("Error bulk assigning referee:", error);
-      const errorMessage = error.message || "Failed to assign referee to one or more matches. Please try again.";
+      console.error("Error bulk assigning referees:", error);
+      const errorMessage =
+        error.message ||
+        `Failed to assign ${refereeIds.length > 1 ? "referees" : "referee"} to one or more matches. Please try again.`;
       alert(errorMessage);
     } finally {
       setBulkAssigningReferee(false);
@@ -798,31 +808,20 @@ const MatchesManagement: React.FC = () => {
       ) : (
         <>
           <div className="matches-grid">
-            {matches
-              ?.sort((a, b) => {
-                // First sort by start time
-                const timeComparison = new Date(a.startTime || "").getTime() - new Date(b.startTime || "").getTime();
-                if (timeComparison !== 0) return timeComparison;
-
-                // Then sort by venue with proper numeric ordering
-                const venueA = a.venue || "";
-                const venueB = b.venue || "";
-                return venueA.localeCompare(venueB, undefined, { numeric: true, sensitivity: "base" });
-              })
-              ?.map((match) => (
-                <MatchCard
-                  key={match.id}
-                  match={match}
-                  onUpdateScore={handleUpdateScore}
-                  onAssignReferee={openAssignmentModal}
-                  onUnassignReferee={handleUnassignReferee}
-                  showAdminActions={true}
-                  showUpdateScore={true}
-                  isSelectable={true}
-                  isSelected={selectedMatches.has(match.id)}
-                  onSelectionChange={handleMatchSelection}
-                />
-              ))}
+            {matches?.map((match) => (
+              <MatchCard
+                key={match.id}
+                match={match}
+                onUpdateScore={handleUpdateScore}
+                onAssignReferee={openAssignmentModal}
+                onUnassignReferee={handleUnassignReferee}
+                showAdminActions={isAdmin}
+                showUpdateScore={!match.isCompleted || isAdmin}
+                isSelectable={isAdmin}
+                isSelected={selectedMatches.has(match.id)}
+                onSelectionChange={handleMatchSelection}
+              />
+            ))}
           </div>
 
           {/* Pagination Controls */}

@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tournament } from "../types";
 import TournamentCard from "../components/TournamentCard";
 import { useNavigate } from "react-router-dom";
 import { useTournaments } from "../hooks";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSearch, faTimes, faExclamationCircle, faCircle } from "@fortawesome/free-solid-svg-icons";
 import "./styles.scss";
 
 const Tournaments = () => {
@@ -15,6 +17,8 @@ const Tournaments = () => {
     past: true,
   });
 
+  const [searchQuery, setSearchQuery] = useState("");
+
   const handleTournamentSelect = (tournament: Tournament) => {
     navigate(`/tournaments/${tournament.id}/matches?name=${tournament.name}`);
   };
@@ -26,8 +30,13 @@ const Tournaments = () => {
     }));
   };
 
+  // Filter tournaments based on search query
+  const filteredTournaments = tournaments.filter((tournament) =>
+    tournament.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // Group tournaments by status
-  const groupedTournaments = tournaments.reduce((acc, tournament) => {
+  const groupedTournaments = filteredTournaments.reduce((acc, tournament) => {
     const status = tournament.status;
     if (!acc[status]) {
       acc[status] = [];
@@ -35,6 +44,45 @@ const Tournaments = () => {
     acc[status].push(tournament);
     return acc;
   }, {} as Record<string, Tournament[]>);
+
+  // Auto-expand sections that contain search results
+  useEffect(() => {
+    if (searchQuery && filteredTournaments.length > 0) {
+      const sectionsToExpand: string[] = [];
+
+      // Check which sections have matching tournaments
+      Object.keys(groupedTournaments).forEach((status) => {
+        if (groupedTournaments[status].length > 0) {
+          sectionsToExpand.push(status);
+        }
+      });
+
+      // Expand all sections that have search results
+      if (sectionsToExpand.length > 0) {
+        setCollapsedSections((prev) => {
+          const newState = { ...prev };
+          let hasChanges = false;
+
+          sectionsToExpand.forEach((status) => {
+            if (prev[status] !== false) {
+              // Only update if not already expanded
+              newState[status] = false; // false means expanded
+              hasChanges = true;
+            }
+          });
+
+          return hasChanges ? newState : prev;
+        });
+      }
+    } else if (!searchQuery) {
+      // When search is cleared, return to default collapsed state
+      setCollapsedSections({
+        active: false,
+        upcoming: true,
+        past: true,
+      });
+    }
+  }, [searchQuery, filteredTournaments.length]);
 
   // Define status order and labels
   const statusConfig = {
@@ -60,7 +108,9 @@ const Tournaments = () => {
     return (
       <div className={`tournament-list`}>
         <div className="error-state">
-          <div className="error-icon">!</div>
+          <div className="error-icon">
+            <FontAwesomeIcon icon={faExclamationCircle} />
+          </div>
           <p>Failed to load tournaments. Please try again.</p>
           <button className="btn btn-primary" onClick={() => refetch()}>
             Retry
@@ -74,9 +124,61 @@ const Tournaments = () => {
     return (
       <div className={`tournament-list`}>
         <div className="empty-state">
-          <div className="empty-icon">○</div>
-          <p>No tournaments found</p>
-          <p className="empty-subtitle">Check back later for new tournaments</p>
+          <div className="empty-icon">
+            <FontAwesomeIcon icon={faCircle} />
+          </div>
+          <p>No assigned tournaments</p>
+          <p className="empty-subtitle">
+            You don't have any assigned matches in tournaments yet. Check back when you're assigned to referee matches.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (searchQuery && filteredTournaments.length === 0) {
+    return (
+      <div className={`tournament-list`}>
+        <div className="tournament-header">
+          <div className="header-content">
+            <div className="title-section">
+              <h1 className="page-title">Tournaments</h1>
+              <p className="page-subtitle">Browse and manage all tournaments</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="search-section">
+          <div className="search-bar">
+            <div className="search-input-container">
+              <div className="search-icon">
+                <FontAwesomeIcon icon={faSearch} />
+              </div>
+              <input
+                type="text"
+                placeholder="Search tournaments by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+              />
+              {searchQuery && (
+                <button className="clear-search" onClick={() => setSearchQuery("")} title="Clear search">
+                  <FontAwesomeIcon icon={faTimes} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="empty-state">
+          <div className="empty-icon">
+            <FontAwesomeIcon icon={faSearch} />
+          </div>
+          <p>No tournaments found matching "{searchQuery}"</p>
+          <p className="empty-subtitle">Try adjusting your search terms</p>
+          <button className="btn btn-primary" onClick={() => setSearchQuery("")}>
+            Clear Search
+          </button>
         </div>
       </div>
     );
@@ -90,19 +192,27 @@ const Tournaments = () => {
             <h1 className="page-title">Tournaments</h1>
             <p className="page-subtitle">Browse and manage all tournaments</p>
           </div>
-          <div className="stats-section">
-            <div className="stat-item">
-              <div className="stat-number">{tournaments.length}</div>
-              <div className="stat-label">Total</div>
+        </div>
+      </div>
+
+      <div className="search-section">
+        <div className="search-bar">
+          <div className="search-input-container">
+            <div className="search-icon">
+              <FontAwesomeIcon icon={faSearch} />
             </div>
-            <div className="stat-item">
-              <div className="stat-number">{groupedTournaments.active?.length || 0}</div>
-              <div className="stat-label">Live</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-number">{groupedTournaments.upcoming?.length || 0}</div>
-              <div className="stat-label">Upcoming</div>
-            </div>
+            <input
+              type="text"
+              placeholder="Search tournaments by name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+            />
+            {searchQuery && (
+              <button className="clear-search" onClick={() => setSearchQuery("")} title="Clear search">
+                <FontAwesomeIcon icon={faTimes} />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -112,7 +222,7 @@ const Tournaments = () => {
           const statusTournaments = groupedTournaments[status] || [];
           if (statusTournaments.length === 0) return null;
 
-          const isCollapsed = collapsedSections[status];
+          const isCollapsed = collapsedSections[status] ?? false;
 
           return (
             <div key={status} className="tournament-section">
@@ -124,7 +234,14 @@ const Tournaments = () => {
                 </div>
                 <div className="section-divider"></div>
               </div>
-              <div className={`tournament-grid ${isCollapsed ? "collapsed" : "expanded"}`}>
+              <div
+                className={`tournament-grid ${isCollapsed ? "collapsed" : "expanded"}`}
+                style={{
+                  maxHeight: isCollapsed ? "0px" : "none",
+                  opacity: isCollapsed ? 0 : 1,
+                  padding: isCollapsed ? "0" : "12px 0",
+                }}
+              >
                 {statusTournaments.map((tournament) => (
                   <TournamentCard
                     key={tournament.id}

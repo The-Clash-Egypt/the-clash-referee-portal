@@ -3,12 +3,14 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Provider } from "react-redux";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { store } from "./store";
+import { setQueryClient } from "./api/axios";
 import "./App.scss";
 
 import NotFoundPage from "./pages/not-found";
 import { LoginPage } from "./features/auth/pages";
 import AppInitializer from "./components/AppInitializer";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Navbar from "./components/Navbar";
 import Tournaments from "./features/tournaments/pages";
 import MatchesManagement from "./features/matches/pages/MatchesManagement";
 
@@ -22,6 +24,9 @@ const queryClient = new QueryClient({
   },
 });
 
+// Set the QueryClient instance for axios interceptors
+setQueryClient(queryClient);
+
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -29,6 +34,7 @@ const App: React.FC = () => {
         <AppInitializer />
         <Router>
           <div className="app">
+            <Navbar />
             <main className="app-main">
               <Routes>
                 <Route

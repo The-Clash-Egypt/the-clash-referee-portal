@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { RootState } from "../store";
 import { logout } from "../store/slices/userSlice";
 import "./Navbar.scss";
@@ -10,35 +11,16 @@ const Navbar: React.FC = () => {
   const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const location = useLocation();
+  const queryClient = useQueryClient();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
+    // Clear all React Query cache to prevent data leakage between users
+    queryClient.clear();
+
     dispatch(logout());
     navigate("/");
     setIsMobileMenuOpen(false);
-  };
-
-  const handleNavigation = (path: string) => {
-    navigate(path);
-    setIsMobileMenuOpen(false);
-  };
-
-  const getPageTitle = () => {
-    switch (location.pathname) {
-      case "/admin/matches":
-        return "Matches Management";
-      case "/admin/referees":
-        return "Referees Management";
-      case "/matches":
-        return "Matches";
-      case "/dashboard":
-        return "Dashboard";
-      case "/tournaments":
-        return "Tournaments";
-      default:
-        return "The Clash";
-    }
   };
 
   if (!isAuthenticated || !user) {
@@ -49,7 +31,7 @@ const Navbar: React.FC = () => {
     <nav className="navbar">
       <div className="navbar-container">
         {/* Logo and Brand */}
-        <div className="navbar-brand" onClick={() => handleNavigation("/dashboard")} style={{ cursor: "pointer" }}>
+        <div className="navbar-brand" style={{ cursor: "pointer" }} onClick={() => navigate("/")}>
           <img src={require("../assets/images/logo.png")} alt="The Clash" className="navbar-logo" />
           <div className="navbar-title-container">
             <span className="navbar-title">The Clash Referees Portal</span>
@@ -57,46 +39,23 @@ const Navbar: React.FC = () => {
           </div>
         </div>
 
-        {/* Desktop Navigation */}
-        <div className="navbar-nav desktop-only">
-          <button
-            className={`nav-link ${location.pathname === "/dashboard" ? "active" : ""}`}
-            onClick={() => handleNavigation("/dashboard")}
-          >
-            Dashboard
-          </button>
-          <button
-            className={`nav-link ${location.pathname === "/tournaments" ? "active" : ""}`}
-            onClick={() => handleNavigation("/tournaments")}
-          >
-            Tournaments
-          </button>
-          {user.role === "admin" ? (
-            <>
-              <button
-                className={`nav-link ${location.pathname === "/admin/matches" ? "active" : ""}`}
-                onClick={() => handleNavigation("/admin/matches")}
-              >
-                Matches Management
-              </button>
-              <button
-                className={`nav-link ${location.pathname === "/admin/referees" ? "active" : ""}`}
-                onClick={() => handleNavigation("/admin/referees")}
-              >
-                Referees Management
-              </button>
-            </>
-          ) : (
-            <button
-              className={`nav-link ${location.pathname === "/matches" ? "active" : ""}`}
-              onClick={() => handleNavigation("/matches")}
-            >
-              Matches
+        {/* Desktop User Info and Logout */}
+        <div className="navbar-right">
+          {/* User Info */}
+          <div className="navbar-user desktop-only">
+            <div className="user-info">
+              <span className="user-name">
+                {user.firstName} {user.lastName}
+              </span>
+            </div>
+          </div>
+
+          {/* Desktop Navigation */}
+          <div className="navbar-nav desktop-only">
+            <button className="nav-link logout" onClick={handleLogout}>
+              Logout
             </button>
-          )}
-          <button className="nav-link logout desktop-only" onClick={handleLogout}>
-            Logout
-          </button>
+          </div>
         </div>
 
         {/* Mobile Menu Button */}
@@ -112,45 +71,9 @@ const Navbar: React.FC = () => {
             <span className="user-name">
               {user.firstName} {user.lastName}
             </span>
-            <span className="user-role">{user.role === "admin" ? "Admin" : "Referee"}</span>
           </div>
         </div>
         <div className="mobile-nav-links">
-          <button
-            className={`mobile-nav-link ${location.pathname === "/dashboard" ? "active" : ""}`}
-            onClick={() => handleNavigation("/dashboard")}
-          >
-            Dashboard
-          </button>
-          <button
-            className={`mobile-nav-link ${location.pathname === "/tournaments" ? "active" : ""}`}
-            onClick={() => handleNavigation("/tournaments")}
-          >
-            Tournaments
-          </button>
-          {user.role === "admin" ? (
-            <>
-              <button
-                className={`mobile-nav-link ${location.pathname === "/admin/matches" ? "active" : ""}`}
-                onClick={() => handleNavigation("/admin/matches")}
-              >
-                Matches Management
-              </button>
-              <button
-                className={`mobile-nav-link ${location.pathname === "/admin/referees" ? "active" : ""}`}
-                onClick={() => handleNavigation("/admin/referees")}
-              >
-                Referees Management
-              </button>
-            </>
-          ) : (
-            <button
-              className={`mobile-nav-link ${location.pathname === "/matches" ? "active" : ""}`}
-              onClick={() => handleNavigation("/matches")}
-            >
-              My Matches
-            </button>
-          )}
           <button className="mobile-nav-link logout" onClick={handleLogout}>
             Logout
           </button>

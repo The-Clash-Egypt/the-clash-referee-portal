@@ -1,5 +1,5 @@
 import api from "../../../api/axios";
-import { MatchFilters, MatchGameScore, RefereeMatchesResponse, UpdateMatchDTO } from "../types/match";
+import { MatchFilters, MatchGameScore, PlayerSuggestion, RefereeMatchesResponse, UpdateMatchDTO } from "../types/match";
 
 // Get referee matches
 export const getRefereeMatches = (filters?: MatchFilters): Promise<{ data: RefereeMatchesResponse }> => {
@@ -74,7 +74,7 @@ export const bulkAssignRefereeToMatches = async (refereeId: string, matchIds: st
 export const unassignRefereeFromMatch = (refereeId: string, matchId: string) =>
   api.delete(`/Referee/${refereeId}/unassign/${matchId}`);
 
-export const getPlayerSuggestions = (search?: string) =>
+export const getPlayerSuggestions = (search?: string): Promise<{ data: { data: PlayerSuggestion[] } }> =>
   api.get(`/Player/suggestions/all${search ? `?search=${encodeURIComponent(search)}` : ""}`);
 
 export const bulkUpdateMatchScores = async (matchScores: { matchId: string; gameScores: MatchGameScore[] }[]) => {

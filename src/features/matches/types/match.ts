@@ -132,3 +132,15 @@ export interface MatchFilters {
   pageNumber?: number;
   pageSize?: number;
 }
+
+export interface PlayerSuggestion {
+  id: string;
+  firstName: string;
+  lastName: string;
+  nationality: string;
+  gender: string;
+  email: string;
+  userId: string;
+}
+
+// The API returns PlayerSuggestion[] directly, not wrapped in a response object

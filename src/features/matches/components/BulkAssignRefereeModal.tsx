@@ -1,12 +1,13 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { Match, Referee } from "../types/match";
+import React, { useState, useEffect } from "react";
+import { Match, PlayerSuggestion } from "../types/match";
+import { usePlayerSuggestions, useDebounce } from "../hooks";
 import "./BulkAssignRefereeModal.scss";
 
 interface BulkAssignRefereeModalProps {
   isOpen: boolean;
   selectedMatches: Match[];
   onClose: () => void;
-  onAssign: (refereeId: string, matchIds: string[]) => Promise<void>;
+  onAssign: (refereeIds: string[], matchIds: string[]) => Promise<void>;
   loading: boolean;
 }
 
@@ -17,9 +18,15 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
   onAssign,
   loading,
 }) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedReferee, setSelectedReferee] = useState<Referee | null>(null);
-  const [filteredReferees, setFilteredReferees] = useState<Referee[]>([]);
+  const [searchInputs, setSearchInputs] = useState<{ id: string; value: string }[]>([{ id: "1", value: "" }]);
+  const [selectedRefereesData, setSelectedRefereesData] = useState<PlayerSuggestion[]>([]);
+  const [activeInputId, setActiveInputId] = useState<string>("1");
+
+  // Get the current search term from the active input
+  const currentSearchTerm = searchInputs.find((input) => input.id === activeInputId)?.value || "";
+  const debouncedSearchTerm = useDebounce(currentSearchTerm, 300);
+
+  const { data: playerSuggestions = [], isLoading: suggestionsLoading } = usePlayerSuggestions(debouncedSearchTerm);
 
   useEffect(() => {
     if (isOpen) {
@@ -39,12 +46,53 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
     return date.toLocaleString();
   };
 
-  const handleAssign = async () => {
-    if (!selectedReferee) return;
+  const handleInputChange = (inputId: string, value: string) => {
+    setSearchInputs((prev) => prev.map((input) => (input.id === inputId ? { ...input, value } : input)));
+    setActiveInputId(inputId);
+  };
 
+  const handleRefereeSelect = (referee: PlayerSuggestion) => {
+    // Add referee to selected list
+    setSelectedRefereesData((prev) => [...prev, referee]);
+
+    // Clear the current input
+    setSearchInputs((prev) => prev.map((input) => (input.id === activeInputId ? { ...input, value: "" } : input)));
+  };
+
+  const handleRefereeRemove = (userId: string) => {
+    setSelectedRefereesData((prev) => prev.filter((ref) => ref.userId !== userId));
+  };
+
+  const handleAddRefereeInput = () => {
+    const newId = Date.now().toString();
+    setSearchInputs((prev) => [...prev, { id: newId, value: "" }]);
+    setActiveInputId(newId);
+  };
+
+  const handleRemoveInput = (inputId: string) => {
+    if (searchInputs.length > 1) {
+      setSearchInputs((prev) => prev.filter((input) => input.id !== inputId));
+      if (activeInputId === inputId) {
+        setActiveInputId(searchInputs[0].id);
+      }
+    }
+  };
+
+  const handleAssign = async () => {
+    if (selectedRefereesData.length === 0) return;
+    const refereeIds = selectedRefereesData.map((ref) => ref.userId);
     const matchIds = selectedMatches.map((match) => match.id);
-    await onAssign(selectedReferee.id, matchIds);
-    setSelectedReferee(null);
+    await onAssign(refereeIds, matchIds);
+    setSelectedRefereesData([]);
+    setSearchInputs([{ id: "1", value: "" }]);
+    setActiveInputId("1");
+  };
+
+  const handleClose = () => {
+    setSelectedRefereesData([]);
+    setSearchInputs([{ id: "1", value: "" }]);
+    setActiveInputId("1");
+    onClose();
   };
 
   const getUniqueVenues = () => {
@@ -60,11 +108,11 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="bulk-assign-referee-modal-overlay" onClick={onClose}>
+    <div className="bulk-assign-referee-modal-overlay" onClick={handleClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Bulk Assign Referee</h3>
-          <button className="modal-close" onClick={onClose}>
+          <h3>Bulk Assign Referees</h3>
+          <button className="modal-close" onClick={handleClose}>
             ×
           </button>
         </div>
@@ -98,58 +146,119 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
           </div>
 
           <div className="referees-section">
-            <div className="search-section">
-              <h4>Select Referee</h4>
-              <input
-                type="text"
-                placeholder="Search by name or email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="referee-search-input"
-              />
-              <div className="search-info">
-                {searchTerm && <span className="filtered-count">Showing: {filteredReferees.length}</span>}
-              </div>
-            </div>
-
-            <div className="referees-list">
-              {filteredReferees.length === 0 ? (
-                <div className="no-results">
-                  <p>No referees found matching "{searchTerm}"</p>
-                </div>
-              ) : (
-                <div className="referees-grid">
-                  {filteredReferees.map((referee, id) =>
-                    id < 3 ? (
-                      <div
-                        key={referee.id}
-                        className={`referee-item ${selectedReferee?.id === referee.id ? "selected" : ""}`}
-                        onClick={() => setSelectedReferee(referee)}
-                      >
-                        <div className="referee-info">
-                          <h5>{referee.fullName}</h5>
-                          <p>{referee.email}</p>
-                        </div>
-                        <div className="selection-indicator">
-                          {selectedReferee?.id === referee.id && <span className="checkmark">✓</span>}
-                        </div>
+            {/* Selected referees to be assigned */}
+            {selectedRefereesData.length > 0 && (
+              <div className="selected-referees-section">
+                <h4>Referees to Assign ({selectedRefereesData.length})</h4>
+                <div className="selected-referees-list">
+                  {selectedRefereesData.map((referee) => (
+                    <div key={referee.userId} className="selected-referee-item">
+                      <div className="referee-info">
+                        <h5>
+                          {referee.firstName} {referee.lastName}
+                        </h5>
+                        <p>{referee.email}</p>
                       </div>
-                    ) : null
+                      <button
+                        className="remove-button"
+                        onClick={() => handleRefereeRemove(referee.userId)}
+                        title="Remove referee"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Search inputs */}
+            <div className="search-inputs-section">
+              <h4>Add Referees</h4>
+              {searchInputs.map((input, index) => (
+                <div key={input.id} className="search-input-row">
+                  <div className="input-container">
+                    <input
+                      type="text"
+                      placeholder="Search by name or email..."
+                      value={input.value}
+                      onChange={(e) => handleInputChange(input.id, e.target.value)}
+                      onFocus={() => setActiveInputId(input.id)}
+                      className="referee-search-input"
+                    />
+                    {searchInputs.length > 1 && (
+                      <button
+                        className="remove-input-button"
+                        onClick={() => handleRemoveInput(input.id)}
+                        title="Remove search input"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Show suggestions only for the active input */}
+                  {activeInputId === input.id && (
+                    <div className="suggestions-container">
+                      {suggestionsLoading ? (
+                        <div className="loading-suggestions">
+                          <p>Searching...</p>
+                        </div>
+                      ) : playerSuggestions.length === 0 ? (
+                        debouncedSearchTerm && (
+                          <div className="no-suggestions">
+                            <p>No referees found matching "{debouncedSearchTerm}"</p>
+                          </div>
+                        )
+                      ) : (
+                        <div className="suggestions-list">
+                          {playerSuggestions
+                            .filter(
+                              (referee) => !selectedRefereesData.some((selected) => selected.userId === referee.userId)
+                            )
+                            .map((referee) => (
+                              <div
+                                key={referee.id}
+                                className="suggestion-item"
+                                onClick={() => handleRefereeSelect(referee)}
+                              >
+                                <div className="referee-info">
+                                  <h5>
+                                    {referee.firstName} {referee.lastName}
+                                  </h5>
+                                  <p>{referee.email}</p>
+                                  <p className="nationality">
+                                    {referee.nationality} • {referee.gender}
+                                  </p>
+                                </div>
+                                <div className="add-icon">+</div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          </div>
+              ))}
 
-          <div className="modal-actions">
-            <button className="assign-button" onClick={handleAssign} disabled={loading || !selectedReferee}>
-              {loading
-                ? "Assigning..."
-                : `Assign to ${selectedMatches.length} Match${selectedMatches.length !== 1 ? "es" : ""}`}
-            </button>
-            <button className="cancel-button" onClick={onClose} disabled={loading}>
-              Cancel
-            </button>
+              {/* Add another referee button */}
+              <button className="add-referee-button" onClick={handleAddRefereeInput}>
+                + Add Another Referee
+              </button>
+            </div>
+
+            {/* Assign button */}
+            {selectedRefereesData.length > 0 && (
+              <div className="assign-actions">
+                <button className="btn-base btn-primary assign-button" onClick={handleAssign} disabled={loading}>
+                  {loading
+                    ? "Assigning..."
+                    : `Assign ${selectedRefereesData.length} Referee${selectedRefereesData.length > 1 ? "s" : ""} to ${
+                        selectedMatches.length
+                      } Match${selectedMatches.length !== 1 ? "es" : ""}`}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

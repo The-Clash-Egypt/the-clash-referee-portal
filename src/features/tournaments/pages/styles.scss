@@ -7,35 +7,28 @@
 
   /* Page Header */
   .tournament-header {
-    margin-bottom: 40px;
-    background: linear-gradient(135deg, $bg-secondary 0%, rgba(99, 102, 241, 0.05) 100%);
-    border-radius: 16px;
-    padding: 32px;
-    border: 1px solid $border-primary;
+    margin-bottom: 16px;
+    padding: 0;
 
     .header-content {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       gap: 32px;
 
       .title-section {
         flex: 1;
 
         .page-title {
-          font-size: 36px;
-          font-weight: 800;
+          font-size: 32px;
+          font-weight: 600;
           color: $text-primary;
           margin: 0 0 8px 0;
           letter-spacing: -0.025em;
-          background: linear-gradient(135deg, $text-primary 0%, $primary-color 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
         }
 
         .page-subtitle {
-          font-size: 18px;
+          font-size: 16px;
           color: $text-secondary;
           margin: 0;
           font-weight: 400;
@@ -44,36 +37,101 @@
 
       .stats-section {
         display: flex;
-        gap: 24px;
+        gap: 32px;
 
         .stat-item {
           text-align: center;
-          padding: 16px 20px;
-          background: $white;
-          border-radius: 12px;
-          border: 1px solid $border-primary;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-          transition: all 0.2s ease;
-
-          &:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-          }
+          padding: 0;
 
           .stat-number {
-            font-size: 24px;
-            font-weight: 700;
+            font-size: 28px;
+            font-weight: 600;
             color: $primary-color;
             margin-bottom: 4px;
             line-height: 1;
           }
 
           .stat-label {
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 14px;
+            font-weight: 500;
             color: $text-secondary;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            text-transform: none;
+            letter-spacing: 0;
+          }
+        }
+      }
+    }
+  }
+
+  /* Search Section */
+  .search-section {
+    margin-bottom: 24px;
+
+    .search-bar {
+      .search-input-container {
+        position: relative;
+
+        .search-input {
+          width: -webkit-fill-available;
+          padding: 12px 16px 12px 40px;
+          font-size: 14px;
+          font-weight: 400;
+          color: $text-primary;
+          background: $white;
+          border: 1px solid $border-primary;
+          border-radius: 6px;
+          outline: none;
+          transition: all 0.2s ease;
+
+          &::placeholder {
+            color: $text-secondary;
+            font-weight: 400;
+          }
+
+          &:focus {
+            border-color: $primary-color;
+            box-shadow: 0 0 0 3px rgba(0, 74, 173, 0.1);
+          }
+        }
+
+        .search-icon {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 14px;
+          color: $text-secondary;
+          pointer-events: none;
+        }
+
+        .clear-search {
+          position: absolute;
+          right: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          font-size: 12px;
+          color: $text-secondary;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 4px;
+          width: 20px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+
+          &:hover {
+            background: $gray-100;
+            color: $text-primary;
+          }
+        }
+
+        &:focus-within {
+          .search-icon {
+            color: $primary-color;
           }
         }
       }
@@ -83,69 +141,30 @@
   .tournament-sections {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 24px;
 
     /* Tournament Section */
     .tournament-section {
-      opacity: 0;
-      animation: fadeInUp 0.6s ease forwards;
-
-      &:nth-child(2) {
-        animation-delay: 0.1s;
-      }
-      &:nth-child(3) {
-        animation-delay: 0.2s;
-      }
-      &:nth-child(4) {
-        animation-delay: 0.3s;
-      }
-      &:nth-child(5) {
-        animation-delay: 0.4s;
-      }
-
       &:last-child {
         margin-bottom: 0;
       }
 
       .section-header {
         cursor: pointer;
-        transition: all 0.3s ease;
-        padding: 16px 20px;
-        border-radius: 12px;
-        background: $white;
-        border: 1px solid $border-primary;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.2s ease;
+        padding: 0 0 16px 0;
+        border-bottom: 1px solid $border-primary;
+        background: transparent;
+        border-radius: 0;
         position: relative;
-        overflow: hidden;
-
-        &::before {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 4px;
-          height: 100%;
-          background: $primary-color;
-          transition: all 0.3s ease;
-        }
 
         &:hover {
-          background: rgba(99, 102, 241, 0.02);
-          border-color: $primary-color;
-          box-shadow: 0 4px 16px rgba(0, 74, 173, 0.1);
-          transform: translateY(-1px);
-
-          &::before {
-            width: 6px;
-          }
-
           .section-title {
             color: $primary-color;
           }
 
           .toggle-icon {
             color: $primary-color;
-            transform: scale(1.1);
           }
         }
 
@@ -157,41 +176,38 @@
 
           .section-title {
             font-size: 18px;
-            font-weight: 700;
+            font-weight: 600;
             color: $text-primary;
             margin: 0;
             letter-spacing: -0.025em;
             flex: 1;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
           }
 
           .section-count {
-            background: $primary-color;
-            color: $white;
-            padding: 8px 14px;
-            border-radius: 20px;
+            background: $gray-100;
+            color: $text-secondary;
+            padding: 4px 8px;
+            border-radius: 4px;
             font-size: 12px;
-            font-weight: 700;
-            min-width: 28px;
+            font-weight: 500;
+            min-width: 20px;
             text-align: center;
-            box-shadow: 0 2px 6px rgba(0, 74, 173, 0.3);
-            margin-right: 16px;
-            transition: all 0.3s ease;
+            margin-right: 12px;
+            transition: all 0.2s ease;
           }
 
           .toggle-icon {
-            font-size: 16px;
+            font-size: 14px;
             color: $text-secondary;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             transform-origin: center;
             flex-shrink: 0;
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 50%;
-            background: rgba(99, 102, 241, 0.1);
 
             &.collapsed {
               transform: rotate(-90deg);
@@ -211,11 +227,11 @@
       .tournament-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 24px;
+        gap: 20px;
         position: relative;
         overflow: hidden;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        padding: 12px 0;
+        transition: all 0.3s ease;
+        padding: 20px 0;
 
         &.expanded {
           opacity: 1;
@@ -232,12 +248,12 @@
 
         @media (max-width: 768px) {
           grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 20px;
+          gap: 16px;
         }
 
         @media (max-width: 480px) {
           grid-template-columns: 1fr;
-          gap: 16px;
+          gap: 12px;
         }
       }
     }
@@ -281,6 +297,15 @@
     .error-icon {
       font-size: 48px;
       margin-bottom: 16px;
+      color: #dc2626;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      svg {
+        transform: none !important;
+        position: static !important;
+      }
     }
 
     p {
@@ -317,27 +342,62 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 20px;
+    padding: 48px 20px;
     text-align: center;
+    background: transparent;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    margin-top: 0;
 
     .empty-icon {
-      font-size: 64px;
+      font-size: 48px;
       margin-bottom: 16px;
-      opacity: 0.6;
+      opacity: 0.4;
+      color: $text-secondary;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      svg {
+        transform: none !important;
+        position: static !important;
+      }
     }
 
     p {
-      color: #6b7280;
+      color: $text-secondary;
       font-size: 16px;
-      font-weight: 600;
+      font-weight: 500;
       margin: 0 0 8px 0;
     }
 
     .empty-subtitle {
-      color: #9ca3af;
+      color: $text-tertiary;
       font-size: 14px;
       font-weight: 400;
-      margin: 0;
+      margin: 0 0 20px 0;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 6px;
+      border: 1px solid $primary-color;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: transparent;
+      color: $primary-color;
+
+      &.btn-primary {
+        background: $primary-color;
+        color: $white;
+
+        &:hover {
+          background: $primary-color-hover;
+        }
+      }
     }
   }
 
@@ -347,62 +407,95 @@
 
     .tournament-header {
       margin-bottom: 32px;
-      padding: 24px;
 
       .header-content {
         flex-direction: column;
-        gap: 24px;
-        text-align: center;
+        gap: 20px;
+        text-align: left;
 
         .title-section {
           .page-title {
-            font-size: 28px;
+            font-size: 24px;
           }
 
           .page-subtitle {
-            font-size: 16px;
+            font-size: 14px;
           }
         }
 
         .stats-section {
-          gap: 16px;
-          justify-content: center;
+          gap: 20px;
+          justify-content: flex-start;
 
           .stat-item {
-            padding: 12px 16px;
-
             .stat-number {
               font-size: 20px;
             }
 
             .stat-label {
-              font-size: 11px;
+              font-size: 12px;
             }
           }
         }
       }
     }
 
-    .tournament-section {
-      .section-header {
-        padding: 14px 16px;
+    .search-section {
+      margin-bottom: 32px;
 
-        .section-title-group {
-          .section-title {
-            font-size: 16px;
-          }
+      .search-bar {
+        .search-input-container {
+          max-width: 100%;
 
-          .section-count {
-            padding: 6px 12px;
-            font-size: 11px;
-            margin-right: 12px;
-          }
-
-          .toggle-icon {
+          .search-input {
+            padding: 12px 16px 12px 36px;
             font-size: 14px;
-            width: 20px;
-            height: 20px;
           }
+
+          .search-icon {
+            left: 12px;
+            font-size: 14px;
+          }
+
+          .clear-search {
+            right: 12px;
+            font-size: 12px;
+            width: 18px;
+            height: 18px;
+          }
+        }
+      }
+    }
+
+    .tournament-sections {
+      gap: 20px;
+
+      .tournament-section {
+        .section-header {
+          padding: 0 0 12px 0;
+
+          .section-title-group {
+            .section-title {
+              font-size: 16px;
+            }
+
+            .section-count {
+              padding: 3px 6px;
+              font-size: 11px;
+              margin-right: 8px;
+            }
+
+            .toggle-icon {
+              font-size: 12px;
+              width: 18px;
+              height: 18px;
+            }
+          }
+        }
+
+        .tournament-grid {
+          padding: 16px 0;
+          gap: 16px;
         }
       }
     }
@@ -410,18 +503,18 @@
     .loading-state,
     .error-state,
     .empty-state {
-      padding: 40px 16px;
+      padding: 32px 16px;
 
       .loading-spinner {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         border-width: 3px;
         margin-bottom: 12px;
       }
 
       .error-icon,
       .empty-icon {
-        font-size: 40px;
+        font-size: 36px;
         margin-bottom: 12px;
       }
 
@@ -439,62 +532,92 @@
     padding: 12px;
 
     .tournament-header {
-      padding: 20px;
+      margin-bottom: 24px;
 
       .header-content {
-        gap: 20px;
+        gap: 16px;
 
         .title-section {
           .page-title {
-            font-size: 24px;
+            font-size: 20px;
           }
 
           .page-subtitle {
-            font-size: 14px;
+            font-size: 13px;
           }
         }
 
         .stats-section {
-          gap: 12px;
+          gap: 16px;
           flex-wrap: wrap;
 
           .stat-item {
-            padding: 10px 12px;
-            flex: 1;
-            min-width: 80px;
-
             .stat-number {
               font-size: 18px;
             }
 
             .stat-label {
-              font-size: 10px;
+              font-size: 11px;
             }
           }
         }
       }
     }
 
-    .tournament-section {
-      .section-header {
-        padding: 12px 14px;
+    .search-section {
+      margin-bottom: 24px;
 
-        .section-title-group {
-          .section-title {
-            font-size: 14px;
+      .search-bar {
+        .search-input-container {
+          .search-input {
+            padding: 10px 14px 10px 32px;
+            font-size: 13px;
           }
 
-          .section-count {
-            padding: 4px 10px;
-            font-size: 10px;
-            margin-right: 10px;
+          .search-icon {
+            left: 10px;
+            font-size: 13px;
           }
 
-          .toggle-icon {
-            font-size: 12px;
-            width: 18px;
-            height: 18px;
+          .clear-search {
+            right: 10px;
+            font-size: 11px;
+            width: 16px;
+            height: 16px;
           }
+        }
+      }
+    }
+
+    .tournament-sections {
+      gap: 16px;
+
+      .tournament-section {
+        .section-header {
+          padding: 0 0 10px 0;
+
+          .section-title-group {
+            .section-title {
+              font-size: 14px;
+            }
+
+            .section-count {
+              padding: 2px 5px;
+              font-size: 10px;
+              margin-right: 6px;
+            }
+
+            .toggle-icon {
+              font-size: 11px;
+              width: 16px;
+              height: 16px;
+            }
+          }
+        }
+
+        .tournament-grid {
+          padding: 12px 0;
+          gap: 12px;
         }
       }
     }
@@ -502,18 +625,18 @@
     .loading-state,
     .error-state,
     .empty-state {
-      padding: 30px 12px;
+      padding: 24px 12px;
 
       .loading-spinner {
-        width: 28px;
-        height: 28px;
+        width: 24px;
+        height: 24px;
         border-width: 2px;
         margin-bottom: 10px;
       }
 
       .error-icon,
       .empty-icon {
-        font-size: 32px;
+        font-size: 28px;
         margin-bottom: 10px;
       }
 
@@ -535,26 +658,5 @@
   }
   100% {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
   }
 }

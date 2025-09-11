@@ -2,6 +2,14 @@ import axios from "axios";
 import { store } from "../store";
 import { logout } from "../store/slices/userSlice";
 
+// We'll need to get the QueryClient instance from the app
+// This will be set by the App component
+let queryClient: any = null;
+
+export const setQueryClient = (client: any) => {
+  queryClient = client;
+};
+
 // Session management utilities
 const SESSION_TIMEOUT_MESSAGE = "Your session has expired. Please log in again.";
 const LOGIN_REDIRECT_DELAY = 1000; // 1 second delay before redirect
@@ -12,6 +20,11 @@ const handleSessionTimeout = () => {
 
   if (isAuthenticated) {
     console.warn("Session expired. Logging out user.");
+
+    // Clear React Query cache to prevent data leakage
+    if (queryClient) {
+      queryClient.clear();
+    }
 
     // Clear user session
     store.dispatch(logout());
