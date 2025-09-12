@@ -200,7 +200,7 @@
         text-wrap: nowrap;
 
         &:hover {
-          opacity: 0.8;
+          opacity: 0.9;
         }
       }
     }
@@ -220,39 +220,27 @@
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s ease;
         text-wrap: nowrap;
 
         &:hover {
-          opacity: 0.8;
-          transform: translateY(-1px);
-        }
-
-        &:active {
-          transform: translateY(0);
+          opacity: 0.9;
         }
       }
 
       .bulk-update-score-btn {
         flex: 1;
-        background: var(--secondary-color);
-        color: var(--text-primary);
-        border: none;
+        border: 1px solid var(--primary-color);
+        color: var(--primary-color);
+        background-color: white;
         padding: 10px 20px;
         border-radius: 6px;
         font-size: 13px;
         text-wrap: nowrap;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s ease;
 
         &:hover {
-          background: var(--secondary-color-hover);
-          transform: translateY(-1px);
-        }
-
-        &:active {
-          transform: translateY(0);
+          background: var(--primary-color-light);
         }
       }
 
@@ -266,7 +254,6 @@
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s ease;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -276,12 +263,7 @@
         }
 
         &:hover {
-          background: #128c7e;
-          transform: translateY(-1px);
-        }
-
-        &:active {
-          transform: translateY(0);
+          opacity: 0.9;
         }
       }
     }
