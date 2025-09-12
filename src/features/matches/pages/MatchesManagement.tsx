@@ -627,6 +627,88 @@ const MatchesManagement: React.FC = () => {
     }, 2000); // Simulate export time
   };
 
+  const generateBulkWhatsAppMessage = (referee: any, refereeMatches: Match[]) => {
+    const refereeName = referee.fullName || `${referee.firstName || ""} ${referee.lastName || ""}`.trim();
+    const appUrl = window.location.origin;
+
+    // Get tournament info from the first match (assuming all matches are from same tournament)
+    const firstMatch = refereeMatches[0];
+    const tournamentName = firstMatch?.tournamentName || "Tournament";
+
+    // Group matches by category first, then by date within each category
+    const matchesByCategory = refereeMatches.reduce((acc, match) => {
+      const category = match.categoryName || "General";
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(match);
+      return acc;
+    }, {} as Record<string, Match[]>);
+
+    let message = `🏐 *Referee Assignment*
+
+*Tournament:* ${tournamentName}
+*Referee:* ${refereeName}
+*Total Matches:* ${refereeMatches.length}
+
+*Your Matches:*`;
+
+    // Add matches grouped by category and then by date
+    Object.entries(matchesByCategory).forEach(([category, categoryMatches]) => {
+      message += `\n\n*${category}:*`;
+
+      // Group matches within this category by date
+      const matchesByDate = categoryMatches.reduce((acc, match) => {
+        const date = match.startTime
+          ? new Date(match.startTime).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          : "TBD";
+        if (!acc[date]) acc[date] = [];
+        acc[date].push(match);
+        return acc;
+      }, {} as Record<string, Match[]>);
+
+      Object.entries(matchesByDate).forEach(([date, matches]) => {
+        message += `\n\n  *${date}:*`;
+        matches.forEach((match) => {
+          const time = match.startTime
+            ? new Date(match.startTime).toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              })
+            : "TBD";
+          const teams = `${match.homeTeamName || "TBD"} vs ${match.awayTeamName || "TBD"}`;
+          const venue = match.venue || "TBD";
+          const round = match.round ? ` - ${match.round}` : "";
+          message += `\n  • ${time} - ${teams} (${venue})${round}`;
+        });
+      });
+    });
+
+    message += `\n\n*Please confirm availability.*\n*Portal:* ${appUrl}`;
+
+    return message;
+  };
+
+  const shareRefereeMatchesOnWhatsApp = (referee: any) => {
+    if (!referee.phoneNumber) {
+      alert("Phone number not available for this referee");
+      return;
+    }
+
+    // Get all matches assigned to this referee
+    const refereeMatches = matches.filter((match) => match.referees?.some((ref) => ref.id === referee.id));
+
+    if (refereeMatches.length === 0) {
+      alert("No matches found for this referee");
+      return;
+    }
+
+    const message = generateBulkWhatsAppMessage(referee, refereeMatches);
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${referee.phoneNumber}?text=${encodedMessage}`;
+
+    window.open(whatsappUrl, "_blank");
+  };
+
   const getExportType = (): "venue" | "referee" | "team" | "general" => {
     if (filterVenue !== "all") return "venue";
     if (filterTeam !== "all") return "team";
@@ -974,6 +1056,7 @@ const MatchesManagement: React.FC = () => {
                 onUpdateScore={handleUpdateScore}
                 onAssignReferee={openAssignmentModal}
                 onUnassignReferee={handleUnassignReferee}
+                onShareRefereeWhatsApp={shareRefereeMatchesOnWhatsApp}
                 showAdminActions={isAdmin}
                 showUpdateScore={!match.isCompleted || isAdmin}
                 isSelectable={isAdmin}

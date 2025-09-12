@@ -266,6 +266,37 @@
           }
         }
 
+        .referee-actions {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+          flex-shrink: 0;
+
+          .whatsapp-button {
+            background: #25d366;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+
+            &:hover {
+              background: #128c7e;
+              transform: scale(1.1);
+            }
+
+            &:active {
+              transform: scale(0.95);
+            }
+          }
+        }
+
         .unassign-button {
           background: #fed7d7;
           color: #c53030;
