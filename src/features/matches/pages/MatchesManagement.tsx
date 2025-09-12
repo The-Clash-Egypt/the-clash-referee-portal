@@ -1270,7 +1270,7 @@ const MatchesManagement: React.FC = () => {
                 Cancel
               </button>
               <button className="btn btn-primary" onClick={sendBulkWhatsAppMessages} disabled={selectedReferee === ""}>
-                Send WhatsApp Message
+                Send Message
               </button>
             </div>
           </div>
