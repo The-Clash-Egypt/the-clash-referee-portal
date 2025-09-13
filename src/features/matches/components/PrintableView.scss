@@ -10,6 +10,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-sizing: border-box;
 
   @media (max-width: 768px) {
     background: rgba(0, 0, 0, 0.9);
@@ -172,18 +173,23 @@
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
+    overflow-x: hidden;
     flex: 1;
     min-height: 0;
     max-height: none; // Ensure content can expand fully
+    width: calc(100% - 40px);
+    box-sizing: border-box;
 
     @media (max-width: 768px) {
       margin: 16px;
       border-radius: 6px;
+      width: calc(100% - 32px);
     }
 
     @media (max-width: 480px) {
       margin: 12px;
       border-radius: 4px;
+      width: calc(100% - 24px);
     }
 
     .print-header-section {
@@ -276,6 +282,8 @@
 
     .matches-print-section {
       padding: 30px;
+      width: 100%;
+      box-sizing: border-box;
 
       @media (max-width: 768px) {
         padding: 20px;
@@ -317,14 +325,11 @@
 
       .matches-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         gap: 24px;
         margin-bottom: 20px;
-
-        @media (max-width: 1200px) {
-          grid-template-columns: repeat(2, 1fr);
-          gap: 20px;
-        }
+        width: 100%;
+        box-sizing: border-box;
 
         @media (max-width: 768px) {
           grid-template-columns: 1fr;
@@ -342,6 +347,9 @@
           padding: 24px;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
           transition: all 0.2s ease;
+          width: 100%;
+          box-sizing: border-box;
+          min-width: 0;
 
           @media (max-width: 768px) {
             padding: 20px;
