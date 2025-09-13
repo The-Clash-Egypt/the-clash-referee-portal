@@ -168,7 +168,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
                     <span className="referee-email">{referee.email}</span>
                   </div>
                   <div className="referee-actions">
-                    {referee.phoneNumber && (
+                    {showAdminActions && referee.phoneNumber && (
                       <button
                         className="whatsapp-button"
                         onClick={() => shareIndividualMatchOnWhatsApp(referee)}

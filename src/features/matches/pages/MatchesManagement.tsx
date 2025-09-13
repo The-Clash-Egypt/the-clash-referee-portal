@@ -13,7 +13,10 @@ import AssignRefereeModal from "../components/AssignRefereeModal";
 import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
 import UpdateScoreDialog from "../components/UpdateScoreDialog";
 import BulkUpdateScoreModal from "../components/BulkUpdateScoreModal";
-import PDFExport from "../components/PDFExport";
+import VenuePrintableView from "../components/VenuePrintableView";
+import RefereePrintableView from "../components/RefereePrintableView";
+import TeamPrintableView from "../components/TeamPrintableView";
+import PrintableView from "../components/PrintableView";
 import SearchableDropdown from "../components/SearchableDropdown";
 import VolleyballLoading from "../../../components/VolleyballLoading";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -21,7 +24,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "../../../store";
 import { Match, MatchGameScore, MatchFilters, FilterOptions } from "../types/match";
 import "./MatchesManagement.scss";
-import "../components/PDFExport.scss";
+import "../components/PrintableView.scss";
 import "../components/SearchableDropdown.scss";
 
 const MatchesManagement: React.FC = () => {
@@ -55,7 +58,8 @@ const MatchesManagement: React.FC = () => {
   const [bulkAssigningReferee, setBulkAssigningReferee] = useState(false);
   const [showBulkUpdateScoreModal, setShowBulkUpdateScoreModal] = useState(false);
   const [bulkUpdatingScores, setBulkUpdatingScores] = useState(false);
-  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [showPrintableView, setShowPrintableView] = useState(false);
+  const [printableViewType, setPrintableViewType] = useState<"venue" | "referee" | "team" | "general">("general");
   const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false);
   const [selectedReferee, setSelectedReferee] = useState<string>("");
 
@@ -620,13 +624,13 @@ const MatchesManagement: React.FC = () => {
     previousFilters.current.referee = value;
   };
 
-  const handlePDFExport = () => {
-    setIsExportingPDF(true);
-    // The PDFExport component will handle the actual export
-    // This is just for loading state management
-    setTimeout(() => {
-      setIsExportingPDF(false);
-    }, 2000); // Simulate export time
+  const handlePrintView = (type: "venue" | "referee" | "team" | "general") => {
+    setPrintableViewType(type);
+    setShowPrintableView(true);
+  };
+
+  const handleClosePrintView = () => {
+    setShowPrintableView(false);
   };
 
   const generateBulkWhatsAppMessage = (referee: any, refereeMatches: Match[]) => {
@@ -860,25 +864,44 @@ const MatchesManagement: React.FC = () => {
         <p>Manage all matches and referee assignments</p>
       </div>
 
-      {/* PDF Export Controls - Admin Only */}
+      {/* Print Controls - Admin Only */}
       {/* {isAdmin && (
-        <div className="export-controls">
-          <div className="export-info">
-            <h3 className="export-title">Export Matches</h3>
-            <p className="export-description">Export current matches to PDF. {getExportTitle()}</p>
+        <div className="print-controls-section">
+          <div className="print-info">
+            <h3 className="print-title">Print Matches</h3>
+            <p className="print-description">Print current matches with proper formatting. {getExportTitle()}</p>
           </div>
-          <div className="export-actions">
-            <PDFExport
-              matches={matches}
-              tournamentName={tournamentName || "Tournament"}
-              categoryName={filterCategory !== "all" ? filterCategory : undefined}
-              venueName={filterVenue !== "all" ? filterVenue : undefined}
-              teamName={filterTeam !== "all" ? filterTeam : undefined}
-              refereeName={filterReferee !== "all" ? filterReferee : undefined}
-              exportType={getExportType()}
-              onExport={handlePDFExport}
-              loading={isExportingPDF}
-            />
+          <div className="print-actions">
+            <button onClick={() => handlePrintView("general")} className="print-btn general" title="Print all matches">
+              Print All Matches
+            </button>
+            {filterVenue !== "all" && (
+              <button
+                onClick={() => handlePrintView("venue")}
+                className="print-btn venue"
+                title={`Print matches for venue: ${filterVenue}`}
+              >
+                Print Venue Matches
+              </button>
+            )}
+            {filterReferee !== "all" && (
+              <button
+                onClick={() => handlePrintView("referee")}
+                className="print-btn referee"
+                title={`Print matches for referee: ${getRefereeName(filterReferee)}`}
+              >
+                Print Referee Matches
+              </button>
+            )}
+            {filterTeam !== "all" && (
+              <button
+                onClick={() => handlePrintView("team")}
+                className="print-btn team"
+                title={`Print matches for team: ${getTeamName(filterTeam)}`}
+              >
+                Print Team Matches
+              </button>
+            )}
           </div>
         </div>
       )} */}
@@ -996,49 +1019,51 @@ const MatchesManagement: React.FC = () => {
       </div>
 
       {/* Bulk Assignment Controls */}
-      <div className="bulk-assignment-controls">
-        <div className="bulk-info">
-          {selectedMatches.size > 0 ? (
-            <>
-              <span className="selected-count">
-                {selectedMatches.size} match{selectedMatches.size !== 1 ? "es" : ""} selected
-              </span>
-              <button className="clear-selection-btn" onClick={clearSelectedMatches}>
-                Clear Selection
+      {isAdmin && (
+        <div className="bulk-assignment-controls">
+          <div className="bulk-info">
+            {selectedMatches.size > 0 ? (
+              <>
+                <span className="selected-count">
+                  {selectedMatches.size} match{selectedMatches.size !== 1 ? "es" : ""} selected
+                </span>
+                <button className="clear-selection-btn" onClick={clearSelectedMatches}>
+                  Clear Selection
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="selection-prompt">Select matches to bulk assign referee or update scores</span>
+                <button
+                  className="select-all-btn"
+                  onClick={() => {
+                    const allMatchIds = new Set(matches?.map((match) => match.id) || []);
+                    setSelectedMatches(allMatchIds);
+                  }}
+                >
+                  Select All ({matches.length})
+                </button>
+              </>
+            )}
+          </div>
+          {selectedMatches.size > 0 && (
+            <div className="bulk-actions">
+              <button className="bulk-assign-btn" onClick={() => setShowBulkAssignmentModal(true)}>
+                Bulk Assign Referee
               </button>
-            </>
-          ) : (
-            <>
-              <span className="selection-prompt">Select matches to bulk assign referee or update scores</span>
-              <button
-                className="select-all-btn"
-                onClick={() => {
-                  const allMatchIds = new Set(matches?.map((match) => match.id) || []);
-                  setSelectedMatches(allMatchIds);
-                }}
-              >
-                Select All ({matches.length})
+              <button className="bulk-update-score-btn" onClick={() => setShowBulkUpdateScoreModal(true)}>
+                Bulk Update Scores
               </button>
-            </>
+              <button className="bulk-whatsapp-btn" onClick={handleBulkWhatsAppShare}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: "8px" }}>
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
+                </svg>
+                Bulk WhatsApp
+              </button>
+            </div>
           )}
         </div>
-        {selectedMatches.size > 0 && (
-          <div className="bulk-actions">
-            <button className="bulk-assign-btn" onClick={() => setShowBulkAssignmentModal(true)}>
-              Bulk Assign Referee
-            </button>
-            <button className="bulk-update-score-btn" onClick={() => setShowBulkUpdateScoreModal(true)}>
-              Bulk Update Scores
-            </button>
-            <button className="bulk-whatsapp-btn" onClick={handleBulkWhatsAppShare}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: "8px" }}>
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
-              </svg>
-              Bulk WhatsApp
-            </button>
-          </div>
-        )}
-      </div>
+      )}
 
       <div className="matches-stats">
         <div className="matches-count">
@@ -1275,6 +1300,48 @@ const MatchesManagement: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Printable Views */}
+      {showPrintableView && (
+        <>
+          {printableViewType === "venue" && filterVenue !== "all" && (
+            <VenuePrintableView
+              matches={matches}
+              tournamentName={tournamentName || "Tournament"}
+              venueName={filterVenue}
+              categoryName={filterCategory !== "all" ? filterCategory : undefined}
+              onClose={handleClosePrintView}
+            />
+          )}
+          {printableViewType === "referee" && filterReferee !== "all" && (
+            <RefereePrintableView
+              matches={matches}
+              tournamentName={tournamentName || "Tournament"}
+              refereeName={getRefereeName(filterReferee)}
+              categoryName={filterCategory !== "all" ? filterCategory : undefined}
+              onClose={handleClosePrintView}
+            />
+          )}
+          {printableViewType === "team" && filterTeam !== "all" && (
+            <TeamPrintableView
+              matches={matches}
+              tournamentName={tournamentName || "Tournament"}
+              teamName={getTeamName(filterTeam)}
+              categoryName={filterCategory !== "all" ? filterCategory : undefined}
+              onClose={handleClosePrintView}
+            />
+          )}
+          {printableViewType === "general" && (
+            <PrintableView
+              matches={matches}
+              tournamentName={tournamentName || "Tournament"}
+              categoryName={filterCategory !== "all" ? filterCategory : undefined}
+              viewType="general"
+              onClose={handleClosePrintView}
+            />
+          )}
+        </>
       )}
     </div>
   );
