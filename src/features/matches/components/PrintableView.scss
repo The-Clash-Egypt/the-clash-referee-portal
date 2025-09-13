@@ -451,8 +451,10 @@
                   }
 
                   @media (max-width: 480px) {
-                    gap: 12px;
-                    flex-direction: column;
+                    gap: 8px;
+                    flex-direction: row;
+                    justify-content: space-between;
+                    align-items: center;
                     text-align: center;
                   }
 
@@ -470,7 +472,8 @@
                     @media (max-width: 480px) {
                       font-size: 14px;
                       min-width: auto;
-                      margin-bottom: 8px;
+                      flex: 1;
+                      margin-bottom: 0;
                     }
                   }
 
@@ -493,7 +496,8 @@
                       font-size: 18px;
                       padding: 4px 8px;
                       min-width: 60px;
-                      order: 2;
+                      order: 0;
+                      flex: 0;
                     }
                   }
                 }
