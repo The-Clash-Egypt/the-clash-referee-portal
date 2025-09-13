@@ -13,9 +13,6 @@ import AssignRefereeModal from "../components/AssignRefereeModal";
 import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
 import UpdateScoreDialog from "../components/UpdateScoreDialog";
 import BulkUpdateScoreModal from "../components/BulkUpdateScoreModal";
-import VenuePrintableView from "../components/VenuePrintableView";
-import RefereePrintableView from "../components/RefereePrintableView";
-import TeamPrintableView from "../components/TeamPrintableView";
 import PrintableView from "../components/PrintableView";
 import SearchableDropdown from "../components/SearchableDropdown";
 import VolleyballLoading from "../../../components/VolleyballLoading";
@@ -624,12 +621,12 @@ const MatchesManagement: React.FC = () => {
     previousFilters.current.referee = value;
   };
 
-  const handlePrintView = (type: "venue" | "referee" | "team" | "general") => {
+  const handleExportView = (type: "venue" | "referee" | "team" | "general") => {
     setPrintableViewType(type);
     setShowPrintableView(true);
   };
 
-  const handleClosePrintView = () => {
+  const handleCloseExportView = () => {
     setShowPrintableView(false);
   };
 
@@ -864,47 +861,29 @@ const MatchesManagement: React.FC = () => {
         <p>Manage all matches and referee assignments</p>
       </div>
 
-      {/* Print Controls - Admin Only */}
-      {/* {isAdmin && (
-        <div className="print-controls-section">
-          <div className="print-info">
-            <h3 className="print-title">Print Matches</h3>
-            <p className="print-description">Print current matches with proper formatting. {getExportTitle()}</p>
+      {/* Export Controls - Admin Only */}
+      {isAdmin && (
+        <div className="export-controls-section">
+          <div className="export-info">
+            <h3 className="export-title">Export Matches</h3>
+            <p className="export-description">
+              Export current matches to PDF with proper formatting. {getExportTitle()}
+            </p>
           </div>
-          <div className="print-actions">
-            <button onClick={() => handlePrintView("general")} className="print-btn general" title="Print all matches">
-              Print All Matches
+          <div className="export-actions">
+            <button
+              onClick={() => handleExportView(getExportType())}
+              className="export-btn"
+              title="Export matches to PDF"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: "8px" }}>
+                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+              </svg>
+              Export to PDF
             </button>
-            {filterVenue !== "all" && (
-              <button
-                onClick={() => handlePrintView("venue")}
-                className="print-btn venue"
-                title={`Print matches for venue: ${filterVenue}`}
-              >
-                Print Venue Matches
-              </button>
-            )}
-            {filterReferee !== "all" && (
-              <button
-                onClick={() => handlePrintView("referee")}
-                className="print-btn referee"
-                title={`Print matches for referee: ${getRefereeName(filterReferee)}`}
-              >
-                Print Referee Matches
-              </button>
-            )}
-            {filterTeam !== "all" && (
-              <button
-                onClick={() => handlePrintView("team")}
-                className="print-btn team"
-                title={`Print matches for team: ${getTeamName(filterTeam)}`}
-              >
-                Print Team Matches
-              </button>
-            )}
           </div>
         </div>
-      )} */}
+      )}
 
       <div className="filters-section">
         <button className={`filters-toggle ${showFilters ? "expanded" : ""}`} onClick={toggleFilters}>
@@ -1302,46 +1281,19 @@ const MatchesManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Printable Views */}
+      {/* Export Views */}
       {showPrintableView && (
-        <>
-          {printableViewType === "venue" && filterVenue !== "all" && (
-            <VenuePrintableView
-              matches={matches}
-              tournamentName={tournamentName || "Tournament"}
-              venueName={filterVenue}
-              categoryName={filterCategory !== "all" ? filterCategory : undefined}
-              onClose={handleClosePrintView}
-            />
-          )}
-          {printableViewType === "referee" && filterReferee !== "all" && (
-            <RefereePrintableView
-              matches={matches}
-              tournamentName={tournamentName || "Tournament"}
-              refereeName={getRefereeName(filterReferee)}
-              categoryName={filterCategory !== "all" ? filterCategory : undefined}
-              onClose={handleClosePrintView}
-            />
-          )}
-          {printableViewType === "team" && filterTeam !== "all" && (
-            <TeamPrintableView
-              matches={matches}
-              tournamentName={tournamentName || "Tournament"}
-              teamName={getTeamName(filterTeam)}
-              categoryName={filterCategory !== "all" ? filterCategory : undefined}
-              onClose={handleClosePrintView}
-            />
-          )}
-          {printableViewType === "general" && (
-            <PrintableView
-              matches={matches}
-              tournamentName={tournamentName || "Tournament"}
-              categoryName={filterCategory !== "all" ? filterCategory : undefined}
-              viewType="general"
-              onClose={handleClosePrintView}
-            />
-          )}
-        </>
+        <PrintableView
+          matches={matches}
+          tournamentName={tournamentName || "Tournament"}
+          categoryName={filterCategory !== "all" ? filterCategory : undefined}
+          viewType={printableViewType}
+          venueName={filterVenue !== "all" ? filterVenue : undefined}
+          refereeName={filterReferee !== "all" ? getRefereeName(filterReferee) : undefined}
+          teamName={filterTeam !== "all" ? getTeamName(filterTeam) : undefined}
+          formatName={filterFormat !== "all" ? filterFormat : undefined}
+          onClose={handleCloseExportView}
+        />
       )}
     </div>
   );

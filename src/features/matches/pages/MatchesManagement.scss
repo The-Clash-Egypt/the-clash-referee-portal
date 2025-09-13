@@ -25,7 +25,7 @@
     }
   }
 
-  .print-controls-section {
+  .export-controls-section {
     background: white;
     border-radius: 12px;
     padding: 24px;
@@ -33,17 +33,18 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     border: 1px solid #e2e8f0;
 
-    .print-info {
+    .export-info {
       margin-bottom: 20px;
+      text-align: center;
 
-      .print-title {
+      .export-title {
         color: #1a202c;
         font-size: 20px;
         font-weight: 600;
         margin: 0 0 8px 0;
       }
 
-      .print-description {
+      .export-description {
         color: #718096;
         font-size: 14px;
         margin: 0;
@@ -51,73 +52,47 @@
       }
     }
 
-    .print-actions {
+    .export-actions {
       display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
+      justify-content: center;
 
-      .print-btn {
-        padding: 12px 20px;
+      .export-btn {
+        background: var(--primary-color);
+        color: white;
         border: none;
+        padding: 14px 28px;
         border-radius: 8px;
-        font-size: 14px;
+        font-size: 16px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
         display: flex;
         align-items: center;
         gap: 8px;
+        box-shadow: 0 4px 8px rgba(0, 74, 173, 0.2);
+        min-width: 160px;
+        justify-content: center;
 
-        &.general {
-          background: #4299e1;
-          color: white;
-
-          &:hover {
-            background: #3182ce;
-            transform: translateY(-1px);
-          }
+        &:hover {
+          background: var(--primary-color-hover);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 12px rgba(0, 74, 173, 0.3);
         }
 
-        &.venue {
-          background: #48bb78;
-          color: white;
-
-          &:hover {
-            background: #38a169;
-            transform: translateY(-1px);
-          }
-        }
-
-        &.referee {
-          background: #ed8936;
-          color: white;
-
-          &:hover {
-            background: #dd6b20;
-            transform: translateY(-1px);
-          }
-        }
-
-        &.team {
-          background: #9f7aea;
-          color: white;
-
-          &:hover {
-            background: #805ad5;
-            transform: translateY(-1px);
-          }
+        &:active {
+          transform: translateY(0);
+          box-shadow: 0 4px 8px rgba(0, 74, 173, 0.2);
         }
 
         &:disabled {
-          background: #e2e8f0;
-          color: #a0aec0;
+          background: var(--gray-400);
           cursor: not-allowed;
           transform: none;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
 
-          &:hover {
-            background: #e2e8f0;
-            transform: none;
-          }
+        svg {
+          flex-shrink: 0;
         }
       }
     }
