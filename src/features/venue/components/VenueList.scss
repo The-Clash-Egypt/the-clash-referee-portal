@@ -1,0 +1,80 @@
+.venue-list {
+  &__content {
+    min-height: 200px;
+  }
+
+  &__loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+
+    p {
+      margin: 16px 0 0 0;
+      font-size: 16px;
+    }
+  }
+
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+
+    h3 {
+      color: var(--text-primary);
+      font-size: 20px;
+      font-weight: 600;
+      margin: 16px 0 8px 0;
+    }
+
+    p {
+      color: var(--text-secondary);
+      font-size: 16px;
+      margin: 0;
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 16px;
+  }
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-icon {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .venue-list {
+    &__grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+  }
+}

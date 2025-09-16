@@ -16,6 +16,7 @@ import BulkUpdateScoreModal from "../components/BulkUpdateScoreModal";
 import PrintableView from "../components/PrintableView";
 import SearchableDropdown from "../components/SearchableDropdown";
 import VolleyballLoading from "../../../components/VolleyballLoading";
+import { VenueManagement } from "../../venue/pages";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../store";
@@ -59,7 +60,28 @@ const MatchesManagement: React.FC = () => {
   const [printableViewType, setPrintableViewType] = useState<"venue" | "referee" | "team" | "general">("general");
   const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false);
   const [selectedReferee, setSelectedReferee] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"matches" | "venues">("matches");
+  const [activeTab, setActiveTab] = useState<"matches" | "venues">(() => {
+    // Check if we're coming from tournaments page specifically
+    const isFromTournaments =
+      document.referrer &&
+      document.referrer.includes(window.location.origin) &&
+      document.referrer.includes("/tournaments");
+
+    if (isFromTournaments) {
+      // Always show matches when coming from tournaments page
+      return "matches";
+    }
+
+    // Otherwise, use persisted tab
+    const savedTab = localStorage.getItem("matches-management-active-tab");
+    return savedTab === "matches" || savedTab === "venues" ? savedTab : "matches";
+  });
+
+  // Handle tab change with localStorage persistence
+  const handleTabChange = (tab: "matches" | "venues") => {
+    setActiveTab(tab);
+    localStorage.setItem("matches-management-active-tab", tab);
+  };
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -898,7 +920,7 @@ const MatchesManagement: React.FC = () => {
     <div className="matches-management">
       <div className="dashboard-header">
         <h1>{tournamentName}</h1>
-        <p>Manage all matches and referee assignments</p>
+        <p>Manage all matches, referee assignments and venues</p>
       </div>
 
       {/* Tab Navigation */}
@@ -906,13 +928,13 @@ const MatchesManagement: React.FC = () => {
         <div className="tab-navigation">
           <button
             className={`tab-button ${activeTab === "matches" ? "active" : ""}`}
-            onClick={() => setActiveTab("matches")}
+            onClick={() => handleTabChange("matches")}
           >
             Matches
           </button>
           <button
             className={`tab-button ${activeTab === "venues" ? "active" : ""}`}
-            onClick={() => setActiveTab("venues")}
+            onClick={() => handleTabChange("venues")}
           >
             Venues
           </button>
@@ -1363,28 +1385,7 @@ const MatchesManagement: React.FC = () => {
       {/* Venues Tab */}
       {activeTab === "venues" && (
         <div className="venues-tab">
-          <div className="venues-header">
-            <h2>Venue Management</h2>
-            <p>Manage venues, passwords, and access controls for this tournament</p>
-          </div>
-
-          <div className="venues-content">
-            <div className="venues-placeholder">
-              <div className="placeholder-icon">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12,2A3,3 0 0,1 15,5V7A3,3 0 0,1 12,10A3,3 0 0,1 9,7V5A3,3 0 0,1 12,2M19,6H17A5,5 0 0,0 7,6H5A2,2 0 0,0 3,8V20A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V8A2,2 0 0,0 19,6M12,17A2,2 0 0,1 10,15A2,2 0 0,1 12,13A2,2 0 0,1 14,15A2,2 0 0,1 12,17Z" />
-                </svg>
-              </div>
-              <h3>Venue Management Coming Soon</h3>
-              <p>This feature will allow you to:</p>
-              <ul>
-                <li>Add passwords to venues</li>
-                <li>Share venue links and QR codes</li>
-                <li>Lock/unlock matches for specific venues</li>
-                <li>Control venue access and visibility</li>
-              </ul>
-            </div>
-          </div>
+          <VenueManagement tournamentId={id} />
         </div>
       )}
     </div>

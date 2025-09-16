@@ -39,6 +39,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  text-wrap: nowrap;
   gap: 8px;
 
   &:hover {

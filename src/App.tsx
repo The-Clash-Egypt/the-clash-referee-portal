@@ -13,6 +13,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
 import Tournaments from "./features/tournaments/pages";
 import MatchesManagement from "./features/matches/pages/MatchesManagement";
+import GuestVenuePage from "./features/venue/pages/GuestVenuePage";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -61,6 +62,7 @@ const App: React.FC = () => {
                     </ProtectedRoute>
                   }
                 />
+                <Route path="venue/shared" element={<GuestVenuePage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </main>
