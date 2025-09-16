@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Venue, UpdateVenueDTO } from "../types/venue";
 import "./VenueCard.scss";
 
@@ -26,6 +26,7 @@ const VenueCard: React.FC<VenueCardProps> = ({
   const [editedPassword, setEditedPassword] = useState(venue.password || "");
   const nameInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
+  const nameEditContainerRef = useRef<HTMLDivElement>(null);
 
   // Focus input when editing starts
   useEffect(() => {
@@ -47,6 +48,29 @@ const VenueCard: React.FC<VenueCardProps> = ({
     setEditedName(venue.name);
     setEditedPassword(venue.password || "");
   }, [venue.name, venue.password]);
+
+  // Handle click outside to cancel editing
+  const handleClickOutside = useCallback(
+    (event: MouseEvent) => {
+      if (
+        isEditingName &&
+        nameEditContainerRef.current &&
+        !nameEditContainerRef.current.contains(event.target as Node)
+      ) {
+        handleNameCancel();
+      }
+    },
+    [isEditingName]
+  );
+
+  useEffect(() => {
+    if (isEditingName) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [isEditingName, handleClickOutside]);
 
   const handleNameEdit = () => {
     setIsEditingName(true);
@@ -101,14 +125,13 @@ const VenueCard: React.FC<VenueCardProps> = ({
       <div className="venue-card__header">
         <div className="venue-card__title">
           {isEditingName ? (
-            <div className="venue-card__name-edit">
+            <div className="venue-card__name-edit" ref={nameEditContainerRef}>
               <input
                 ref={nameInputRef}
                 type="text"
                 value={editedName}
                 onChange={(e) => setEditedName(e.target.value)}
                 onKeyDown={(e) => handleKeyPress(e, "save")}
-                onBlur={handleNameSave}
                 className="venue-card__name-input"
                 disabled={isUpdating}
               />
