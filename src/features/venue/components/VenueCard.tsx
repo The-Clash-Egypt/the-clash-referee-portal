@@ -252,7 +252,7 @@ const VenueCard: React.FC<VenueCardProps> = ({
         </div>
 
         {/* Admin message explaining lock status */}
-        <div className="venue-card__admin-message">
+        <div className={`venue-card__admin-message ${venue.isLocked ? "venue-card__admin-message--locked" : ""}`}>
           <div className="venue-card__admin-icon">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M11,16.5L18,9.5L16.5,8L11,13.5L7.5,10L6,11.5L11,16.5Z" />

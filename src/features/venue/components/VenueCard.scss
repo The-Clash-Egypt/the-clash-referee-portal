@@ -368,6 +368,24 @@
         font-weight: 600;
       }
     }
+
+    &--locked {
+      background: #fef2f2;
+      border-left-color: var(--error-color);
+      color: var(--error-color);
+
+      .venue-card__admin-icon svg {
+        color: var(--error-color);
+      }
+
+      .venue-card__admin-text {
+        color: var(--error-color);
+
+        strong {
+          color: var(--error-color);
+        }
+      }
+    }
   }
 
   &__token {
