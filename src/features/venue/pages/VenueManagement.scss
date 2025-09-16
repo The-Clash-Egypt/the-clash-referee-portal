@@ -1,13 +1,11 @@
 .venue-management {
   margin: 0 auto;
-  padding: 0 16px;
 
   &__header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
-    padding: 12px 0;
   }
 
   &__title {
@@ -104,13 +102,10 @@
 // Responsive design
 @media (max-width: 768px) {
   .venue-management {
-    padding: 0 16px;
-
     &__header {
       flex-direction: column;
       align-items: stretch;
       gap: 16px;
-      padding: 16px 0;
     }
 
     &__title {

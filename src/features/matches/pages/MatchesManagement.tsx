@@ -967,7 +967,7 @@ const MatchesManagement: React.FC = () => {
 
           <div className="filters-section">
             <button className={`filters-toggle ${showFilters ? "expanded" : ""}`} onClick={toggleFilters}>
-              <span>Filters & Search</span>
+              <span>Filters</span>
               <span className="toggle-icon">▼</span>
             </button>
 

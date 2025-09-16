@@ -21,6 +21,7 @@ const VenueCard: React.FC<VenueCardProps> = ({
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [editedName, setEditedName] = useState(venue.name);
   const [editedPassword, setEditedPassword] = useState(venue.password || "");
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -79,6 +80,10 @@ const VenueCard: React.FC<VenueCardProps> = ({
 
   const handleLockToggle = () => {
     onUpdate(venue.id, { name: venue.name, isLocked: !venue.isLocked });
+  };
+
+  const togglePasswordVisibility = () => {
+    setIsPasswordVisible(!isPasswordVisible);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent, action: "save" | "cancel") => {
@@ -204,19 +209,68 @@ const VenueCard: React.FC<VenueCardProps> = ({
             </div>
           ) : (
             <div className="venue-card__password-display">
-              <span>Password: {venue.password || "Not set"}</span>
-              <button
-                className="venue-card__password-edit-btn"
-                onClick={handlePasswordEdit}
-                disabled={isUpdating}
-                title="Edit password"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
-                </svg>
-              </button>
+              <div className="venue-card__password-content">
+                <div className="venue-card__password-text-container">
+                  <span>Password: </span>
+                  <span
+                    className={`venue-card__password-text ${!isPasswordVisible && venue.password ? "blurred" : ""}`}
+                  >
+                    {venue.password || "Not set"}
+                  </span>
+                </div>
+                <div className="venue-card__password-actions">
+                  {venue.password && (
+                    <button
+                      className="venue-card__password-toggle-btn"
+                      onClick={togglePasswordVisibility}
+                      disabled={isUpdating}
+                      title={isPasswordVisible ? "Hide password" : "Show password"}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        {isPasswordVisible ? (
+                          <path d="M11.83,9L15,12.16C15,12.11 15,12.05 15,12A3,3 0 0,0 12,9C11.94,9 11.89,9 11.83,9M7.53,9.8L9.08,11.35C9.03,11.56 9,11.77 9,12A3,3 0 0,0 12,15C12.22,15 12.44,14.97 12.65,14.92L14.2,16.47C13.53,16.8 12.79,17 12,17A5,5 0 0,1 7,12C7,11.21 7.2,10.47 7.53,9.8M2,4.27L4.28,6.55L4.73,7C3.08,8.3 1.78,10 1,12C2.73,16.39 7,19.5 12,19.5C13.55,19.5 15.03,19.2 16.38,18.66L16.81,19.09L19.73,22L21,20.73L3.27,3M12,7A5,5 0 0,1 17,12C17,12.64 16.87,13.26 16.64,13.82L19.57,16.75C21.07,15.5 22.27,13.86 23.09,12C21.27,7.61 17,4.5 12,4.5C10.6,4.5 9.26,4.75 8,5.2L10.17,7.35C10.76,7.13 11.37,7 12,7Z" />
+                        ) : (
+                          <path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" />
+                        )}
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    className="venue-card__password-edit-btn"
+                    onClick={handlePasswordEdit}
+                    disabled={isUpdating}
+                    title="Edit password"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
+        </div>
+
+        {/* Admin message explaining lock status */}
+        <div className="venue-card__admin-message">
+          <div className="venue-card__admin-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M11,16.5L18,9.5L16.5,8L11,13.5L7.5,10L6,11.5L11,16.5Z" />
+            </svg>
+          </div>
+          <div className="venue-card__admin-text">
+            <strong>Admin Info:</strong>{" "}
+            {venue.isLocked ? (
+              <span>
+                This venue is <strong>locked</strong>. No one can access matches and update scores
+              </span>
+            ) : (
+              <span>
+                This venue is <strong>unlocked</strong>. Anyone with the share link can access matches and update scores
+                {venue.password ? ". If a password is set, users will need to enter it to access the venue" : ""}.
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
