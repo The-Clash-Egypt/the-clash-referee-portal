@@ -99,6 +99,7 @@ export interface VenueDetailResponse {
     accessToken: string;
     isLocked: boolean;
     tournamentId: string;
+    tournamentName: string;
     createdAt: string;
     matches: VenueMatch[];
   };

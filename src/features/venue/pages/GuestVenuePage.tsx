@@ -145,6 +145,7 @@ const GuestVenuePage: React.FC = () => {
     return (
       <div className="guest-venue-page">
         <div className="guest-venue-page__header">
+          <h2 className="tournament-name">{venueData.tournamentName}</h2>
           <h1>{venueData.name}</h1>
         </div>
         <div className="guest-venue-page__content">
@@ -168,6 +169,7 @@ const GuestVenuePage: React.FC = () => {
     return (
       <div className="guest-venue-page">
         <div className="guest-venue-page__header">
+          <h2 className="tournament-name">{venueData.tournamentName}</h2>
           <h1>{venueData.name}</h1>
         </div>
         <div className="guest-venue-page__content">
@@ -238,6 +240,7 @@ const GuestVenuePage: React.FC = () => {
   return (
     <div className="guest-venue-page">
       <div className="guest-venue-page__header">
+        <h2 className="tournament-name">{venueData.tournamentName}</h2>
         <h1>{venueData.name}</h1>
       </div>
 

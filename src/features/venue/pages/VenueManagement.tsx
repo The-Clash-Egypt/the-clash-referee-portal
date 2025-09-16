@@ -33,13 +33,9 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
     }));
   };
 
-  // Handle filters
+  // Handle filters (not used - filtering is done locally in VenueList)
   const handleFilter = (newFilters: Partial<VenueFilters>) => {
-    setFilters((prev) => ({
-      ...prev,
-      ...newFilters,
-      pageNumber: 1,
-    }));
+    // No-op - filtering is handled locally in VenueList component
   };
 
   // Handle update venue directly
@@ -117,7 +113,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
           isLoading={isLoading}
           searchTerm={searchTerm}
           showActions={true}
-          showSearchAndFilters={false}
+          showSearchAndFilters={true}
           generatingTokenFor={generatingTokenFor}
           isUpdating={updateVenueMutation.isPending}
         />
