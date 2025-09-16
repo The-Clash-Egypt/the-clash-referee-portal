@@ -25,74 +25,160 @@
     }
   }
 
-  .export-controls-section {
-    background: white;
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 24px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    border: 1px solid #e2e8f0;
+  .tab-navigation {
+    display: flex;
+    margin-bottom: 32px;
+    border-bottom: 2px solid var(--border-primary);
 
-    .export-info {
-      margin-bottom: 20px;
-      text-align: center;
+    .tab-button {
+      position: relative;
+      padding: 8px 24px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-bottom: 3px solid transparent;
 
-      .export-title {
-        color: #1a202c;
-        font-size: 20px;
+      &:hover {
+        color: var(--text-primary);
+        background: var(--bg-secondary);
+      }
+
+      &.active {
+        color: var(--primary-color);
+        font-weight: 600;
+        border-bottom-color: var(--primary-color);
+        background: transparent;
+
+        &:hover {
+          color: var(--primary-color);
+          background: transparent;
+        }
+      }
+    }
+  }
+
+  .venues-tab {
+    .venues-header {
+      margin-bottom: 24px;
+
+      h2 {
+        color: var(--text-primary);
+        font-size: 24px;
         font-weight: 600;
         margin: 0 0 8px 0;
       }
 
-      .export-description {
-        color: #718096;
-        font-size: 14px;
+      p {
+        color: var(--text-secondary);
+        font-size: 16px;
         margin: 0;
-        line-height: 1.5;
+        font-weight: 400;
       }
     }
 
-    .export-actions {
-      display: flex;
-      justify-content: center;
+    .venues-content {
+      .venues-placeholder {
+        background: white;
+        border-radius: 12px;
+        padding: 48px 32px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--border-primary);
 
-      .export-btn {
+        .placeholder-icon {
+          color: var(--primary-color);
+          margin-bottom: 24px;
+          opacity: 0.6;
+        }
+
+        h3 {
+          color: var(--text-primary);
+          font-size: 20px;
+          font-weight: 600;
+          margin: 0 0 16px 0;
+        }
+
+        p {
+          color: var(--text-secondary);
+          font-size: 16px;
+          margin: 0 0 16px 0;
+        }
+
+        ul {
+          text-align: left;
+          max-width: 400px;
+          margin: 0 auto;
+          color: var(--text-secondary);
+          font-size: 14px;
+          line-height: 1.6;
+
+          li {
+            margin-bottom: 8px;
+            padding-left: 8px;
+          }
+        }
+      }
+    }
+  }
+
+  .management-actions-section {
+    margin-bottom: 24px;
+
+    .export-controls-compact {
+      background: white;
+      border-radius: 8px;
+      padding: 16px 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border-primary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .export-info-compact {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .export-label {
+          color: var(--text-primary);
+          font-size: 16px;
+          font-weight: 600;
+        }
+
+        .export-description {
+          color: var(--text-secondary);
+          font-size: 14px;
+          font-weight: 500;
+          line-height: 1.3;
+        }
+
+        .export-count {
+          color: var(--text-tertiary);
+          font-size: 12px;
+          font-weight: 500;
+        }
+      }
+
+      .export-btn-compact {
         background: var(--primary-color);
         color: white;
         border: none;
-        padding: 14px 28px;
-        border-radius: 8px;
-        font-size: 16px;
+        padding: 12px 16px;
+        border-radius: 6px;
+        font-size: 14px;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s ease;
         display: flex;
         align-items: center;
-        gap: 8px;
-        box-shadow: 0 4px 8px rgba(0, 74, 173, 0.2);
-        min-width: 160px;
         justify-content: center;
+        gap: 6px;
 
         &:hover {
           background: var(--primary-color-hover);
-          transform: translateY(-2px);
-          box-shadow: 0 6px 12px rgba(0, 74, 173, 0.3);
-        }
-
-        &:active {
-          transform: translateY(0);
-          box-shadow: 0 4px 8px rgba(0, 74, 173, 0.2);
-        }
-
-        &:disabled {
-          background: var(--gray-400);
-          cursor: not-allowed;
-          transform: none;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        svg {
-          flex-shrink: 0;
         }
       }
     }
@@ -304,7 +390,7 @@
         flex: 1;
         border: 1px solid var(--primary-color);
         color: var(--primary-color);
-        background-color: white;
+        background-color: transparent;
         padding: 10px 20px;
         border-radius: 6px;
         font-size: 13px;
@@ -652,6 +738,45 @@
       font-size: 28px;
     }
 
+    .tab-navigation {
+      .tab-button {
+        padding: 12px 20px;
+        font-size: 14px;
+      }
+    }
+
+    .management-actions-section {
+      gap: 12px;
+
+      .export-controls-compact {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+        text-align: center;
+
+        .export-info-compact {
+          text-align: center;
+
+          .export-label {
+            font-size: 14px;
+          }
+
+          .export-description {
+            font-size: 13px;
+          }
+
+          .export-count {
+            font-size: 11px;
+          }
+        }
+
+        .export-btn-compact {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+    }
+
     .filters-section {
       gap: 12px;
 
@@ -760,6 +885,70 @@
 
     .dashboard-header h1 {
       font-size: 24px;
+    }
+
+    .tab-navigation {
+      .tab-button {
+        padding: 10px 16px;
+        font-size: 13px;
+      }
+    }
+
+    .venues-tab {
+      .venues-content {
+        .venues-placeholder {
+          padding: 32px 20px;
+
+          .placeholder-icon {
+            margin-bottom: 16px;
+
+            svg {
+              width: 48px;
+              height: 48px;
+            }
+          }
+
+          h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+          }
+
+          p {
+            font-size: 14px;
+            margin-bottom: 12px;
+          }
+
+          ul {
+            font-size: 13px;
+            max-width: 300px;
+          }
+        }
+      }
+    }
+
+    .management-actions-section {
+      .export-controls-compact {
+        padding: 12px 16px;
+
+        .export-info-compact {
+          .export-label {
+            font-size: 13px;
+          }
+
+          .export-description {
+            font-size: 12px;
+          }
+
+          .export-count {
+            font-size: 10px;
+          }
+        }
+
+        .export-btn-compact {
+          padding: 8px 12px;
+          font-size: 13px;
+        }
+      }
     }
 
     .bulk-assignment-controls {

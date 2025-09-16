@@ -15,6 +15,8 @@ export interface Match {
   awayScore?: number;
   gameScores?: MatchGameScore[];
   referees?: Referee[];
+  homeTeamMembers?: TeamMember[];
+  awayTeamMembers?: TeamMember[];
   isCompleted: boolean;
 }
 
@@ -45,6 +47,34 @@ export interface Referee {
   fullName: string;
   email: string;
   phoneNumber: string;
+}
+
+export interface TeamMember {
+  id: string;
+  teamMemberId: string;
+  playerId: string;
+  isCaptain: boolean;
+  firstName: string;
+  lastName: string;
+  nationality: string;
+  gender: string;
+  notes?: string;
+  registrationStatus: string;
+  paymentStatus: string;
+  consent: boolean;
+  addedAt: string;
+  phoneNumber: string;
+  email: string;
+  fee?: TournamentFee;
+}
+
+export interface TournamentFee {
+  id: string;
+  feeName: string;
+  amount: number;
+  currency: string;
+  feeType: string;
+  isRequired: boolean;
 }
 
 export interface User {

@@ -124,7 +124,22 @@ const MatchCard: React.FC<MatchCardProps> = ({
       <div className="teams-section">
         <div className="team home-team">
           <div className="team-info">
-            <span className="team-name">{match.homeTeamName || "TBD"}</span>
+            <div className="team-name-container">
+              <span className="team-name">{match.homeTeamName || "TBD"}</span>
+              {/* Home Team Members */}
+              {match.homeTeamMembers && match.homeTeamMembers.length > 0 && (
+                <div className="team-members-compact">
+                  <div className="members-list-compact">
+                    {match.homeTeamMembers.slice(0, 3).map((member, index) => (
+                      <span key={member.id} className="member-compact">
+                        {member.firstName} {member.lastName}
+                        {member.isCaptain && <span>(C)</span>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="team-game-scores">
               {match.gameScores
                 ?.sort((a, b) => a.gameNumber - b.gameNumber)
@@ -140,7 +155,22 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
         <div className="team away-team">
           <div className="team-info">
-            <span className="team-name">{match.awayTeamName || "TBD"}</span>
+            <div className="team-name-container">
+              <span className="team-name">{match.awayTeamName || "TBD"}</span>
+              {/* Away Team Members */}
+              {match.awayTeamMembers && match.awayTeamMembers.length > 0 && (
+                <div className="team-members-compact">
+                  <div className="members-list-compact">
+                    {match.awayTeamMembers.slice(0, 3).map((member, index) => (
+                      <span key={member.id} className="member-compact">
+                        {member.firstName} {member.lastName}
+                        {member.isCaptain && <span>(C)</span>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="team-game-scores">
               {match.gameScores
                 ?.sort((a, b) => a.gameNumber - b.gameNumber)

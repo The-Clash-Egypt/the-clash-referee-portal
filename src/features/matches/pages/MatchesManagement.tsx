@@ -59,6 +59,7 @@ const MatchesManagement: React.FC = () => {
   const [printableViewType, setPrintableViewType] = useState<"venue" | "referee" | "team" | "general">("general");
   const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false);
   const [selectedReferee, setSelectedReferee] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"matches" | "venues">("matches");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -782,17 +783,56 @@ const MatchesManagement: React.FC = () => {
   };
 
   const getExportTitle = () => {
-    const type = getExportType();
-    switch (type) {
-      case "venue":
-        return `Venue: ${filterVenue}`;
-      case "referee":
-        return `Referee: ${getRefereeName(filterReferee)}`;
-      case "team":
-        return `Team: ${getTeamName(filterTeam)}`;
-      default:
-        return "All Matches";
+    const activeFilters = [];
+
+    // Add status filter
+    if (filterStatus !== "all") {
+      activeFilters.push(`${filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)} matches`);
     }
+
+    // Add category filter
+    if (filterCategory !== "all") {
+      activeFilters.push(`Category: ${filterCategory}`);
+    }
+
+    // Add format filter
+    if (filterFormat !== "all") {
+      activeFilters.push(`Format: ${filterFormat}`);
+    }
+
+    // Add round filter
+    if (filterRound !== "all") {
+      activeFilters.push(`Round: ${filterRound}`);
+    }
+
+    // Add venue filter
+    if (filterVenue !== "all") {
+      activeFilters.push(`Venue: ${filterVenue}`);
+    }
+
+    // Add team filter
+    if (filterTeam !== "all") {
+      activeFilters.push(`Team: ${getTeamName(filterTeam)}`);
+    }
+
+    // Add referee filter
+    if (filterReferee !== "all") {
+      activeFilters.push(`Referee: ${getRefereeName(filterReferee)}`);
+    }
+
+    // Add search term if present
+    if (searchTerm) {
+      activeFilters.push(`Search: "${searchTerm}"`);
+    }
+
+    // If no filters are active, return default
+    if (activeFilters.length === 0) {
+      return "All Matches";
+    }
+
+    // Join filters with commas and limit length for display
+    const title = activeFilters.join(", ");
+    return title;
   };
 
   // Generate pagination page numbers
@@ -861,439 +901,491 @@ const MatchesManagement: React.FC = () => {
         <p>Manage all matches and referee assignments</p>
       </div>
 
-      {/* Export Controls - Admin Only */}
+      {/* Tab Navigation */}
       {isAdmin && (
-        <div className="export-controls-section">
-          <div className="export-info">
-            <h3 className="export-title">Export Matches</h3>
-            <p className="export-description">
-              Export current matches to PDF with proper formatting. {getExportTitle()}
-            </p>
-          </div>
-          <div className="export-actions">
-            <button
-              onClick={() => handleExportView(getExportType())}
-              className="export-btn"
-              title="Export matches to PDF"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: "8px" }}>
-                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
-              </svg>
-              Export to PDF
-            </button>
-          </div>
+        <div className="tab-navigation">
+          <button
+            className={`tab-button ${activeTab === "matches" ? "active" : ""}`}
+            onClick={() => setActiveTab("matches")}
+          >
+            Matches
+          </button>
+          <button
+            className={`tab-button ${activeTab === "venues" ? "active" : ""}`}
+            onClick={() => setActiveTab("venues")}
+          >
+            Venues
+          </button>
         </div>
       )}
 
-      <div className="filters-section">
-        <button className={`filters-toggle ${showFilters ? "expanded" : ""}`} onClick={toggleFilters}>
-          <span>Filters & Search</span>
-          <span className="toggle-icon">▼</span>
-        </button>
-
-        <div className={`filters-row ${showFilters ? "visible" : ""}`}>
-          <div className="filter-group">
-            <select
-              value={filterCategory}
-              onChange={(e) => handleFilterCategoryChange(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">All Categories</option>
-              {filterOptions.categories?.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <select
-              value={filterFormat}
-              onChange={(e) => handleFilterFormatChange(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">All Formats</option>
-              {filterOptions.formats?.map((format) => (
-                <option key={format} value={format}>
-                  {format}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <select
-              value={filterRound}
-              onChange={(e) => handleFilterRoundChange(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">All Rounds</option>
-              {filterOptions.rounds?.map((round) => (
-                <option key={round} value={round}>
-                  {round}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <select
-              value={filterVenue}
-              onChange={(e) => handleFilterVenueChange(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">All Venues</option>
-              {filterOptions.venues?.map((venue) => (
-                <option key={venue} value={venue}>
-                  {venue}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <select
-              value={filterStatus}
-              onChange={(e) => handleFilterStatusChange(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">All Status</option>
-              <option value="upcoming">Upcoming</option>
-              <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <SearchableDropdown
-              options={filterOptions.teams || []}
-              value={filterTeam}
-              onChange={handleFilterTeamChange}
-              placeholder="All Teams"
-              className="filter-select"
-              showAllOption={true}
-              allOptionText="All Teams"
-            />
-          </div>
-
-          <div className="filter-group">
-            <SearchableDropdown
-              options={filterOptions.referees || []}
-              value={filterReferee}
-              onChange={handleFilterRefereeChange}
-              placeholder="All Referees"
-              className="filter-select"
-              showAllOption={true}
-              allOptionText="All Referees"
-            />
-          </div>
-
-          <div className="filter-group">
-            <button onClick={clearAllFilters} className="clear-filters-btn">
-              Clear Filters
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Bulk Assignment Controls */}
-      {isAdmin && (
-        <div className="bulk-assignment-controls">
-          <div className="bulk-info">
-            {selectedMatches.size > 0 ? (
-              <>
-                <span className="selected-count">
-                  {selectedMatches.size} match{selectedMatches.size !== 1 ? "es" : ""} selected
-                </span>
-                <button className="clear-selection-btn" onClick={clearSelectedMatches}>
-                  Clear Selection
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="selection-prompt">Select matches to bulk assign referee or update scores</span>
-                <button
-                  className="select-all-btn"
-                  onClick={() => {
-                    const allMatchIds = new Set(matches?.map((match) => match.id) || []);
-                    setSelectedMatches(allMatchIds);
-                  }}
-                >
-                  Select All ({matches.length})
-                </button>
-              </>
-            )}
-          </div>
-          {selectedMatches.size > 0 && (
-            <div className="bulk-actions">
-              <button className="bulk-assign-btn" onClick={() => setShowBulkAssignmentModal(true)}>
-                Bulk Assign Referee
-              </button>
-              <button className="bulk-update-score-btn" onClick={() => setShowBulkUpdateScoreModal(true)}>
-                Bulk Update Scores
-              </button>
-              <button className="bulk-whatsapp-btn" onClick={handleBulkWhatsAppShare}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: "8px" }}>
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
-                </svg>
-                Bulk WhatsApp
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="matches-stats">
-        <div className="matches-count">
-          <span className="stat-label">Total Matches</span>
-          <span className="stat-value">{totalMatches}</span>
-          {matches.length > 0 && matches.length !== totalMatches && (
-            <span className="current-page-info">(Showing {matches.length} on this page)</span>
-          )}
-        </div>
-        <div className="status-stats">
-          <div className="stat-item">
-            <span className="stat-label">Upcoming</span>
-            <span className="stat-value">{incomingCount}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">In Progress</span>
-            <span className="stat-value">{inProgressCount}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Completed</span>
-            <span className="stat-value">{completedCount}</span>
-          </div>
-        </div>
-      </div>
-
-      {!matches || matches.length === 0 ? (
-        <div className="no-matches">
-          <div className="empty-state">
-            <h2>No Matches Found</h2>
-            <p>
-              {searchTerm ||
-              filterStatus !== "all" ||
-              filterCategory !== "all" ||
-              filterFormat !== "all" ||
-              filterRound !== "all" ||
-              filterVenue !== "all" ||
-              filterTeam !== "all" ||
-              filterReferee !== "all"
-                ? "No matches match your current filters. Try adjusting your search or filters."
-                : "There are no matches available to manage."}
-            </p>
-            {(searchTerm ||
-              filterStatus !== "all" ||
-              filterCategory !== "all" ||
-              filterFormat !== "all" ||
-              filterRound !== "all" ||
-              filterVenue !== "all" ||
-              filterTeam !== "all" ||
-              filterReferee !== "all") && (
-              <button onClick={clearAllFilters} className="btn btn-primary">
-                Clear All Filters
-              </button>
-            )}
-          </div>
-        </div>
-      ) : (
+      {/* Tab Content */}
+      {activeTab === "matches" && (
         <>
-          <div className="matches-grid">
-            {matches?.map((match) => (
-              <MatchCard
-                key={match.id}
-                match={match}
-                onUpdateScore={handleUpdateScore}
-                onAssignReferee={openAssignmentModal}
-                onUnassignReferee={handleUnassignReferee}
-                showAdminActions={isAdmin}
-                showUpdateScore={!match.isCompleted || isAdmin}
-                isSelectable={isAdmin}
-                isSelected={selectedMatches.has(match.id)}
-                onSelectionChange={handleMatchSelection}
-              />
-            ))}
-          </div>
-
-          {/* Pagination Controls */}
-          <div className="pagination-container">
-            <div className="pagination-info">
-              <span>
-                Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalMatches)} of{" "}
-                {totalMatches} matches
-              </span>
-              <div className="page-size-selector">
-                <label htmlFor="page-size">Show:</label>
-                <select
-                  id="page-size"
-                  value={pageSize}
-                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  className="page-size-select"
+          {/* Management Actions - Admin Only */}
+          {isAdmin && (
+            <div className="management-actions-section">
+              {/* Export Controls - Compact */}
+              <div className="export-controls-compact">
+                <div className="export-info-compact">
+                  <div className="export-label">Export Matches</div>
+                  <div className="export-description">{getExportTitle()}</div>
+                  <div className="export-count">{totalMatches} total matches</div>
+                </div>
+                <button
+                  onClick={() => handleExportView(getExportType())}
+                  className="export-btn-compact"
+                  title="Export matches to PDF"
                 >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={30}>30</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-                <span>per page</span>
+                  Preview PDF
+                </button>
               </div>
             </div>
+          )}
 
-            <div className="pagination-controls">
-              <button className="pagination-btn" onClick={() => handlePageChange(1)} disabled={currentPage === 1}>
-                First
-              </button>
-              <button
-                className="pagination-btn"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </button>
+          <div className="filters-section">
+            <button className={`filters-toggle ${showFilters ? "expanded" : ""}`} onClick={toggleFilters}>
+              <span>Filters & Search</span>
+              <span className="toggle-icon">▼</span>
+            </button>
 
-              {pageNumbers.map((page) => (
-                <button
-                  key={page}
-                  className={`pagination-btn ${page === currentPage ? "active" : ""}`}
-                  onClick={() => handlePageChange(page)}
+            <div className={`filters-row ${showFilters ? "visible" : ""}`}>
+              <div className="filter-group">
+                <select
+                  value={filterCategory}
+                  onChange={(e) => handleFilterCategoryChange(e.target.value)}
+                  className="filter-select"
                 >
-                  {page}
-                </button>
-              ))}
+                  <option value="all">All Categories</option>
+                  {filterOptions.categories?.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              <button
-                className="pagination-btn"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </button>
-              <button
-                className="pagination-btn"
-                onClick={() => handlePageChange(totalPages)}
-                disabled={currentPage === totalPages}
-              >
-                Last
-              </button>
+              <div className="filter-group">
+                <select
+                  value={filterFormat}
+                  onChange={(e) => handleFilterFormatChange(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Formats</option>
+                  {filterOptions.formats?.map((format) => (
+                    <option key={format} value={format}>
+                      {format}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <select
+                  value={filterRound}
+                  onChange={(e) => handleFilterRoundChange(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Rounds</option>
+                  {filterOptions.rounds?.map((round) => (
+                    <option key={round} value={round}>
+                      {round}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <select
+                  value={filterVenue}
+                  onChange={(e) => handleFilterVenueChange(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Venues</option>
+                  {filterOptions.venues?.map((venue) => (
+                    <option key={venue} value={venue}>
+                      {venue}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => handleFilterStatusChange(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Status</option>
+                  <option value="upcoming">Upcoming</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <SearchableDropdown
+                  options={filterOptions.teams || []}
+                  value={filterTeam}
+                  onChange={handleFilterTeamChange}
+                  placeholder="All Teams"
+                  className="filter-select"
+                  showAllOption={true}
+                  allOptionText="All Teams"
+                />
+              </div>
+
+              <div className="filter-group">
+                <SearchableDropdown
+                  options={filterOptions.referees || []}
+                  value={filterReferee}
+                  onChange={handleFilterRefereeChange}
+                  placeholder="All Referees"
+                  className="filter-select"
+                  showAllOption={true}
+                  allOptionText="All Referees"
+                />
+              </div>
+
+              <div className="filter-group">
+                <button onClick={clearAllFilters} className="clear-filters-btn">
+                  Clear Filters
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Bulk Assignment Controls */}
+          {isAdmin && (
+            <div className="bulk-assignment-controls">
+              <div className="bulk-info">
+                {selectedMatches.size > 0 ? (
+                  <>
+                    <span className="selected-count">
+                      {selectedMatches.size} match{selectedMatches.size !== 1 ? "es" : ""} selected
+                    </span>
+                    <button className="clear-selection-btn" onClick={clearSelectedMatches}>
+                      Clear Selection
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="selection-prompt">Select matches to bulk assign referee or update scores</span>
+                    <button
+                      className="select-all-btn"
+                      onClick={() => {
+                        const allMatchIds = new Set(matches?.map((match) => match.id) || []);
+                        setSelectedMatches(allMatchIds);
+                      }}
+                    >
+                      Select All ({matches.length})
+                    </button>
+                  </>
+                )}
+              </div>
+              {selectedMatches.size > 0 && (
+                <div className="bulk-actions">
+                  <button className="bulk-assign-btn" onClick={() => setShowBulkAssignmentModal(true)}>
+                    Bulk Assign Referee
+                  </button>
+                  <button className="bulk-update-score-btn" onClick={() => setShowBulkUpdateScoreModal(true)}>
+                    Bulk Update Scores
+                  </button>
+                  <button className="bulk-whatsapp-btn" onClick={handleBulkWhatsAppShare}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: "8px" }}>
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
+                    </svg>
+                    Bulk WhatsApp
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="matches-stats">
+            <div className="matches-count">
+              <span className="stat-label">Total Matches</span>
+              <span className="stat-value">{totalMatches}</span>
+              {matches.length > 0 && matches.length !== totalMatches && (
+                <span className="current-page-info">(Showing {matches.length} on this page)</span>
+              )}
+            </div>
+            <div className="status-stats">
+              <div className="stat-item">
+                <span className="stat-label">Upcoming</span>
+                <span className="stat-value">{incomingCount}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">In Progress</span>
+                <span className="stat-value">{inProgressCount}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Completed</span>
+                <span className="stat-value">{completedCount}</span>
+              </div>
+            </div>
+          </div>
+
+          {!matches || matches.length === 0 ? (
+            <div className="no-matches">
+              <div className="empty-state">
+                <h2>No Matches Found</h2>
+                <p>
+                  {searchTerm ||
+                  filterStatus !== "all" ||
+                  filterCategory !== "all" ||
+                  filterFormat !== "all" ||
+                  filterRound !== "all" ||
+                  filterVenue !== "all" ||
+                  filterTeam !== "all" ||
+                  filterReferee !== "all"
+                    ? "No matches match your current filters. Try adjusting your search or filters."
+                    : "There are no matches available to manage."}
+                </p>
+                {(searchTerm ||
+                  filterStatus !== "all" ||
+                  filterCategory !== "all" ||
+                  filterFormat !== "all" ||
+                  filterRound !== "all" ||
+                  filterVenue !== "all" ||
+                  filterTeam !== "all" ||
+                  filterReferee !== "all") && (
+                  <button onClick={clearAllFilters} className="btn btn-primary">
+                    Clear All Filters
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="matches-grid">
+                {matches?.map((match) => (
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    onUpdateScore={handleUpdateScore}
+                    onAssignReferee={openAssignmentModal}
+                    onUnassignReferee={handleUnassignReferee}
+                    showAdminActions={isAdmin}
+                    showUpdateScore={!match.isCompleted || isAdmin}
+                    isSelectable={isAdmin}
+                    isSelected={selectedMatches.has(match.id)}
+                    onSelectionChange={handleMatchSelection}
+                  />
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="pagination-container">
+                <div className="pagination-info">
+                  <span>
+                    Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalMatches)} of{" "}
+                    {totalMatches} matches
+                  </span>
+                  <div className="page-size-selector">
+                    <label htmlFor="page-size">Show:</label>
+                    <select
+                      id="page-size"
+                      value={pageSize}
+                      onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                      className="page-size-select"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={30}>30</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                    <span>per page</span>
+                  </div>
+                </div>
+
+                <div className="pagination-controls">
+                  <button className="pagination-btn" onClick={() => handlePageChange(1)} disabled={currentPage === 1}>
+                    First
+                  </button>
+                  <button
+                    className="pagination-btn"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </button>
+
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      className={`pagination-btn ${page === currentPage ? "active" : ""}`}
+                      onClick={() => handlePageChange(page)}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                  <button
+                    className="pagination-btn"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </button>
+                  <button
+                    className="pagination-btn"
+                    onClick={() => handlePageChange(totalPages)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Last
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Assignment Modal */}
+          <AssignRefereeModal
+            isOpen={showAssignmentModal}
+            match={selectedMatch}
+            onClose={() => setShowAssignmentModal(false)}
+            onAssign={handleAssignReferee}
+            loading={assigningReferee}
+          />
+
+          {/* Bulk Assignment Modal */}
+          <BulkAssignRefereeModal
+            isOpen={showBulkAssignmentModal}
+            selectedMatches={matches?.filter((match) => selectedMatches.has(match.id)) || []}
+            onClose={() => setShowBulkAssignmentModal(false)}
+            onAssign={handleBulkAssignReferee}
+            loading={bulkAssigningReferee}
+          />
+
+          {/* Update Score Modal */}
+          <UpdateScoreDialog
+            isOpen={showUpdateScoreModal}
+            match={selectedMatchForScore}
+            onClose={() => {
+              setShowUpdateScoreModal(false);
+              setSelectedMatchForScore(null);
+            }}
+            onSubmit={handleSubmitScore}
+            loading={updatingScore}
+          />
+
+          {/* Bulk Update Score Modal */}
+          <BulkUpdateScoreModal
+            isOpen={showBulkUpdateScoreModal}
+            selectedMatches={matches?.filter((match) => selectedMatches.has(match.id)) || []}
+            onClose={() => setShowBulkUpdateScoreModal(false)}
+            onSubmit={handleBulkUpdateScores}
+            loading={bulkUpdatingScores}
+          />
+
+          {/* Bulk WhatsApp Modal */}
+          {showBulkWhatsAppModal && (
+            <div className="bulk-whatsapp-modal-overlay">
+              <div className="bulk-whatsapp-modal-content">
+                <div className="bulk-whatsapp-modal-header">
+                  <h3>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      style={{ marginRight: "8px", verticalAlign: "middle" }}
+                    >
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
+                    </svg>
+                    Share matches on WhatsApp
+                  </h3>
+                  <button className="modal-close" onClick={() => setShowBulkWhatsAppModal(false)}>
+                    ×
+                  </button>
+                </div>
+                <div className="bulk-whatsapp-modal-body">
+                  <p>Select one of the assigned referees to share matches on WhatsApp</p>
+                  <div className="referees-list">
+                    {getAllRefereesFromSelectedMatches().map((referee) => (
+                      <div key={referee.id} className="referee-item">
+                        <label
+                          className="referee-checkbox"
+                          onClick={() => {
+                            setSelectedReferee(referee.id);
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="selectedReferee"
+                            checked={selectedReferee === referee.id}
+                            onChange={() => {
+                              setSelectedReferee(referee.id);
+                            }}
+                          />
+                          <span className="referee-name">{referee.fullName}</span>
+                          <span className="referee-phone">{referee.phoneNumber}</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button className="btn btn-secondary" onClick={() => setShowBulkWhatsAppModal(false)}>
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={sendBulkWhatsAppMessages}
+                    disabled={selectedReferee === ""}
+                  >
+                    Send Message
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Export Views */}
+          {showPrintableView && (
+            <PrintableView
+              matches={matches}
+              tournamentName={tournamentName || "Tournament"}
+              categoryName={filterCategory !== "all" ? filterCategory : undefined}
+              viewType={printableViewType}
+              venueName={filterVenue !== "all" ? filterVenue : undefined}
+              refereeName={filterReferee !== "all" ? getRefereeName(filterReferee) : undefined}
+              teamName={filterTeam !== "all" ? getTeamName(filterTeam) : undefined}
+              formatName={filterFormat !== "all" ? filterFormat : undefined}
+              onClose={handleCloseExportView}
+            />
+          )}
         </>
       )}
 
-      {/* Assignment Modal */}
-      <AssignRefereeModal
-        isOpen={showAssignmentModal}
-        match={selectedMatch}
-        onClose={() => setShowAssignmentModal(false)}
-        onAssign={handleAssignReferee}
-        loading={assigningReferee}
-      />
+      {/* Venues Tab */}
+      {activeTab === "venues" && (
+        <div className="venues-tab">
+          <div className="venues-header">
+            <h2>Venue Management</h2>
+            <p>Manage venues, passwords, and access controls for this tournament</p>
+          </div>
 
-      {/* Bulk Assignment Modal */}
-      <BulkAssignRefereeModal
-        isOpen={showBulkAssignmentModal}
-        selectedMatches={matches?.filter((match) => selectedMatches.has(match.id)) || []}
-        onClose={() => setShowBulkAssignmentModal(false)}
-        onAssign={handleBulkAssignReferee}
-        loading={bulkAssigningReferee}
-      />
-
-      {/* Update Score Modal */}
-      <UpdateScoreDialog
-        isOpen={showUpdateScoreModal}
-        match={selectedMatchForScore}
-        onClose={() => {
-          setShowUpdateScoreModal(false);
-          setSelectedMatchForScore(null);
-        }}
-        onSubmit={handleSubmitScore}
-        loading={updatingScore}
-      />
-
-      {/* Bulk Update Score Modal */}
-      <BulkUpdateScoreModal
-        isOpen={showBulkUpdateScoreModal}
-        selectedMatches={matches?.filter((match) => selectedMatches.has(match.id)) || []}
-        onClose={() => setShowBulkUpdateScoreModal(false)}
-        onSubmit={handleBulkUpdateScores}
-        loading={bulkUpdatingScores}
-      />
-
-      {/* Bulk WhatsApp Modal */}
-      {showBulkWhatsAppModal && (
-        <div className="bulk-whatsapp-modal-overlay">
-          <div className="bulk-whatsapp-modal-content">
-            <div className="bulk-whatsapp-modal-header">
-              <h3>
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  style={{ marginRight: "8px", verticalAlign: "middle" }}
-                >
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
+          <div className="venues-content">
+            <div className="venues-placeholder">
+              <div className="placeholder-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12,2A3,3 0 0,1 15,5V7A3,3 0 0,1 12,10A3,3 0 0,1 9,7V5A3,3 0 0,1 12,2M19,6H17A5,5 0 0,0 7,6H5A2,2 0 0,0 3,8V20A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V8A2,2 0 0,0 19,6M12,17A2,2 0 0,1 10,15A2,2 0 0,1 12,13A2,2 0 0,1 14,15A2,2 0 0,1 12,17Z" />
                 </svg>
-                Share matches on WhatsApp
-              </h3>
-              <button className="modal-close" onClick={() => setShowBulkWhatsAppModal(false)}>
-                ×
-              </button>
-            </div>
-            <div className="bulk-whatsapp-modal-body">
-              <p>Select one of the assigned referees to share matches on WhatsApp</p>
-              <div className="referees-list">
-                {getAllRefereesFromSelectedMatches().map((referee) => (
-                  <div key={referee.id} className="referee-item">
-                    <label
-                      className="referee-checkbox"
-                      onClick={() => {
-                        setSelectedReferee(referee.id);
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="selectedReferee"
-                        checked={selectedReferee === referee.id}
-                        onChange={() => {
-                          setSelectedReferee(referee.id);
-                        }}
-                      />
-                      <span className="referee-name">{referee.fullName}</span>
-                      <span className="referee-phone">{referee.phoneNumber}</span>
-                    </label>
-                  </div>
-                ))}
               </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowBulkWhatsAppModal(false)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={sendBulkWhatsAppMessages} disabled={selectedReferee === ""}>
-                Send Message
-              </button>
+              <h3>Venue Management Coming Soon</h3>
+              <p>This feature will allow you to:</p>
+              <ul>
+                <li>Add passwords to venues</li>
+                <li>Share venue links and QR codes</li>
+                <li>Lock/unlock matches for specific venues</li>
+                <li>Control venue access and visibility</li>
+              </ul>
             </div>
           </div>
         </div>
-      )}
-
-      {/* Export Views */}
-      {showPrintableView && (
-        <PrintableView
-          matches={matches}
-          tournamentName={tournamentName || "Tournament"}
-          categoryName={filterCategory !== "all" ? filterCategory : undefined}
-          viewType={printableViewType}
-          venueName={filterVenue !== "all" ? filterVenue : undefined}
-          refereeName={filterReferee !== "all" ? getRefereeName(filterReferee) : undefined}
-          teamName={filterTeam !== "all" ? getTeamName(filterTeam) : undefined}
-          formatName={filterFormat !== "all" ? filterFormat : undefined}
-          onClose={handleCloseExportView}
-        />
       )}
     </div>
   );
