@@ -25,6 +25,31 @@
     }
   }
 
+  .matches-management__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    .matches-management__title {
+      flex: 1;
+
+      h1 {
+        color: var(--text-primary);
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+      }
+
+      p {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin: 0;
+        line-height: 1.4;
+      }
+    }
+  }
+
   .tab-navigation {
     display: flex;
     margin-bottom: 16px;
@@ -676,6 +701,18 @@
 
     .dashboard-header h1 {
       font-size: 28px;
+    }
+
+    .matches-management__header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+
+      .matches-management__title {
+        h1 {
+          font-size: 20px;
+        }
+      }
     }
 
     .tab-navigation {

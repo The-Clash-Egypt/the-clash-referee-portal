@@ -33,7 +33,7 @@ const MatchesManagement: React.FC = () => {
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [totalMatches, setTotalMatches] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
@@ -61,18 +61,19 @@ const MatchesManagement: React.FC = () => {
   const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false);
   const [selectedReferee, setSelectedReferee] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"matches" | "venues">(() => {
-    // Check if we're coming from tournaments page specifically
+    // Check if we're coming from tournaments page specifically (but not on refresh)
     const isFromTournaments =
       document.referrer &&
       document.referrer.includes(window.location.origin) &&
-      document.referrer.includes("/tournaments");
+      document.referrer.includes("/tournaments") &&
+      document.referrer !== window.location.href; // Not a refresh
 
     if (isFromTournaments) {
-      // Always show matches when coming from tournaments page
+      // Always show matches when coming from tournaments page (but not on refresh)
       return "matches";
     }
 
-    // Otherwise, use persisted tab
+    // Otherwise, use persisted tab (this will work on refresh too)
     const savedTab = localStorage.getItem("matches-management-active-tab");
     return savedTab === "matches" || savedTab === "venues" ? savedTab : "matches";
   });
@@ -216,12 +217,18 @@ const MatchesManagement: React.FC = () => {
     tournamentName,
   ]);
 
-  // Initial load when component is initialized
+  // Load matches data when matches tab is active or filters change
   useEffect(() => {
     if (!isInitialized) return;
 
-    const initialFilters: MatchFilters = {
-      search: searchTerm || undefined,
+    if (activeTab !== "matches") {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const filters: MatchFilters = {
+      search: debouncedSearchTerm || undefined,
       status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
       tournament: id,
       category: filterCategory !== "all" ? filterCategory : undefined,
@@ -234,29 +241,10 @@ const MatchesManagement: React.FC = () => {
       pageNumber: currentPage,
     };
 
-    fetchData(initialFilters);
-  }, [isInitialized]);
-
-  // Apply filters when they change (using debounced search term)
-  useEffect(() => {
-    if (!isInitialized) return;
-
-    const filters: MatchFilters = {
-      search: debouncedSearchTerm || undefined,
-      status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
-      tournament: id!,
-      category: filterCategory !== "all" ? filterCategory : undefined,
-      format: filterFormat !== "all" ? filterFormat : undefined,
-      round: filterRound !== "all" ? filterRound : undefined,
-      venue: filterVenue !== "all" ? filterVenue : undefined,
-      team: filterTeam !== "all" ? filterTeam : undefined,
-      referee: filterReferee !== "all" ? filterReferee : undefined,
-      pageSize: pageSize,
-      pageNumber: currentPage,
-    };
-
     fetchData(filters);
   }, [
+    isInitialized,
+    activeTab,
     debouncedSearchTerm,
     filterStatus,
     id,
@@ -885,7 +873,7 @@ const MatchesManagement: React.FC = () => {
     return pages;
   };
 
-  if (loading) {
+  if (loading && activeTab === "matches") {
     return <VolleyballLoading message="Loading matches..." size="medium" />;
   }
 
@@ -944,6 +932,14 @@ const MatchesManagement: React.FC = () => {
       {/* Tab Content */}
       {activeTab === "matches" && (
         <>
+          {/* Matches Management Header */}
+          <div className="matches-management__header">
+            <div className="matches-management__title">
+              <h1>Matches Management</h1>
+              <p>Manage all matches, referee assignments and scores for this tournament</p>
+            </div>
+          </div>
+
           {/* Management Actions - Admin Only */}
           {isAdmin && (
             <div className="management-actions-section">
