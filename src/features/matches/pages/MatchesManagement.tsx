@@ -84,6 +84,13 @@ const MatchesManagement: React.FC = () => {
     localStorage.setItem("matches-management-active-tab", tab);
   };
 
+  // Reset tab to matches when leaving the page
+  useEffect(() => {
+    return () => {
+      localStorage.setItem("matches-management-active-tab", "matches");
+    };
+  }, []);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(30);
@@ -217,14 +224,34 @@ const MatchesManagement: React.FC = () => {
     tournamentName,
   ]);
 
-  // Load matches data when matches tab is active or filters change
+  // Load matches data when matches tab is first activated
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized || activeTab !== "matches") return;
 
-    if (activeTab !== "matches") {
-      setLoading(false);
-      return;
+    // Only load if we don't have matches data yet
+    if (matches.length === 0) {
+      setLoading(true);
+      const filters: MatchFilters = {
+        search: debouncedSearchTerm || undefined,
+        status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+        tournament: id,
+        category: filterCategory !== "all" ? filterCategory : undefined,
+        format: filterFormat !== "all" ? filterFormat : undefined,
+        round: filterRound !== "all" ? filterRound : undefined,
+        venue: filterVenue !== "all" ? filterVenue : undefined,
+        team: filterTeam !== "all" ? filterTeam : undefined,
+        referee: filterReferee !== "all" ? filterReferee : undefined,
+        pageSize: pageSize,
+        pageNumber: currentPage,
+      };
+
+      fetchData(filters);
     }
+  }, [isInitialized, activeTab]);
+
+  // Apply filters when they change (only for matches tab)
+  useEffect(() => {
+    if (!isInitialized || activeTab !== "matches") return;
 
     setLoading(true);
     const filters: MatchFilters = {
@@ -243,8 +270,6 @@ const MatchesManagement: React.FC = () => {
 
     fetchData(filters);
   }, [
-    isInitialized,
-    activeTab,
     debouncedSearchTerm,
     filterStatus,
     id,

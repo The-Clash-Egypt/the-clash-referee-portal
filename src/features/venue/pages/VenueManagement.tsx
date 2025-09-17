@@ -96,12 +96,14 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
 
   return (
     <div className="venue-management">
-      <div className="venue-management__header">
-        <div className="venue-management__title">
-          <h1>Venue Management</h1>
-          <p>Manage venues for {tournamentId ? "this tournament" : "all tournaments"}</p>
+      {venues.length > 0 && (
+        <div className="venue-management__header">
+          <div className="venue-management__title">
+            <h1>Venue Management</h1>
+            <p>Manage venues for this tournament</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="venue-management__content">
         <VenueList
@@ -113,7 +115,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
           isLoading={isLoading}
           searchTerm={searchTerm}
           showActions={true}
-          showSearchAndFilters={true}
+          showSearchAndFilters={venues.length > 0}
           generatingTokenFor={generatingTokenFor}
           isUpdating={updateVenueMutation.isPending}
         />
