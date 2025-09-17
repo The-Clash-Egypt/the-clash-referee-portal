@@ -153,12 +153,27 @@ const VenueCard: React.FC<VenueCardProps> = ({
               </div>
             </div>
           ) : (
-            <h3 onClick={handleNameEdit} className="venue-card__name-display">
-              {venue.name}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="venue-card__edit-icon">
-                <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
-              </svg>
-            </h3>
+            <div className="venue-card__name-section">
+              <h3 onClick={handleNameEdit} className="venue-card__name-display">
+                {venue.name}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="venue-card__edit-icon">
+                  <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
+                </svg>
+              </h3>
+              {venue.totalMatchCount !== undefined && (
+                <div className="venue-card__match-stats">
+                  <span className="venue-card__match-count">
+                    {venue.totalMatchCount} matches
+                    {venue.completedMatchCount !== undefined && venue.completedMatchCount < venue.totalMatchCount && (
+                      <span className="venue-card__incomplete-matches">
+                        • {venue.totalMatchCount - venue.completedMatchCount}{" "}
+                        {venue.totalMatchCount - venue.completedMatchCount === 1 ? "match" : "matches"} not logged yet
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
           )}
         </div>
         <div className="venue-card__status">

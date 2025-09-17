@@ -28,7 +28,10 @@ export interface Venue {
   accessToken?: string | null;
   isLocked: boolean;
   tournamentId: string;
+  tournamentName?: string;
   createdAt: string;
+  totalMatchCount?: number;
+  completedMatchCount?: number;
   matches?: VenueMatch[];
 }
 

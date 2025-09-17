@@ -64,7 +64,7 @@ export const getFilteredVenues = (filters: VenueFilterDTO): Promise<{ data: Venu
   }
 
   const queryString = params.toString();
-  const url = `/venue/filter${queryString ? `?${queryString}` : ""}`;
+  const url = `/venue/filter/summary${queryString ? `?${queryString}` : ""}`;
 
   return api.get(url);
 };
