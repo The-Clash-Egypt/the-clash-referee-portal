@@ -64,8 +64,8 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
         const shareUrl = `${window.location.origin}/venue/shared?venueId=${venue.id}&token=${response.data.data}`;
         const shareData = {
           title: `Referee Portal - ${venue.name}`,
-          text: `Access the referee portal for ${venue.name}`,
-          url: shareUrl,
+          text: `Access the referee portal for ${venue.name} through this link: ${shareUrl}`,
+          // url: shareUrl,
         };
 
         // Check if Web Share API is supported

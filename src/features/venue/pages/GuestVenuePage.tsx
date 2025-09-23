@@ -3,6 +3,10 @@ import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getGuestVenue, validateVenueToken } from "../api/venue";
 import { VenueMatch, VenueMatchGameScore } from "../types/venue";
+import MatchCard from "../../shared/components/MatchCard";
+import { Match, MatchGameScore } from "../../matches/types/match";
+import UpdateScoreDialog from "../../matches/components/UpdateScoreDialog";
+import { updateGroupMatch, updateLeagueMatch, updateKnockoutMatch } from "../../matches/api/matches";
 import "./GuestVenuePage.scss";
 
 const GuestVenuePage: React.FC = () => {
@@ -14,6 +18,80 @@ const GuestVenuePage: React.FC = () => {
   const [isPasswordValid, setIsPasswordValid] = useState<boolean>(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const validationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Score update modal state
+  const [showUpdateScoreModal, setShowUpdateScoreModal] = useState(false);
+  const [selectedMatchForScore, setSelectedMatchForScore] = useState<Match | null>(null);
+  const [updatingScore, setUpdatingScore] = useState(false);
+
+  // Convert VenueMatch to Match format for MatchCard compatibility
+  const convertVenueMatchToMatch = (venueMatch: VenueMatch): Match => {
+    const gameScores: MatchGameScore[] = venueMatch.gameScores.map((game) => ({
+      gameNumber: game.gameNumber,
+      homeScore: game.homeScore,
+      awayScore: game.awayScore,
+    }));
+
+    return {
+      id: venueMatch.id,
+      venue: venueMatch.venue,
+      tournamentName: undefined, // Don't show tournament name in guest venue
+      categoryName: venueMatch.categoryName, // Default category for venue matches
+      format: venueMatch.formatName ? venueMatch.formatName : venueMatch.formatType, // Not available in VenueMatch
+      bestOf: venueMatch.bestOf,
+      startTime: venueMatch.startTime,
+      round: venueMatch.round,
+      homeTeamId: venueMatch.homeTeamId,
+      homeTeamName: venueMatch.homeTeamName,
+      awayTeamId: venueMatch.awayTeamId,
+      awayTeamName: venueMatch.awayTeamName,
+      homeScore: venueMatch.homeTeamSets,
+      awayScore: venueMatch.awayTeamSets,
+      gameScores: gameScores,
+      referees: [], // Not available in VenueMatch
+      homeTeamMembers: [], // Not available in VenueMatch
+      awayTeamMembers: [], // Not available in VenueMatch
+      isCompleted: venueMatch.isCompleted,
+    };
+  };
+
+  // Handle update score
+  const handleUpdateScore = (match: Match) => {
+    setSelectedMatchForScore(match);
+    setShowUpdateScoreModal(true);
+  };
+
+  // Handle score submission
+  const handleSubmitScore = async (gameScores: MatchGameScore[]) => {
+    if (!selectedMatchForScore) return;
+
+    try {
+      setUpdatingScore(true);
+
+      // Call API to update match scores based on format
+      if (selectedMatchForScore.format === "Group") {
+        await updateGroupMatch(selectedMatchForScore.id, { gameScores });
+      } else if (selectedMatchForScore.format === "League") {
+        await updateLeagueMatch(selectedMatchForScore.id, { gameScores });
+      } else if (selectedMatchForScore.format === "Knockout") {
+        await updateKnockoutMatch(selectedMatchForScore.id, { gameScores });
+      }
+
+      // Refresh venue data to show updated scores
+      if (venueId) {
+        // Refetch the venue data to get updated scores
+        window.location.reload(); // Simple refresh for now
+      }
+
+      setShowUpdateScoreModal(false);
+      setSelectedMatchForScore(null);
+    } catch (error: any) {
+      console.error("Error updating scores:", error);
+      alert("Failed to update scores. Please try again.");
+    } finally {
+      setUpdatingScore(false);
+    }
+  };
 
   // Token validation query
   const {
@@ -210,33 +288,6 @@ const GuestVenuePage: React.FC = () => {
     );
   }
 
-  const formatMatchTime = (startTime: string) => {
-    return new Date(startTime).toLocaleString();
-  };
-
-  const getMatchStatus = (match: VenueMatch) => {
-    if (match.isCompleted) {
-      return "completed";
-    }
-    const now = new Date();
-    const matchTime = new Date(match.startTime);
-    const timeDiff = matchTime.getTime() - now.getTime();
-
-    // If match starts within 30 minutes, consider it "live"
-    if (timeDiff <= 30 * 60 * 1000 && timeDiff >= -2 * 60 * 60 * 1000) {
-      return "live";
-    }
-
-    return "scheduled";
-  };
-
-  const getTotalScore = (match: VenueMatch, isHome: boolean) => {
-    if (isHome) {
-      return match.homeTeamSets;
-    }
-    return match.awayTeamSets;
-  };
-
   return (
     <div className="guest-venue-page">
       <div className="guest-venue-page__header">
@@ -248,56 +299,47 @@ const GuestVenuePage: React.FC = () => {
         {venueData.matches && venueData.matches.length > 0 && (
           <div className="matches-section">
             <h2>Matches</h2>
-            <div className="matches-list">
+            <div className="matches-grid">
               {venueData.matches
-                .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-                .map((match) => {
-                  const status = getMatchStatus(match);
+                .sort((a, b) => {
+                  // If all matches are completed, sort by latest first (descending)
+                  const allCompleted = venueData.matches.every((match) => match.isCompleted);
+                  if (allCompleted) {
+                    return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
+                  }
+                  // Otherwise, sort by earliest first (ascending)
+                  return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+                })
+                .map((venueMatch) => {
+                  const match = convertVenueMatchToMatch(venueMatch);
                   return (
-                    <div key={match.id} className="match-card">
-                      <div className="match-header">
-                        <span className="match-round">{match.round}</span>
-                        <span className={`match-status ${status}`}>{status}</span>
-                      </div>
-                      <div className="match-teams">
-                        <div className="team">
-                          <span className="team-name">{match.homeTeamName}</span>
-                          <span className="team-score">{getTotalScore(match, true)}</span>
-                        </div>
-                        <div className="vs">VS</div>
-                        <div className="team">
-                          <span className="team-name">{match.awayTeamName}</span>
-                          <span className="team-score">{getTotalScore(match, false)}</span>
-                        </div>
-                      </div>
-                      <div className="match-details">
-                        <span className="match-time">{formatMatchTime(match.startTime)}</span>
-                        <span className="match-venue">{match.venue}</span>
-                      </div>
-                      {match.gameScores && match.gameScores.length > 0 && (
-                        <div className="game-scores">
-                          <h4>Game Scores:</h4>
-                          <div className="scores-grid">
-                            {match.gameScores
-                              .sort((a, b) => a.gameNumber - b.gameNumber)
-                              .map((game) => (
-                                <div key={game.gameNumber} className="game-score">
-                                  <span>Game {game.gameNumber}:</span>
-                                  <span>
-                                    {game.homeScore} - {game.awayScore}
-                                  </span>
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <MatchCard
+                      key={match.id}
+                      match={match}
+                      onUpdateScore={handleUpdateScore}
+                      showAdminActions={false}
+                      showUpdateScore={!match.isCompleted}
+                      showAssignReferee={false}
+                      isSelectable={false}
+                    />
                   );
                 })}
             </div>
           </div>
         )}
       </div>
+
+      {/* Update Score Modal */}
+      <UpdateScoreDialog
+        isOpen={showUpdateScoreModal}
+        match={selectedMatchForScore}
+        onClose={() => {
+          setShowUpdateScoreModal(false);
+          setSelectedMatchForScore(null);
+        }}
+        onSubmit={handleSubmitScore}
+        loading={updatingScore}
+      />
     </div>
   );
 };

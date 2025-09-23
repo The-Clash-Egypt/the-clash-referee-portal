@@ -119,6 +119,24 @@
     gap: 8px;
 
     .team {
+      &.winner {
+        .team-info {
+          background: #f0f9ff;
+          border-color: var(--primary-color);
+          border-width: 2px;
+
+          .team-name {
+            color: var(--primary-color) !important;
+            font-weight: 700;
+          }
+
+          .team-score {
+            color: var(--primary-color);
+            font-weight: 700;
+          }
+        }
+      }
+
       .team-info {
         display: flex;
         justify-content: space-between;

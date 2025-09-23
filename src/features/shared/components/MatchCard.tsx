@@ -30,6 +30,20 @@ const MatchCard: React.FC<MatchCardProps> = ({
   isSelected = false,
   onSelectionChange,
 }) => {
+  // Determine the winner for completed matches
+  const getMatchWinner = () => {
+    if (!match.isCompleted || match.homeScore === undefined || match.awayScore === undefined) {
+      return null;
+    }
+    if (match.homeScore > match.awayScore) {
+      return "home";
+    } else if (match.awayScore > match.homeScore) {
+      return "away";
+    }
+    return "tie";
+  };
+
+  const matchWinner = getMatchWinner();
   const handleUpdateScore = () => {
     if (onUpdateScore) {
       onUpdateScore(match);
@@ -122,7 +136,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
 
       {/* Teams Section */}
       <div className="teams-section">
-        <div className="team home-team">
+        <div className={`team home-team ${matchWinner === "home" ? "winner" : ""}`}>
           <div className="team-info">
             <div className="team-name-container">
               <span className="team-name">{match.homeTeamName || "TBD"}</span>
@@ -153,7 +167,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
           </div>
         </div>
 
-        <div className="team away-team">
+        <div className={`team away-team ${matchWinner === "away" ? "winner" : ""}`}>
           <div className="team-info">
             <div className="team-name-container">
               <span className="team-name">{match.awayTeamName || "TBD"}</span>

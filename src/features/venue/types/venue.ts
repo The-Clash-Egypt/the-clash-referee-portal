@@ -1,5 +1,8 @@
 export interface VenueMatch {
   id: string;
+  categoryName: string;
+  formatName: string;
+  formatType: string;
   round: string;
   startTime: string;
   venue: string;

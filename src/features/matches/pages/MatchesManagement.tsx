@@ -82,6 +82,11 @@ const MatchesManagement: React.FC = () => {
   const handleTabChange = (tab: "matches" | "venues") => {
     setActiveTab(tab);
     localStorage.setItem("matches-management-active-tab", tab);
+
+    // Reset matches loaded flag when switching away from matches tab
+    if (tab !== "matches") {
+      setMatchesLoaded(false);
+    }
   };
 
   // Reset tab to matches when leaving the page
@@ -114,6 +119,7 @@ const MatchesManagement: React.FC = () => {
 
   // URL params sync state
   const [isInitialized, setIsInitialized] = useState(false);
+  const [matchesLoaded, setMatchesLoaded] = useState(false);
 
   // Refs to track if filters are being restored from URL vs changed by user
   const isRestoringFromURL = useRef(false);
@@ -226,28 +232,26 @@ const MatchesManagement: React.FC = () => {
 
   // Load matches data when matches tab is first activated
   useEffect(() => {
-    if (!isInitialized || activeTab !== "matches") return;
+    if (!isInitialized || activeTab !== "matches" || matchesLoaded) return;
 
-    // Only load if we don't have matches data yet
-    if (matches.length === 0) {
-      setLoading(true);
-      const filters: MatchFilters = {
-        search: debouncedSearchTerm || undefined,
-        status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
-        tournament: id,
-        category: filterCategory !== "all" ? filterCategory : undefined,
-        format: filterFormat !== "all" ? filterFormat : undefined,
-        round: filterRound !== "all" ? filterRound : undefined,
-        venue: filterVenue !== "all" ? filterVenue : undefined,
-        team: filterTeam !== "all" ? filterTeam : undefined,
-        referee: filterReferee !== "all" ? filterReferee : undefined,
-        pageSize: pageSize,
-        pageNumber: currentPage,
-      };
+    setLoading(true);
+    const filters: MatchFilters = {
+      search: debouncedSearchTerm || undefined,
+      status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+      tournament: id,
+      category: filterCategory !== "all" ? filterCategory : undefined,
+      format: filterFormat !== "all" ? filterFormat : undefined,
+      round: filterRound !== "all" ? filterRound : undefined,
+      venue: filterVenue !== "all" ? filterVenue : undefined,
+      team: filterTeam !== "all" ? filterTeam : undefined,
+      referee: filterReferee !== "all" ? filterReferee : undefined,
+      pageSize: pageSize,
+      pageNumber: currentPage,
+    };
 
-      fetchData(filters);
-    }
-  }, [isInitialized, activeTab]);
+    fetchData(filters);
+    setMatchesLoaded(true);
+  }, [isInitialized, activeTab, matchesLoaded]);
 
   // Apply filters when they change (only for matches tab)
   useEffect(() => {
@@ -269,6 +273,7 @@ const MatchesManagement: React.FC = () => {
     };
 
     fetchData(filters);
+    setMatchesLoaded(true);
   }, [
     debouncedSearchTerm,
     filterStatus,
@@ -288,6 +293,22 @@ const MatchesManagement: React.FC = () => {
     if (!isInitialized || isRestoringFromURL.current) return;
     setCurrentPage(1);
   }, [isInitialized, filterStatus, filterCategory, filterFormat, filterRound, filterVenue, filterTeam, filterReferee]);
+
+  // Reset matches loaded flag when filters change (except for pagination)
+  useEffect(() => {
+    if (!isInitialized || isRestoringFromURL.current) return;
+    setMatchesLoaded(false);
+  }, [
+    isInitialized,
+    debouncedSearchTerm,
+    filterStatus,
+    filterCategory,
+    filterFormat,
+    filterRound,
+    filterVenue,
+    filterTeam,
+    filterReferee,
+  ]);
 
   // Reset round filter when format changes to avoid invalid selections
   useEffect(() => {
@@ -898,10 +919,6 @@ const MatchesManagement: React.FC = () => {
     return pages;
   };
 
-  if (loading && activeTab === "matches") {
-    return <VolleyballLoading message="Loading matches..." size="medium" />;
-  }
-
   if (error) {
     return (
       <div className="matches-management">
@@ -965,8 +982,15 @@ const MatchesManagement: React.FC = () => {
             </div>
           </div>
 
+          {/* Loading State */}
+          {loading && (
+            <div className="matches-loading-container">
+              <VolleyballLoading message="Loading matches..." size="medium" />
+            </div>
+          )}
+
           {/* Management Actions - Admin Only */}
-          {isAdmin && (
+          {!loading && isAdmin && totalMatches > 0 && (
             <div className="management-actions-section">
               {/* Export Controls - Compact */}
               <div className="export-controls-compact">
@@ -986,120 +1010,122 @@ const MatchesManagement: React.FC = () => {
             </div>
           )}
 
-          <div className="filters-section">
-            <button className={`filters-toggle ${showFilters ? "expanded" : ""}`} onClick={toggleFilters}>
-              <span>Filters</span>
-              <span className="toggle-icon">▼</span>
-            </button>
+          {!loading && totalMatches > 0 && (
+            <div className="filters-section">
+              <button className={`filters-toggle ${showFilters ? "expanded" : ""}`} onClick={toggleFilters}>
+                <span>Filters</span>
+                <span className="toggle-icon">▼</span>
+              </button>
 
-            <div className={`filters-row ${showFilters ? "visible" : ""}`}>
-              <div className="filter-group">
-                <select
-                  value={filterCategory}
-                  onChange={(e) => handleFilterCategoryChange(e.target.value)}
-                  className="filter-select"
-                >
-                  <option value="all">All Categories</option>
-                  {filterOptions.categories?.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <div className={`filters-row ${showFilters ? "visible" : ""}`}>
+                <div className="filter-group">
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => handleFilterCategoryChange(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="all">All Categories</option>
+                    {filterOptions.categories?.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="filter-group">
-                <select
-                  value={filterFormat}
-                  onChange={(e) => handleFilterFormatChange(e.target.value)}
-                  className="filter-select"
-                >
-                  <option value="all">All Formats</option>
-                  {filterOptions.formats?.map((format) => (
-                    <option key={format} value={format}>
-                      {format}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="filter-group">
+                  <select
+                    value={filterFormat}
+                    onChange={(e) => handleFilterFormatChange(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="all">All Formats</option>
+                    {filterOptions.formats?.map((format) => (
+                      <option key={format} value={format}>
+                        {format}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="filter-group">
-                <select
-                  value={filterRound}
-                  onChange={(e) => handleFilterRoundChange(e.target.value)}
-                  className="filter-select"
-                >
-                  <option value="all">All Rounds</option>
-                  {filterOptions.rounds?.map((round) => (
-                    <option key={round} value={round}>
-                      {round}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="filter-group">
+                  <select
+                    value={filterRound}
+                    onChange={(e) => handleFilterRoundChange(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="all">All Rounds</option>
+                    {filterOptions.rounds?.map((round) => (
+                      <option key={round} value={round}>
+                        {round}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="filter-group">
-                <select
-                  value={filterVenue}
-                  onChange={(e) => handleFilterVenueChange(e.target.value)}
-                  className="filter-select"
-                >
-                  <option value="all">All Venues</option>
-                  {filterOptions.venues?.map((venue) => (
-                    <option key={venue} value={venue}>
-                      {venue}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="filter-group">
+                  <select
+                    value={filterVenue}
+                    onChange={(e) => handleFilterVenueChange(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="all">All Venues</option>
+                    {filterOptions.venues?.map((venue) => (
+                      <option key={venue} value={venue}>
+                        {venue}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="filter-group">
-                <select
-                  value={filterStatus}
-                  onChange={(e) => handleFilterStatusChange(e.target.value)}
-                  className="filter-select"
-                >
-                  <option value="all">All Status</option>
-                  <option value="upcoming">Upcoming</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                </select>
-              </div>
+                <div className="filter-group">
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => handleFilterStatusChange(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
 
-              <div className="filter-group">
-                <SearchableDropdown
-                  options={filterOptions.teams || []}
-                  value={filterTeam}
-                  onChange={handleFilterTeamChange}
-                  placeholder="All Teams"
-                  className="filter-select"
-                  showAllOption={true}
-                  allOptionText="All Teams"
-                />
-              </div>
+                <div className="filter-group">
+                  <SearchableDropdown
+                    options={filterOptions.teams || []}
+                    value={filterTeam}
+                    onChange={handleFilterTeamChange}
+                    placeholder="All Teams"
+                    className="filter-select"
+                    showAllOption={true}
+                    allOptionText="All Teams"
+                  />
+                </div>
 
-              <div className="filter-group">
-                <SearchableDropdown
-                  options={filterOptions.referees || []}
-                  value={filterReferee}
-                  onChange={handleFilterRefereeChange}
-                  placeholder="All Referees"
-                  className="filter-select"
-                  showAllOption={true}
-                  allOptionText="All Referees"
-                />
-              </div>
+                <div className="filter-group">
+                  <SearchableDropdown
+                    options={filterOptions.referees || []}
+                    value={filterReferee}
+                    onChange={handleFilterRefereeChange}
+                    placeholder="All Referees"
+                    className="filter-select"
+                    showAllOption={true}
+                    allOptionText="All Referees"
+                  />
+                </div>
 
-              <div className="filter-group">
-                <button onClick={clearAllFilters} className="clear-filters-btn">
-                  Clear Filters
-                </button>
+                <div className="filter-group">
+                  <button onClick={clearAllFilters} className="clear-filters-btn">
+                    Clear Filters
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Bulk Assignment Controls */}
-          {isAdmin && (
+          {!loading && isAdmin && totalMatches > 0 && (
             <div className="bulk-assignment-controls">
               <div className="bulk-info">
                 {selectedMatches.size > 0 ? (
@@ -1145,31 +1171,33 @@ const MatchesManagement: React.FC = () => {
             </div>
           )}
 
-          <div className="matches-stats">
-            <div className="matches-count">
-              <span className="stat-label">Total Matches</span>
-              <span className="stat-value">{totalMatches}</span>
-              {matches.length > 0 && matches.length !== totalMatches && (
-                <span className="current-page-info">(Showing {matches.length} on this page)</span>
-              )}
+          {!loading && totalMatches > 0 && (
+            <div className="matches-stats">
+              <div className="matches-count">
+                <span className="stat-label">Total Matches</span>
+                <span className="stat-value">{totalMatches}</span>
+                {totalMatches > 0 && totalMatches !== totalMatches && (
+                  <span className="current-page-info">(Showing {matches.length} on this page)</span>
+                )}
+              </div>
+              <div className="status-stats">
+                <div className="stat-item">
+                  <span className="stat-label">Upcoming</span>
+                  <span className="stat-value">{incomingCount}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">In Progress</span>
+                  <span className="stat-value">{inProgressCount}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Completed</span>
+                  <span className="stat-value">{completedCount}</span>
+                </div>
+              </div>
             </div>
-            <div className="status-stats">
-              <div className="stat-item">
-                <span className="stat-label">Upcoming</span>
-                <span className="stat-value">{incomingCount}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">In Progress</span>
-                <span className="stat-value">{inProgressCount}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Completed</span>
-                <span className="stat-value">{completedCount}</span>
-              </div>
-            </div>
-          </div>
+          )}
 
-          {!matches || matches.length === 0 ? (
+          {!loading && (!matches || matches.length === 0) && (
             <div className="no-matches">
               <div className="empty-state">
                 <h2>No Matches Found</h2>
@@ -1199,7 +1227,9 @@ const MatchesManagement: React.FC = () => {
                 )}
               </div>
             </div>
-          ) : (
+          )}
+
+          {!loading && matches && matches.length > 0 && (
             <>
               <div className="matches-grid">
                 {matches?.map((match) => (
