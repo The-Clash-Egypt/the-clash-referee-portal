@@ -35,6 +35,22 @@ const Tournaments = () => {
     tournament.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Sort tournaments by date based on status
+  const sortTournamentsByDate = (tournaments: Tournament[], status: string) => {
+    return tournaments.sort((a, b) => {
+      const dateA = new Date(a.startDate).getTime();
+      const dateB = new Date(b.startDate).getTime();
+
+      if (status === "upcoming" || status === "active") {
+        // For upcoming and active tournaments, sort by earliest first
+        return dateA - dateB;
+      } else {
+        // For past tournaments, sort by latest first
+        return dateB - dateA;
+      }
+    });
+  };
+
   // Group tournaments by status
   const groupedTournaments = filteredTournaments.reduce((acc, tournament) => {
     const status = tournament.status;
@@ -44,6 +60,11 @@ const Tournaments = () => {
     acc[status].push(tournament);
     return acc;
   }, {} as Record<string, Tournament[]>);
+
+  // Apply sorting to each status group
+  Object.keys(groupedTournaments).forEach((status) => {
+    groupedTournaments[status] = sortTournamentsByDate(groupedTournaments[status], status);
+  });
 
   // Auto-expand sections that contain search results
   useEffect(() => {

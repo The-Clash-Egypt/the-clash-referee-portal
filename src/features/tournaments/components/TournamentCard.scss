@@ -26,19 +26,19 @@
 
   /* Card Header */
   .card-header {
-    padding: 20px 20px 16px 20px;
+    padding: 16px 16px 12px 16px;
     border-bottom: 1px solid $border-primary;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 12px;
+    gap: 8px;
 
     .tournament-name {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 600;
       color: $text-primary;
       margin: 0;
-      line-height: 1.3;
+      line-height: 1.2;
       flex: 1;
       display: -webkit-box;
       -webkit-line-clamp: 2;
@@ -47,11 +47,11 @@
     }
 
     .status-indicator {
-      width: 12px;
-      height: 12px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
       flex-shrink: 0;
-      margin-top: 4px;
+      margin-top: 2px;
 
       &.status-active {
         background: $success-color;
@@ -82,93 +82,83 @@
 
   /* Card Content */
   .card-content {
-    padding: 16px 20px;
+    padding: 8px 16px;
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 8px;
 
-    .status-info {
+    .info-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 12px;
+    }
 
-      .status-label {
-        font-size: 12px;
-        font-weight: 500;
+    .date-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      .date-icon {
+        font-size: 10px;
         color: $text-secondary;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
       }
 
-      .status-value {
-        font-size: 13px;
-        font-weight: 600;
-        padding: 4px 8px;
-        border-radius: 6px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+      .date-value {
+        font-size: 11px;
+        font-weight: 500;
+        color: $text-primary;
+      }
+    }
 
-        &.status-active {
-          background: rgba(34, 197, 94, 0.1);
-          color: $success-color;
-        }
-
-        &.status-inactive {
-          background: rgba(107, 114, 128, 0.1);
-          color: $gray-600;
-        }
-
-        &.status-upcoming {
-          background: rgba(245, 158, 11, 0.1);
-          color: $warning-color;
-        }
-
-        &.status-completed {
-          background: rgba(99, 102, 241, 0.1);
-          color: $secondary-color;
-        }
-
-        &.status-default {
-          background: rgba(107, 114, 128, 0.1);
-          color: $gray-600;
-        }
+    .duration-info {
+      .duration-value {
+        font-size: 10px;
+        font-weight: 500;
+        color: $text-secondary;
+        background: $bg-secondary;
+        padding: 2px 6px;
+        border-radius: 3px;
+        border: 1px solid $border-primary;
       }
     }
 
     .categories-info {
-      .categories-label {
-        font-size: 12px;
-        font-weight: 500;
-        color: $text-secondary;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
-        display: block;
-      }
-
       .categories-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: 4px;
 
         .category-tag {
-          font-size: 11px;
+          font-size: 9px;
           font-weight: 500;
-          padding: 4px 8px;
+          padding: 2px 5px;
           background: $bg-secondary;
           color: $text-secondary;
-          border-radius: 4px;
+          border-radius: 3px;
           border: 1px solid $border-primary;
+          transition: all 0.2s ease;
+
+          &:hover {
+            background: rgba(0, 74, 173, 0.1);
+            color: $primary-color;
+            border-color: rgba(0, 74, 173, 0.2);
+          }
         }
 
         .category-count {
-          font-size: 11px;
+          font-size: 9px;
           font-weight: 500;
-          padding: 4px 8px;
+          padding: 2px 5px;
           background: $primary-color;
           color: $white;
-          border-radius: 4px;
+          border-radius: 3px;
+          transition: all 0.2s ease;
+
+          &:hover {
+            opacity: 0.9;
+          }
         }
       }
     }
@@ -176,78 +166,23 @@
 
   /* Card Footer */
   .card-footer {
-    padding: 16px 20px 20px 20px;
+    padding: 8px 16px 12px 16px;
     border-top: 1px solid $border-primary;
     background: $bg-secondary;
+    text-align: center;
 
     .view-details {
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 500;
       color: $text-secondary;
       transition: all 0.2s ease;
-      display: inline-block;
     }
   }
 
   /* Mobile Responsive */
   @media (max-width: 768px) {
     .card-header {
-      padding: 16px 16px 12px 16px;
-
-      .tournament-name {
-        font-size: 16px;
-      }
-
-      .status-indicator {
-        width: 10px;
-        height: 10px;
-      }
-    }
-
-    .card-content {
-      padding: 12px 16px;
-      gap: 12px;
-
-      .status-info {
-        .status-label {
-          font-size: 11px;
-        }
-
-        .status-value {
-          font-size: 12px;
-          padding: 3px 6px;
-        }
-      }
-
-      .categories-info {
-        .categories-label {
-          font-size: 11px;
-        }
-
-        .categories-list {
-          gap: 4px;
-
-          .category-tag,
-          .category-count {
-            font-size: 10px;
-            padding: 3px 6px;
-          }
-        }
-      }
-    }
-
-    .card-footer {
-      padding: 12px 16px 16px 16px;
-
-      .view-details {
-        font-size: 12px;
-      }
-    }
-  }
-
-  @media (max-width: 480px) {
-    .card-header {
-      padding: 12px 12px 10px 12px;
+      padding: 12px 12px 8px 12px;
 
       .tournament-name {
         font-size: 14px;
@@ -260,8 +195,70 @@
     }
 
     .card-content {
-      padding: 10px 12px;
-      gap: 10px;
+      padding: 6px 12px;
+      gap: 6px;
+
+      .info-row {
+        gap: 8px;
+      }
+
+      .date-info {
+        .date-icon {
+          font-size: 9px;
+        }
+
+        .date-value {
+          font-size: 10px;
+        }
+      }
+
+      .duration-info {
+        .duration-value {
+          font-size: 9px;
+          padding: 1px 4px;
+        }
+      }
+
+      .categories-info {
+        .categories-list {
+          gap: 3px;
+
+          .category-tag,
+          .category-count {
+            font-size: 8px;
+            padding: 1px 3px;
+            border-radius: 2px;
+          }
+        }
+      }
+    }
+
+    .card-footer {
+      padding: 6px 12px 8px 12px;
+
+      .view-details {
+        font-size: 10px;
+      }
+    }
+  }
+
+  @media (max-width: 480px) {
+    .card-header {
+      padding: 8px 8px 6px 8px;
+
+      .tournament-name {
+        font-size: 13px;
+      }
+
+      .status-indicator {
+        width: 6px;
+        height: 6px;
+      }
+    }
+
+    .card-content {
+      padding: 6px 8px;
+      gap: 6px;
 
       .status-info {
         .status-label {
@@ -274,18 +271,30 @@
         }
       }
 
+      .date-info {
+        .date-label {
+          font-size: 10px;
+        }
+
+        .date-value {
+          font-size: 11px;
+          padding: 2px 5px;
+        }
+      }
+
       .categories-info {
         .categories-label {
           font-size: 10px;
         }
 
         .categories-list {
-          gap: 3px;
+          gap: 4px;
 
           .category-tag,
           .category-count {
             font-size: 9px;
             padding: 2px 5px;
+            border-radius: 4px;
           }
         }
       }

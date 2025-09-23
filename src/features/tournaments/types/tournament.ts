@@ -3,6 +3,8 @@ export interface Tournament {
   name: string;
   status: "active" | "inactive" | "upcoming" | "completed";
   categories: string[];
+  startDate: string;
+  endDate: string;
 }
 
 export interface TournamentListResponse {
