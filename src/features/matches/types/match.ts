@@ -94,6 +94,17 @@ export interface UpdateMatchDTO {
   gameScores?: GameScoreDTO[];
 }
 
+export interface LiveScoreRequest {
+  matchId: string;
+  gameScores: GameScoreDTO[];
+}
+
+export interface LiveScoreResponse {
+  success: boolean;
+  message: string;
+  data: boolean;
+}
+
 export interface PaginationInfo {
   total: number;
   pageNumber: number;

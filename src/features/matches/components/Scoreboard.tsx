@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Match, MatchGameScore } from "../types/match";
+import { updateLiveScore } from "../api/matches";
 import "./Scoreboard.scss";
 
 interface ScoreboardProps {
@@ -52,6 +53,38 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ match, onScoreUpdate, switchSid
     }
   }, [currentSet.homeScore, currentSet.awayScore, switchSideInterval]);
 
+  // Send live score updates when current set changes (with debouncing)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const allGameScores = [
+        ...completedSets,
+        {
+          gameNumber: currentSet.gameNumber,
+          homeScore: currentSet.homeScore,
+          awayScore: currentSet.awayScore,
+        },
+      ];
+      sendLiveScore(allGameScores);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [currentSet.homeScore, currentSet.awayScore, completedSets, currentSet.gameNumber]);
+
+  // Function to send live score updates
+  const sendLiveScore = async (gameScores: MatchGameScore[]) => {
+    if (!match.id) return;
+
+    try {
+      await updateLiveScore({
+        matchId: match.id,
+        gameScores: gameScores,
+      });
+    } catch (error) {
+      console.error("Failed to update live score:", error);
+      // Optionally show a toast notification or error message
+    }
+  };
+
   const updateScore = (team: "home" | "away", action: "add" | "subtract") => {
     // Hide switch reminder when adding scores
     if (showSwitchReminder) {
@@ -62,10 +95,12 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ match, onScoreUpdate, switchSid
       const currentScore = team === "home" ? prev.homeScore : prev.awayScore;
       const newScore = action === "add" ? currentScore + 1 : Math.max(0, currentScore - 1);
 
-      return {
+      const updatedSet = {
         ...prev,
         [`${team}Score`]: newScore,
       };
+
+      return updatedSet;
     });
   };
 
@@ -83,6 +118,9 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ match, onScoreUpdate, switchSid
 
     const newCompletedSets = [...completedSets, completedSet];
     setCompletedSets(newCompletedSets);
+
+    // Send live score update with completed set
+    sendLiveScore(newCompletedSets);
 
     // Start new set
     setCurrentSet({
@@ -102,6 +140,9 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ match, onScoreUpdate, switchSid
     if (completedSets.length > 0) {
       const newCompletedSets = completedSets.slice(0, -1);
       setCompletedSets(newCompletedSets);
+
+      // Send live score update after undo
+      sendLiveScore(newCompletedSets);
 
       // Reset current set to the last completed set number
       const lastSetNumber =
@@ -147,10 +188,12 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ match, onScoreUpdate, switchSid
 
       {/* Match Header */}
       <div className="match-header">
-        <h2 className="match-title">
-          {match.homeTeamName} vs {match.awayTeamName}
-        </h2>
-        <p className="match-status">{getMatchStatus()}</p>
+        <div className="header-content">
+          <h2 className="match-title">
+            {match.homeTeamName} vs {match.awayTeamName}
+          </h2>
+          <p className="match-status">{getMatchStatus()}</p>
+        </div>
       </div>
 
       {/* Current Set Score */}

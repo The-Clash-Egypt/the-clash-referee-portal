@@ -75,6 +75,38 @@
         }
       }
 
+      .header-controls {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-right: 12px;
+
+        .live-score-toggle {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          color: #64748b;
+
+          input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary-color, #3b82f6);
+            cursor: pointer;
+          }
+
+          .toggle-label {
+            user-select: none;
+          }
+
+          &:hover {
+            color: #475569;
+          }
+        }
+      }
+
       .header-actions {
         display: flex;
         align-items: center;

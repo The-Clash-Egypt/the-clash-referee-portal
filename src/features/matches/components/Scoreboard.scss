@@ -39,14 +39,54 @@
 
   // Match Header
   .match-header {
-    text-align: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e2e8f0;
 
-    .match-title {
-      font-size: 28px;
-      font-weight: 700;
-      margin: 0 0 8px 0;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    .header-content {
+      flex: 1;
+      text-align: center;
+
+      .match-title {
+        font-size: 28px;
+        font-weight: 700;
+        margin: 0 0 8px 0;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+
+      .live-score-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        color: #64748b;
+
+        input[type="checkbox"] {
+          width: 18px;
+          height: 18px;
+          accent-color: var(--primary-color, #3b82f6);
+          cursor: pointer;
+        }
+
+        .toggle-label {
+          user-select: none;
+        }
+
+        &:hover {
+          color: #475569;
+        }
+      }
     }
 
     .match-status {

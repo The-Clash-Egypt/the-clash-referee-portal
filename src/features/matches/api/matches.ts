@@ -1,5 +1,13 @@
 import api from "../../../api/axios";
-import { MatchFilters, MatchGameScore, PlayerSuggestion, RefereeMatchesResponse, UpdateMatchDTO } from "../types/match";
+import {
+  MatchFilters,
+  MatchGameScore,
+  PlayerSuggestion,
+  RefereeMatchesResponse,
+  UpdateMatchDTO,
+  LiveScoreRequest,
+  LiveScoreResponse,
+} from "../types/match";
 
 // Get referee matches
 export const getRefereeMatches = (filters?: MatchFilters): Promise<{ data: RefereeMatchesResponse }> => {
@@ -91,3 +99,7 @@ export const bulkUpdateMatchScores = async (matchScores: { matchId: string; game
 
   return promises;
 };
+
+// Live score logging
+export const updateLiveScore = (data: LiveScoreRequest): Promise<{ data: LiveScoreResponse }> =>
+  api.put("/tournament/matches/live-score", data);

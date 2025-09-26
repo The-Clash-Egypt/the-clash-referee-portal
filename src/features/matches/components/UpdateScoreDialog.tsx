@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Match, MatchGameScore } from "../types/match";
+import { updateLiveScore } from "../api/matches";
 import "./UpdateScoreDialog.scss";
 
 interface UpdateScoreDialogProps {
@@ -65,6 +66,15 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
     }
   }, [match]);
 
+  // Send live score updates when game scores change (with debouncing)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      sendLiveScore(gameScores);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [gameScores]);
+
   const getBestOfValue = (match: Match): number => {
     return match.bestOf || 1;
   };
@@ -90,11 +100,30 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
     return getBestOfValue(match) === 1;
   };
 
+  // Function to send live score updates
+  const sendLiveScore = async (gameScores: MatchGameScore[]) => {
+    if (!match?.id) return;
+
+    try {
+      await updateLiveScore({
+        matchId: match.id,
+        gameScores: gameScores,
+      });
+    } catch (error) {
+      console.error("Failed to update live score:", error);
+      // Optionally show a toast notification or error message
+    }
+  };
+
   const updateGameScore = (gameNumber: number, field: "homeScore" | "awayScore", value: string) => {
     const numericValue = value === "" ? 0 : Math.max(0, parseInt(value) || 0);
-    setGameScores((prev) =>
-      prev.map((score) => (score.gameNumber === gameNumber ? { ...score, [field]: numericValue } : score))
-    );
+    setGameScores((prev) => {
+      const updatedScores = prev.map((score) =>
+        score.gameNumber === gameNumber ? { ...score, [field]: numericValue } : score
+      );
+
+      return updatedScores;
+    });
   };
 
   const quickUpdateScore = (team: "home" | "away", action: "add" | "subtract") => {
@@ -109,14 +138,18 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
 
   const addGame = () => {
     const nextGameNumber = gameScores.length + 1;
-    setGameScores((prev) => [
-      ...prev,
-      {
-        gameNumber: nextGameNumber,
-        homeScore: 0,
-        awayScore: 0,
-      },
-    ]);
+    setGameScores((prev) => {
+      const newScores = [
+        ...prev,
+        {
+          gameNumber: nextGameNumber,
+          homeScore: 0,
+          awayScore: 0,
+        },
+      ];
+
+      return newScores;
+    });
 
     // In fullscreen mode, automatically select the newly added game
     if (isFullscreen) {
@@ -125,7 +158,11 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
   };
 
   const removeGame = (gameNumber: number) => {
-    setGameScores((prev) => prev.filter((score) => score.gameNumber !== gameNumber));
+    setGameScores((prev) => {
+      const newScores = prev.filter((score) => score.gameNumber !== gameNumber);
+
+      return newScores;
+    });
   };
 
   const validateScores = (): boolean => {
