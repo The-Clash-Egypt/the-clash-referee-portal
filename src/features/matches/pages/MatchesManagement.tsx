@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   assignRefereeToMatch,
   bulkAssignRefereeToMatches,
@@ -120,6 +120,24 @@ const MatchesManagement: React.FC = () => {
   // URL params sync state
   const [isInitialized, setIsInitialized] = useState(false);
   const [matchesLoaded, setMatchesLoaded] = useState(false);
+
+  // Sort matches by start time in ascending order
+  const sortedMatches = useMemo(() => {
+    if (!matches || matches.length === 0) return [];
+
+    return [...matches].sort((a, b) => {
+      // Handle cases where startTime might be undefined
+      if (!a.startTime && !b.startTime) return 0;
+      if (!a.startTime) return 1; // Put matches without start time at the end
+      if (!b.startTime) return -1; // Put matches without start time at the end
+
+      // Convert to Date objects and compare
+      const dateA = new Date(a.startTime);
+      const dateB = new Date(b.startTime);
+
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [matches]);
 
   // Refs to track if filters are being restored from URL vs changed by user
   const isRestoringFromURL = useRef(false);
@@ -1143,11 +1161,11 @@ const MatchesManagement: React.FC = () => {
                     <button
                       className="select-all-btn"
                       onClick={() => {
-                        const allMatchIds = new Set(matches?.map((match) => match.id) || []);
+                        const allMatchIds = new Set(sortedMatches?.map((match) => match.id) || []);
                         setSelectedMatches(allMatchIds);
                       }}
                     >
-                      Select All ({matches.length})
+                      Select All ({sortedMatches.length})
                     </button>
                   </>
                 )}
@@ -1177,7 +1195,7 @@ const MatchesManagement: React.FC = () => {
                 <span className="stat-label">Total Matches</span>
                 <span className="stat-value">{totalMatches}</span>
                 {totalMatches > 0 && totalMatches !== totalMatches && (
-                  <span className="current-page-info">(Showing {matches.length} on this page)</span>
+                  <span className="current-page-info">(Showing {sortedMatches.length} on this page)</span>
                 )}
               </div>
               <div className="status-stats">
@@ -1232,7 +1250,7 @@ const MatchesManagement: React.FC = () => {
           {!loading && matches && matches.length > 0 && (
             <>
               <div className="matches-grid">
-                {matches?.map((match) => (
+                {sortedMatches?.map((match) => (
                   <MatchCard
                     key={match.id}
                     match={match}
@@ -1326,7 +1344,7 @@ const MatchesManagement: React.FC = () => {
           {/* Bulk Assignment Modal */}
           <BulkAssignRefereeModal
             isOpen={showBulkAssignmentModal}
-            selectedMatches={matches?.filter((match) => selectedMatches.has(match.id)) || []}
+            selectedMatches={sortedMatches?.filter((match) => selectedMatches.has(match.id)) || []}
             onClose={() => setShowBulkAssignmentModal(false)}
             onAssign={handleBulkAssignReferee}
             loading={bulkAssigningReferee}
@@ -1347,7 +1365,7 @@ const MatchesManagement: React.FC = () => {
           {/* Bulk Update Score Modal */}
           <BulkUpdateScoreModal
             isOpen={showBulkUpdateScoreModal}
-            selectedMatches={matches?.filter((match) => selectedMatches.has(match.id)) || []}
+            selectedMatches={sortedMatches?.filter((match) => selectedMatches.has(match.id)) || []}
             onClose={() => setShowBulkUpdateScoreModal(false)}
             onSubmit={handleBulkUpdateScores}
             loading={bulkUpdatingScores}
@@ -1419,7 +1437,7 @@ const MatchesManagement: React.FC = () => {
           {/* Export Views */}
           {showPrintableView && (
             <PrintableView
-              matches={matches}
+              matches={sortedMatches}
               tournamentName={tournamentName || "Tournament"}
               categoryName={filterCategory !== "all" ? filterCategory : undefined}
               viewType={printableViewType}
