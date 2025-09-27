@@ -339,6 +339,7 @@ const GuestVenuePage: React.FC = () => {
         }}
         onSubmit={handleSubmitScore}
         loading={updatingScore}
+        venueAccessToken={accessToken || undefined}
       />
     </div>
   );

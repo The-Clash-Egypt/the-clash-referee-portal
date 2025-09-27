@@ -9,14 +9,24 @@ interface UpdateScoreDialogProps {
   onClose: () => void;
   onSubmit: (gameScores: MatchGameScore[]) => Promise<void>;
   loading: boolean;
+  venueAccessToken?: string;
 }
 
-const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, onClose, onSubmit, loading }) => {
+const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
+  isOpen,
+  match,
+  onClose,
+  onSubmit,
+  loading,
+  venueAccessToken,
+}) => {
   const [gameScores, setGameScores] = useState<MatchGameScore[]>([]);
+  const [originalGameScores, setOriginalGameScores] = useState<MatchGameScore[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedSetIndex, setSelectedSetIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
 
   // Check if device is mobile
   useEffect(() => {
@@ -61,19 +71,24 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
       }
 
       setGameScores(initialScores);
+      setOriginalGameScores([...initialScores]); // Store original scores for reset functionality
       setErrors([]);
+      setIsUnauthorized(false);
       setSelectedSetIndex(0);
     }
   }, [match]);
 
   // Send live score updates when game scores change (with debouncing)
   useEffect(() => {
+    // Don't send live score updates if user is unauthorized
+    if (isUnauthorized) return;
+
     const timeoutId = setTimeout(() => {
       sendLiveScore(gameScores);
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [gameScores]);
+  }, [gameScores, isUnauthorized]);
 
   const getBestOfValue = (match: Match): number => {
     return match.bestOf || 1;
@@ -105,13 +120,26 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
     if (!match?.id) return;
 
     try {
-      await updateLiveScore({
-        matchId: match.id,
-        gameScores: gameScores,
-      });
-    } catch (error) {
+      await updateLiveScore(
+        {
+          matchId: match.id,
+          gameScores: gameScores,
+        },
+        venueAccessToken
+      );
+    } catch (error: any) {
       console.error("Failed to update live score:", error);
-      // Optionally show a toast notification or error message
+
+      // Check if it's a 401 unauthorized error
+      if (error.response?.status === 401) {
+        setIsUnauthorized(true);
+        setErrors(["Your venue access token is invalid or expired. Please contact the tournament organizer."]);
+        // Reset scores to original values
+        setGameScores([...originalGameScores]);
+      } else {
+        // Handle other errors
+        setErrors(["Failed to update live score. Please try again."]);
+      }
     }
   };
 
@@ -202,7 +230,9 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
 
   const handleClose = () => {
     setGameScores([]);
+    setOriginalGameScores([]);
     setErrors([]);
+    setIsUnauthorized(false);
     setIsFullscreen(false);
     setSelectedSetIndex(0);
     onClose();
@@ -221,7 +251,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
   const currentGame = gameScores[selectedSetIndex] || { gameNumber: 1, homeScore: 0, awayScore: 0 };
 
   // Fullscreen Scoreboard View (Mobile Only)
-  if (isFullscreen && isMobile) {
+  if (isFullscreen && isMobile && !isUnauthorized) {
     return (
       <div className="fullscreen-scoreboard">
         <div className="scoreboard-content">
@@ -354,6 +384,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
                   setIsFullscreen(true);
                 }}
                 title="Enter fullscreen scoreboard"
+                disabled={isUnauthorized}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path
@@ -391,6 +422,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
                       onClick={(e) => e.stopPropagation()}
                       className="score-input"
                       placeholder="0"
+                      disabled={isUnauthorized}
                     />
                   </div>
                   <div className="score-divider">-</div>
@@ -404,6 +436,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
                       onClick={(e) => e.stopPropagation()}
                       className="score-input"
                       placeholder="0"
+                      disabled={isUnauthorized}
                     />
                   </div>
                 </div>
@@ -416,6 +449,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
                     }}
                     type="button"
                     title="Remove set"
+                    disabled={isUnauthorized}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                       <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" />
@@ -436,6 +470,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
                   addGame();
                 }}
                 type="button"
+                disabled={isUnauthorized}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" />
@@ -446,9 +481,9 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
           )}
 
           {errors.length > 0 && (
-            <div className="error-messages">
+            <div className={`error-messages ${isUnauthorized ? "unauthorized-error" : ""}`}>
               {errors.map((error, index) => (
-                <p key={index} className="error-message">
+                <p key={index} className={`error-message ${isUnauthorized ? "unauthorized-message" : ""}`}>
                   {error}
                 </p>
               ))}
@@ -472,7 +507,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({ isOpen, match, on
                 e.stopPropagation();
                 handleSubmit();
               }}
-              disabled={loading}
+              disabled={loading || isUnauthorized}
             >
               {loading ? "Saving..." : "Save Scores"}
             </button>

@@ -101,5 +101,10 @@ export const bulkUpdateMatchScores = async (matchScores: { matchId: string; game
 };
 
 // Live score logging
-export const updateLiveScore = (data: LiveScoreRequest): Promise<{ data: LiveScoreResponse }> =>
-  api.put("/tournament/matches/live-score", data);
+export const updateLiveScore = (
+  data: LiveScoreRequest,
+  venueAccessToken?: string
+): Promise<{ data: LiveScoreResponse }> => {
+  const headers = venueAccessToken ? { "X-Venue-Access-Token": venueAccessToken } : {};
+  return api.put("/tournament/matches/live-score", data, { headers });
+};
