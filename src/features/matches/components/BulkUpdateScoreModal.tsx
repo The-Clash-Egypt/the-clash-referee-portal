@@ -120,20 +120,21 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
       const match = selectedMatches.find((m) => m.id === matchScore.matchId);
       if (!match) return;
 
-      // Check if at least one game has been played
+      // Only validate matches that have scores entered
       const hasPlayedGames = matchScore.gameScores.some((score) => score.homeScore > 0 || score.awayScore > 0);
-      if (!hasPlayedGames) {
-        newErrors.push(`${match.homeTeamName} vs ${match.awayTeamName}: At least one game must have scores entered.`);
-      }
 
-      // Check for valid game outcomes (no ties in most sports)
-      matchScore.gameScores.forEach((score, index) => {
-        if (score.homeScore > 0 || score.awayScore > 0) {
-          if (score.homeScore === score.awayScore) {
-            newErrors.push(`${match.homeTeamName} vs ${match.awayTeamName} - Game ${index + 1}: Cannot end in a tie.`);
+      if (hasPlayedGames) {
+        // Check for valid game outcomes (no ties in most sports) only for games with scores
+        matchScore.gameScores.forEach((score, index) => {
+          if (score.homeScore > 0 || score.awayScore > 0) {
+            if (score.homeScore === score.awayScore) {
+              newErrors.push(
+                `${match.homeTeamName} vs ${match.awayTeamName} - Game ${index + 1}: Cannot end in a tie.`
+              );
+            }
           }
-        }
-      });
+        });
+      }
     });
 
     setErrors(newErrors);
@@ -297,7 +298,8 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
               <div className="score-section">
                 <h4>Game Scores</h4>
                 <p className="score-instructions">
-                  Enter scores for each game. Leave empty if the game hasn't been played yet.
+                  Enter scores for each game. Leave empty if the game hasn't been played yet. You can skip matches
+                  without scores - only matches with entered scores will be updated.
                 </p>
 
                 <div className="games-grid">
@@ -391,7 +393,9 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
                   Back to Scores
                 </button>
                 <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
-                  {loading ? "Updating..." : `Update ${completedMatches} Match${completedMatches !== 1 ? "es" : ""}`}
+                  {loading
+                    ? "Updating..."
+                    : `Update ${completedMatches} Match${completedMatches !== 1 ? "es" : ""} with Scores`}
                 </button>
               </div>
             )}
