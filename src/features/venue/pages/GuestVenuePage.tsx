@@ -311,12 +311,14 @@ const GuestVenuePage: React.FC = () => {
             <div className="matches-grid">
               {venueData.matches
                 .sort((a, b) => {
-                  // If all matches are completed, sort by latest first (descending)
-                  const allCompleted = venueData.matches.every((match) => match.isCompleted);
-                  if (allCompleted) {
-                    return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
+                  // Always prioritize upcoming matches first
+                  if (a.isCompleted && !b.isCompleted) {
+                    return 1; // a (completed) comes after b (upcoming)
                   }
-                  // Otherwise, sort by earliest first (ascending)
+                  if (!a.isCompleted && b.isCompleted) {
+                    return -1; // a (upcoming) comes before b (completed)
+                  }
+                  // If both have same completion status, sort by start time
                   return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
                 })
                 .map((venueMatch) => {
