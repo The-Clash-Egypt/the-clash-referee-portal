@@ -61,6 +61,14 @@ const GuestVenuePage: React.FC = () => {
     setShowUpdateScoreModal(true);
   };
 
+  // Handle scoreboard close - refetch data to show updated scores
+  const handleScoreboardClose = async () => {
+    setShowUpdateScoreModal(false);
+    setSelectedMatchForScore(null);
+    // Refetch venue data to show any live score updates
+    await refetchVenueData();
+  };
+
   // Handle score submission
   const handleSubmitScore = async (gameScores: MatchGameScore[]) => {
     if (!selectedMatchForScore) return;
@@ -80,7 +88,7 @@ const GuestVenuePage: React.FC = () => {
       // Refresh venue data to show updated scores
       if (venueId) {
         // Refetch the venue data to get updated scores
-        window.location.reload(); // Simple refresh for now
+        await refetchVenueData();
       }
 
       setShowUpdateScoreModal(false);
@@ -111,6 +119,7 @@ const GuestVenuePage: React.FC = () => {
     data: venueResponse,
     isLoading: isVenueLoading,
     error: venueError,
+    refetch: refetchVenueData,
   } = useQuery({
     queryKey: ["guest-venue", venueId, accessToken],
     queryFn: () => getGuestVenue(venueId!),
@@ -333,13 +342,11 @@ const GuestVenuePage: React.FC = () => {
       <UpdateScoreDialog
         isOpen={showUpdateScoreModal}
         match={selectedMatchForScore}
-        onClose={() => {
-          setShowUpdateScoreModal(false);
-          setSelectedMatchForScore(null);
-        }}
+        onClose={handleScoreboardClose}
         onSubmit={handleSubmitScore}
         loading={updatingScore}
         venueAccessToken={accessToken || undefined}
+        openInFullscreen={true}
       />
     </div>
   );

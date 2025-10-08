@@ -361,13 +361,15 @@ const MatchesManagement: React.FC = () => {
     }
   }, [isInitialized, filterCategory]);
 
-  const fetchData = useCallback(async (filters?: MatchFilters) => {
+  const fetchData = useCallback(async (filters?: MatchFilters, showLoading: boolean = true) => {
     // Temporarily disable filter resets during data refresh
     const wasRestoringFromURL = isRestoringFromURL.current;
     isRestoringFromURL.current = true;
 
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
 
       const [matchesResponse] = await Promise.all([(await getRefereeMatches(filters)).data]);
 
@@ -581,6 +583,27 @@ const MatchesManagement: React.FC = () => {
   const handleUpdateScore = (match: Match) => {
     setSelectedMatchForScore(match);
     setShowUpdateScoreModal(true);
+  };
+
+  // Handle scoreboard close - refetch data to show updated scores
+  const handleScoreboardClose = async () => {
+    setShowUpdateScoreModal(false);
+    setSelectedMatchForScore(null);
+    // Refetch matches data to show any live score updates (without loading spinner)
+    const currentFilters: MatchFilters = {
+      search: debouncedSearchTerm || undefined,
+      status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+      tournament: id,
+      category: filterCategory !== "all" ? filterCategory : undefined,
+      format: filterFormat !== "all" ? filterFormat : undefined,
+      round: filterRound !== "all" ? filterRound : undefined,
+      venue: filterVenue !== "all" ? filterVenue : undefined,
+      team: filterTeam !== "all" ? filterTeam : undefined,
+      referee: filterReferee !== "all" ? filterReferee : undefined,
+      pageSize: pageSize,
+      pageNumber: currentPage,
+    };
+    await fetchData(currentFilters, false); // Don't show loading spinner for background refresh
   };
 
   const handleSubmitScore = async (gameScores: MatchGameScore[]) => {
@@ -1354,11 +1377,9 @@ const MatchesManagement: React.FC = () => {
           <UpdateScoreDialog
             isOpen={showUpdateScoreModal}
             match={selectedMatchForScore}
-            onClose={() => {
-              setShowUpdateScoreModal(false);
-              setSelectedMatchForScore(null);
-            }}
+            onClose={handleScoreboardClose}
             onSubmit={handleSubmitScore}
+            openInFullscreen={!isAdmin}
             loading={updatingScore}
           />
 

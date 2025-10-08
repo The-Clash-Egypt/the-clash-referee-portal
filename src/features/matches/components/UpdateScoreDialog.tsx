@@ -10,6 +10,7 @@ interface UpdateScoreDialogProps {
   onSubmit: (gameScores: MatchGameScore[]) => Promise<void>;
   loading: boolean;
   venueAccessToken?: string;
+  openInFullscreen?: boolean; // New prop to control fullscreen behavior
 }
 
 const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
@@ -19,6 +20,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   onSubmit,
   loading,
   venueAccessToken,
+  openInFullscreen = false,
 }) => {
   const [gameScores, setGameScores] = useState<MatchGameScore[]>([]);
   const [originalGameScores, setOriginalGameScores] = useState<MatchGameScore[]>([]);
@@ -27,6 +29,9 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   const [selectedSetIndex, setSelectedSetIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const [hasLoggedFirstPoint, setHasLoggedFirstPoint] = useState(false);
+  const [preservedGameScores, setPreservedGameScores] = useState<MatchGameScore[]>([]);
+  const [preservedSelectedSetIndex, setPreservedSelectedSetIndex] = useState(0);
 
   // Check if device is mobile
   useEffect(() => {
@@ -39,6 +44,13 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
 
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  // Auto-open fullscreen for guest venue on mobile
+  useEffect(() => {
+    if (isOpen && openInFullscreen && isMobile) {
+      setIsFullscreen(true);
+    }
+  }, [isOpen, openInFullscreen, isMobile]);
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -56,39 +68,58 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   // Initialize game scores when match changes
   useEffect(() => {
     if (match) {
-      const initialScores: MatchGameScore[] = [];
+      let initialScores: MatchGameScore[] = [];
 
-      if (match.gameScores && match.gameScores.length > 0) {
-        initialScores.push(...match.gameScores);
-      }
+      // For guest venue context, check if we have preserved scores for this match
+      if (openInFullscreen && preservedGameScores.length > 0) {
+        initialScores = [...preservedGameScores];
+        setSelectedSetIndex(preservedSelectedSetIndex);
+      } else {
+        // Normal initialization
+        if (match.gameScores && match.gameScores.length > 0) {
+          initialScores.push(...match.gameScores);
+        }
 
-      if (initialScores.length === 0) {
-        initialScores.push({
-          gameNumber: 1,
-          homeScore: 0,
-          awayScore: 0,
-        });
+        if (initialScores.length === 0) {
+          initialScores.push({
+            gameNumber: 1,
+            homeScore: 0,
+            awayScore: 0,
+          });
+        }
+        setSelectedSetIndex(0);
       }
 
       setGameScores(initialScores);
       setOriginalGameScores([...initialScores]); // Store original scores for reset functionality
       setErrors([]);
       setIsUnauthorized(false);
-      setSelectedSetIndex(0);
+      setHasLoggedFirstPoint(false);
     }
-  }, [match]);
+  }, [match, openInFullscreen, preservedGameScores, preservedSelectedSetIndex]);
 
   // Send live score updates when game scores change (with debouncing)
+  // Only send live score updates after the first point has been logged
   useEffect(() => {
     // Don't send live score updates if user is unauthorized
     if (isUnauthorized) return;
 
-    const timeoutId = setTimeout(() => {
-      sendLiveScore(gameScores);
-    }, 500); // 500ms debounce
+    // Check if any point has been logged
+    const hasAnyPoints = gameScores.some((score) => score.homeScore > 0 || score.awayScore > 0);
 
-    return () => clearTimeout(timeoutId);
-  }, [gameScores, isUnauthorized]);
+    if (hasAnyPoints && !hasLoggedFirstPoint) {
+      setHasLoggedFirstPoint(true);
+    }
+
+    // Only send live score updates after first point is logged
+    if (hasLoggedFirstPoint) {
+      const timeoutId = setTimeout(() => {
+        sendLiveScore(gameScores);
+      }, 500); // 500ms debounce
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [gameScores, isUnauthorized, hasLoggedFirstPoint]);
 
   const getBestOfValue = (match: Match): number => {
     return match.bestOf || 1;
@@ -235,11 +266,30 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     setIsUnauthorized(false);
     setIsFullscreen(false);
     setSelectedSetIndex(0);
+    setHasLoggedFirstPoint(false);
+    setPreservedGameScores([]);
+    setPreservedSelectedSetIndex(0);
+    onClose();
+  };
+
+  const handleGuestVenueClose = () => {
+    // For guest venue context, preserve the current state but close the dialog
+    setPreservedGameScores([...gameScores]);
+    setPreservedSelectedSetIndex(selectedSetIndex);
+    setErrors([]);
+    setIsUnauthorized(false);
+    setIsFullscreen(false);
     onClose();
   };
 
   const exitFullscreen = () => {
-    setIsFullscreen(false);
+    if (openInFullscreen) {
+      // If opened in fullscreen mode (guest venue context), close the dialog but preserve state
+      handleGuestVenueClose();
+    } else {
+      // Otherwise, just exit fullscreen mode
+      setIsFullscreen(false);
+    }
   };
 
   if (!isOpen || !match) return null;
@@ -386,14 +436,11 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                 title="Enter fullscreen scoreboard"
                 disabled={isUnauthorized}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="2" width="20" height="20" rx="3" stroke="currentColor" strokeWidth="1.5" fill="none" />
+                  <text x="12" y="16" textAnchor="middle" fontSize="11" fontWeight="bold" fill="currentColor">
+                    1:0
+                  </text>
                 </svg>
               </button>
             )}
