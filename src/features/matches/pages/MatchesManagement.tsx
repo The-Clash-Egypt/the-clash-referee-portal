@@ -21,6 +21,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../store";
 import { Match, MatchGameScore, MatchFilters, FilterOptions } from "../types/match";
+import { groupMatchesByDay, getTournamentDayDuration, getTournamentDayTimeRange } from "../../../utils/durationUtils";
 import "./MatchesManagement.scss";
 import "../components/PrintableView.scss";
 import "../components/SearchableDropdown.scss";
@@ -1272,6 +1273,69 @@ const MatchesManagement: React.FC = () => {
 
           {!loading && matches && matches.length > 0 && (
             <>
+              {/* Tournament Day Durations - Admin Only */}
+              {isAdmin &&
+                (() => {
+                  const dayGroups = groupMatchesByDay(matches);
+                  const daysWithDuration = Object.entries(dayGroups).filter(
+                    ([_, dayMatches]) => getTournamentDayDuration(dayMatches) !== null
+                  );
+
+                  return daysWithDuration.length > 0 ? (
+                    <div className="tournament-day-durations">
+                      <h3 className="durations-title">Tournament Day Durations</h3>
+                      <div className="durations-grid">
+                        {daysWithDuration.map(([date, dayMatches]) => {
+                          const dayDuration = getTournamentDayDuration(dayMatches);
+                          const timeRange = getTournamentDayTimeRange(dayMatches);
+
+                          return (
+                            <div key={date} className="day-duration-card">
+                              <div className="day-date">
+                                {new Date(date).toLocaleDateString("en-US", {
+                                  weekday: "long",
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                })}
+                              </div>
+                              <div className="day-stats">
+                                <div className="matches-count">
+                                  {dayMatches.length} match{dayMatches.length !== 1 ? "es" : ""}
+                                </div>
+                                {dayDuration && (
+                                  <div className="day-duration">
+                                    <span className="duration-label">Duration:</span>
+                                    <span className="duration-value">{dayDuration}</span>
+                                  </div>
+                                )}
+                                {timeRange && (
+                                  <div className="day-time-range">
+                                    <span className="time-label">Time Range:</span>
+                                    <span className="time-value">
+                                      {timeRange.start.toLocaleTimeString("en-US", {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        hour12: true,
+                                      })}{" "}
+                                      -{" "}
+                                      {timeRange.end.toLocaleTimeString("en-US", {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        hour12: true,
+                                      })}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+
               <div className="matches-grid">
                 {sortedMatches?.map((match) => (
                   <MatchCard
@@ -1285,6 +1349,7 @@ const MatchesManagement: React.FC = () => {
                     isSelectable={isAdmin}
                     isSelected={selectedMatches.has(match.id)}
                     onSelectionChange={handleMatchSelection}
+                    showDuration={isAdmin}
                   />
                 ))}
               </div>

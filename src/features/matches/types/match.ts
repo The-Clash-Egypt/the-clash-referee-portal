@@ -6,6 +6,8 @@ export interface Match {
   format?: string;
   bestOf?: number;
   startTime?: string;
+  startedAt?: string;
+  endedAt?: string;
   round?: string;
   homeTeamId?: string;
   homeTeamName?: string;

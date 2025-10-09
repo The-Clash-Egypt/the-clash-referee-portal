@@ -2,6 +2,7 @@ import React from "react";
 import { Match } from "../../matches/types/match";
 import "./MatchCard.scss";
 import moment from "moment";
+import { getMatchDuration } from "../../../utils/durationUtils";
 
 interface MatchCardProps {
   match: Match;
@@ -15,6 +16,7 @@ interface MatchCardProps {
   isSelectable?: boolean;
   isSelected?: boolean;
   onSelectionChange?: (matchId: string, selected: boolean) => void;
+  showDuration?: boolean;
 }
 
 const MatchCard: React.FC<MatchCardProps> = ({
@@ -29,6 +31,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
   isSelectable = false,
   isSelected = false,
   onSelectionChange,
+  showDuration = false,
 }) => {
   // Determine the winner for completed matches
   const getMatchWinner = () => {
@@ -44,6 +47,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
   };
 
   const matchWinner = getMatchWinner();
+  const matchDuration = getMatchDuration(match);
+
   const handleUpdateScore = () => {
     if (onUpdateScore) {
       onUpdateScore(match);
@@ -133,6 +138,16 @@ const MatchCard: React.FC<MatchCardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Match Duration - Admin Only */}
+      {showDuration && matchDuration && (
+        <div className="match-duration">
+          <div className="duration-info">
+            <span className="duration-label">Duration:</span>
+            <span className="duration-value">{matchDuration}</span>
+          </div>
+        </div>
+      )}
 
       {/* Teams Section */}
       <div className="teams-section">
