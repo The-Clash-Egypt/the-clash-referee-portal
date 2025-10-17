@@ -108,31 +108,37 @@
   /* Match Duration - Admin Only */
   .match-duration {
     margin-bottom: 1rem;
-    padding: 8px 12px;
+    padding: 10px 12px;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 
     .duration-info {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 8px;
 
       .duration-label {
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 600;
         color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        min-width: 70px;
       }
 
       .duration-value {
-        font-size: 13px;
-        font-weight: 700;
+        font-size: 12px;
+        font-weight: 600;
         color: #1e40af;
         background: #dbeafe;
-        padding: 2px 8px;
-        border-radius: 4px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        text-align: right;
       }
     }
   }

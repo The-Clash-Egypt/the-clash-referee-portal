@@ -139,13 +139,27 @@ const MatchCard: React.FC<MatchCardProps> = ({
         </div>
       </div>
 
-      {/* Match Duration - Admin Only */}
-      {showDuration && matchDuration && (
+      {/* Match Times & Duration - Admin Only */}
+      {showDuration && (
         <div className="match-duration">
-          <div className="duration-info">
-            <span className="duration-label">Duration:</span>
-            <span className="duration-value">{matchDuration}</span>
-          </div>
+          {match.startedAt && (
+            <div className="duration-info">
+              <span className="duration-label">Started:</span>
+              <span className="duration-value">{moment(match.startedAt).format("hh:mm A")}</span>
+            </div>
+          )}
+          {match.endedAt && (
+            <div className="duration-info">
+              <span className="duration-label">Ended:</span>
+              <span className="duration-value">{moment(match.endedAt).format("hh:mm A")}</span>
+            </div>
+          )}
+          {matchDuration && (
+            <div className="duration-info">
+              <span className="duration-label">Duration:</span>
+              <span className="duration-value">{matchDuration}</span>
+            </div>
+          )}
         </div>
       )}
 
