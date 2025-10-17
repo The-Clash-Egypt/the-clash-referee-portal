@@ -470,11 +470,14 @@
   left: 0;
   right: 0;
   bottom: 0;
+  width: 100vw;
+  height: 100vh;
   background: #000;
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 
   .scoreboard-content {
     width: 100%;
@@ -482,15 +485,17 @@
     display: flex;
     flex-direction: column;
     background: white;
+    overflow: hidden;
 
     /* Header */
     .scoreboard-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 20px 24px;
+      padding: 16px 20px;
       background: rgba(0, 0, 0, 0.1);
       z-index: 10;
+      flex-shrink: 0;
 
       .back-btn {
         background: rgba(0, 0, 0, 0.1);
@@ -539,6 +544,63 @@
       }
     }
 
+    /* Rotate Hint */
+    .rotate-hint {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: #fef3c7;
+      color: #1e293b;
+      font-size: 13px;
+      font-weight: 600;
+      flex-shrink: 0;
+      animation: slideDown 0.4s ease-out;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      position: relative;
+      border-bottom: 1px solid #fcd34d;
+
+      .rotate-icon {
+        animation: rotateIcon 2s ease-in-out infinite;
+        flex-shrink: 0;
+      }
+
+      span {
+        letter-spacing: 0.3px;
+        flex: 1;
+      }
+
+      .dismiss-hint-btn {
+        background: transparent;
+        border: none;
+        color: #1e293b;
+        padding: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+        margin-left: 8px;
+
+        &:hover {
+          background: rgba(0, 0, 0, 0.1);
+          transform: scale(1.1);
+        }
+
+        &:active {
+          transform: scale(0.95);
+        }
+
+        svg {
+          width: 16px;
+          height: 16px;
+        }
+      }
+    }
+
     /* Set Selector */
     .set-selector {
       display: flex;
@@ -580,6 +642,8 @@
       display: flex;
       flex-direction: column;
       position: relative;
+      overflow: hidden;
+      min-height: 0;
 
       .team-section {
         flex: 1;
@@ -587,8 +651,10 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 40px 20px;
+        padding: 30px 20px;
         position: relative;
+        min-height: 0;
+        overflow: hidden;
 
         &.home {
           background: #dc2626; /* Red */
@@ -600,30 +666,30 @@
 
         .team-name {
           color: white;
-          font-size: 32px;
+          font-size: 28px;
           font-weight: 700;
-          margin-bottom: 40px;
+          margin-bottom: 25px;
           text-align: center;
         }
 
         .score-display {
           color: white;
-          font-size: 120px;
+          font-size: 100px;
           font-weight: 900;
-          margin-bottom: 40px;
+          margin-bottom: 25px;
           text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .score-controls {
           display: flex;
-          gap: 20px;
+          gap: 16px;
 
           .score-btn {
-            width: 60px;
-            height: 60px;
+            width: 55px;
+            height: 55px;
             border: none;
             border-radius: 50%;
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -690,8 +756,9 @@
     .match-progress {
       display: flex;
       justify-content: space-around;
-      padding: 20px;
+      padding: 14px 20px;
       background: rgba(0, 0, 0, 0.1);
+      flex-shrink: 0;
 
       .progress-item {
         text-align: center;
@@ -699,15 +766,15 @@
 
         .label {
           display: block;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 500;
-          margin-bottom: 4px;
+          margin-bottom: 3px;
           opacity: 0.8;
         }
 
         .value {
           display: block;
-          font-size: 24px;
+          font-size: 22px;
           font-weight: 700;
         }
       }
@@ -715,12 +782,13 @@
 
     /* Save Section */
     .save-section {
-      padding: 20px;
+      padding: 14px 20px;
       text-align: center;
       background: rgba(0, 0, 0, 0.1);
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-shrink: 0;
 
       .add-game-btn {
         flex: 1;
@@ -728,13 +796,13 @@
         background-color: white;
         color: var(--primary-color);
         border-radius: 12px;
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 500;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 6px;
-        height: 40px;
+        height: 38px;
       }
 
       .save-btn {
@@ -743,8 +811,8 @@
         color: white;
         border: none;
         border-radius: 12px;
-        height: 40px;
-        font-size: 16px;
+        height: 38px;
+        font-size: 14px;
         font-weight: 500;
         cursor: pointer;
         transition: all 0.2s ease;
@@ -980,45 +1048,49 @@
   .fullscreen-scoreboard {
     .scoreboard-content {
       .scoreboard-header {
+        padding: 12px 16px;
+
         .back-btn {
-          padding: 10px;
+          padding: 8px;
           position: absolute;
 
           svg {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
           }
         }
 
         .header-set-selector {
           .set-tab {
-            padding: 6px 14px;
-            font-size: 14px;
+            padding: 5px 12px;
+            font-size: 13px;
           }
         }
       }
 
       .scoreboard-main {
         .team-section {
-          padding: 30px 16px;
+          padding: 20px 16px;
+          min-height: 0;
+          overflow: hidden;
 
           .team-name {
-            font-size: 24px;
-            margin-bottom: 20px;
+            font-size: 20px;
+            margin-bottom: 15px;
           }
 
           .score-display {
-            font-size: 80px;
-            margin-bottom: 20px;
+            font-size: 65px;
+            margin-bottom: 15px;
           }
 
           .score-controls {
-            gap: 16px;
+            gap: 14px;
 
             .score-btn {
-              width: 45px;
-              height: 45px;
-              font-size: 24px;
+              width: 42px;
+              height: 42px;
+              font-size: 22px;
             }
           }
         }
@@ -1039,22 +1111,461 @@
       }
 
       .match-progress {
-        padding: 16px;
+        padding: 12px 16px;
 
         .progress-item {
           .label {
-            font-size: 11px;
+            font-size: 10px;
           }
 
           .value {
-            font-size: 20px;
+            font-size: 18px;
           }
         }
       }
 
       .save-section {
-        padding: 16px;
+        padding: 12px 16px;
+
+        .add-game-btn {
+          font-size: 13px;
+          height: 36px;
+        }
+
+        .save-btn {
+          font-size: 13px;
+          height: 36px;
+        }
       }
     }
+  }
+}
+
+/* Landscape Mode for Fullscreen Scoreboard */
+@media (max-height: 500px) and (orientation: landscape) {
+  .fullscreen-scoreboard {
+    width: 100vw;
+    height: 100vh;
+
+    .scoreboard-content {
+      width: 100%;
+      height: 100%;
+
+      /* Header - Compact for landscape */
+      .scoreboard-header {
+        padding: 12px 20px;
+        flex-shrink: 0;
+
+        .back-btn {
+          padding: 8px;
+
+          svg {
+            width: 20px;
+            height: 20px;
+          }
+        }
+
+        .header-set-selector {
+          .set-tab {
+            padding: 4px 10px;
+            font-size: 11px;
+            min-width: 45px;
+          }
+        }
+      }
+
+      /* Main Scoreboard - Side by Side Layout */
+      .scoreboard-main {
+        flex-direction: row;
+        overflow: hidden;
+        min-height: 0;
+
+        .team-section {
+          flex: 1;
+          padding: 15px 20px;
+          min-height: 0;
+          overflow: hidden;
+
+          &.home {
+            background: #dc2626; /* Red */
+          }
+
+          &.away {
+            background: #2563eb; /* Blue */
+          }
+
+          .team-name {
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center;
+          }
+
+          .score-display {
+            color: white;
+            font-size: 60px;
+            font-weight: 900;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+          }
+
+          .score-controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+
+            .score-btn {
+              width: 45px;
+              height: 45px;
+              border: none;
+              border-radius: 50%;
+              font-size: 24px;
+              font-weight: 700;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+
+              &.add {
+                background: #10b981;
+                color: white;
+
+                &:hover:not(:disabled) {
+                  background: #059669;
+                  transform: scale(1.1);
+                  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+                }
+              }
+
+              &.subtract {
+                background: #ef4444;
+                color: white;
+
+                &:hover:not(:disabled) {
+                  background: #dc2626;
+                  transform: scale(1.1);
+                  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+                }
+              }
+
+              &:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                transform: none;
+              }
+            }
+          }
+        }
+      }
+
+      /* Match Progress - Horizontal Layout */
+      .match-progress {
+        display: flex;
+        justify-content: space-around;
+        padding: 8px 16px;
+        background: rgba(0, 0, 0, 0.1);
+        flex-shrink: 0;
+
+        .progress-item {
+          text-align: center;
+          color: black;
+
+          .label {
+            display: block;
+            font-size: 9px;
+            font-weight: 500;
+            margin-bottom: 2px;
+            opacity: 0.8;
+          }
+
+          .value {
+            display: block;
+            font-size: 16px;
+            font-weight: 700;
+          }
+        }
+      }
+
+      /* Save Section - Compact */
+      .save-section {
+        padding: 8px 16px;
+        text-align: center;
+        background: rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+
+        .add-game-btn {
+          flex: 1;
+          border: 1.5px solid var(--primary-color);
+          background-color: white;
+          color: var(--primary-color);
+          border-radius: 10px;
+          font-size: 12px;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          height: 32px;
+        }
+
+        .save-btn {
+          flex: 1;
+          background: var(--primary-color);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          height: 32px;
+          font-size: 12px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:hover:not(:disabled) {
+            background: color-mix(in srgb, var(--primary-color) 90%, black);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+          }
+
+          &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+          }
+        }
+      }
+    }
+  }
+}
+
+/* Larger landscape screens (like tablets in landscape) */
+@media (min-height: 501px) and (max-height: 800px) and (orientation: landscape) {
+  .fullscreen-scoreboard {
+    width: 100vw;
+    height: 100vh;
+
+    .scoreboard-content {
+      width: 100%;
+      height: 100%;
+
+      /* Header */
+      .scoreboard-header {
+        padding: 16px 24px;
+        flex-shrink: 0;
+
+        .back-btn {
+          padding: 10px;
+
+          svg {
+            width: 22px;
+            height: 22px;
+          }
+        }
+
+        .header-set-selector {
+          .set-tab {
+            padding: 6px 12px;
+            font-size: 12px;
+            min-width: 50px;
+          }
+        }
+      }
+
+      /* Main Scoreboard - Side by Side Layout */
+      .scoreboard-main {
+        flex-direction: row;
+        overflow: hidden;
+        min-height: 0;
+
+        .team-section {
+          flex: 1;
+          padding: 20px 30px;
+          min-height: 0;
+          overflow: hidden;
+
+          &.home {
+            background: #dc2626; /* Red */
+          }
+
+          &.away {
+            background: #2563eb; /* Blue */
+          }
+
+          .team-name {
+            color: white;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-align: center;
+          }
+
+          .score-display {
+            color: white;
+            font-size: 80px;
+            font-weight: 900;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+          }
+
+          .score-controls {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+
+            .score-btn {
+              width: 55px;
+              height: 55px;
+              border: none;
+              border-radius: 50%;
+              font-size: 30px;
+              font-weight: 700;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+
+              &.add {
+                background: #10b981;
+                color: white;
+
+                &:hover:not(:disabled) {
+                  background: #059669;
+                  transform: scale(1.1);
+                  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+                }
+              }
+
+              &.subtract {
+                background: #ef4444;
+                color: white;
+
+                &:hover:not(:disabled) {
+                  background: #dc2626;
+                  transform: scale(1.1);
+                  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+                }
+              }
+
+              &:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                transform: none;
+              }
+            }
+          }
+        }
+      }
+
+      /* Match Progress */
+      .match-progress {
+        display: flex;
+        justify-content: space-around;
+        padding: 10px 16px;
+        background: rgba(0, 0, 0, 0.1);
+        flex-shrink: 0;
+
+        .progress-item {
+          text-align: center;
+          color: black;
+
+          .label {
+            display: block;
+            font-size: 10px;
+            font-weight: 500;
+            margin-bottom: 2px;
+            opacity: 0.8;
+          }
+
+          .value {
+            display: block;
+            font-size: 20px;
+            font-weight: 700;
+          }
+        }
+      }
+
+      /* Save Section */
+      .save-section {
+        padding: 10px 16px;
+        text-align: center;
+        background: rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+
+        .add-game-btn {
+          flex: 1;
+          border: 1.5px solid var(--primary-color);
+          background-color: white;
+          color: var(--primary-color);
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          height: 36px;
+        }
+
+        .save-btn {
+          flex: 1;
+          background: var(--primary-color);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          height: 36px;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:hover:not(:disabled) {
+            background: color-mix(in srgb, var(--primary-color) 90%, black);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+          }
+
+          &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+          }
+        }
+      }
+    }
+  }
+}
+
+/* Animations for Rotate Hint */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rotateIcon {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-15deg);
+  }
+  75% {
+    transform: rotate(15deg);
   }
 }

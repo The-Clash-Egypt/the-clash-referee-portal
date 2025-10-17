@@ -32,18 +32,43 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   const [hasLoggedFirstPoint, setHasLoggedFirstPoint] = useState(false);
   const [preservedGameScores, setPreservedGameScores] = useState<MatchGameScore[]>([]);
   const [preservedSelectedSetIndex, setPreservedSelectedSetIndex] = useState(0);
+  const [wasInitiallyMobile, setWasInitiallyMobile] = useState(false);
+  const [showRotateHint, setShowRotateHint] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+  const [rotateHintDismissed, setRotateHintDismissed] = useState(false);
 
-  // Check if device is mobile
+  // Check if device is mobile and orientation
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
+      // Check if it's a mobile/tablet device based on screen size in any orientation
+      // Use the smaller dimension to determine if it's a mobile device
+      const minDimension = Math.min(window.innerWidth, window.innerHeight);
+      const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      const isMobileDevice =
+        minDimension <= 768 || (isTouchDevice && Math.max(window.innerWidth, window.innerHeight) <= 1024);
+
+      setIsMobile(isMobileDevice);
+
+      // Track if it was mobile on initial load
+      if (!wasInitiallyMobile && isMobileDevice) {
+        setWasInitiallyMobile(true);
+      }
+
+      // Check orientation
+      const isLandscapeOrientation = window.innerWidth > window.innerHeight;
+      setIsLandscape(isLandscapeOrientation);
+
+      // Hide rotate hint when in landscape
+      if (isLandscapeOrientation) {
+        setShowRotateHint(false);
+      }
     };
 
     checkMobile();
     window.addEventListener("resize", checkMobile);
 
     return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+  }, [wasInitiallyMobile]);
 
   // Auto-open fullscreen for guest venue on mobile
   useEffect(() => {
@@ -51,6 +76,15 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
       setIsFullscreen(true);
     }
   }, [isOpen, openInFullscreen, isMobile]);
+
+  // Show rotate hint when entering fullscreen in portrait mode
+  useEffect(() => {
+    if (isFullscreen && !isLandscape && (isMobile || wasInitiallyMobile) && !rotateHintDismissed) {
+      setShowRotateHint(true);
+    } else {
+      setShowRotateHint(false);
+    }
+  }, [isFullscreen, isLandscape, isMobile, wasInitiallyMobile, rotateHintDismissed]);
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -67,7 +101,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
 
   // Initialize game scores when match changes
   useEffect(() => {
-    if (match) {
+    if (match && isOpen) {
       let initialScores: MatchGameScore[] = [];
 
       // For guest venue context, check if we have preserved scores for this match
@@ -88,6 +122,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
           });
         }
         setSelectedSetIndex(0);
+        // Reset wasInitiallyMobile when opening fresh (not preserving state)
+        setWasInitiallyMobile(false);
       }
 
       setGameScores(initialScores);
@@ -96,7 +132,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
       setIsUnauthorized(false);
       setHasLoggedFirstPoint(false);
     }
-  }, [match, openInFullscreen, preservedGameScores, preservedSelectedSetIndex]);
+  }, [match, isOpen, openInFullscreen, preservedGameScores, preservedSelectedSetIndex]);
 
   // Send live score updates when game scores change (with debouncing)
   // Only send live score updates after the first point has been logged
@@ -269,6 +305,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     setHasLoggedFirstPoint(false);
     setPreservedGameScores([]);
     setPreservedSelectedSetIndex(0);
+    setWasInitiallyMobile(false);
+    setRotateHintDismissed(false);
     onClose();
   };
 
@@ -279,6 +317,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     setErrors([]);
     setIsUnauthorized(false);
     setIsFullscreen(false);
+    setWasInitiallyMobile(false);
+    setRotateHintDismissed(false);
     onClose();
   };
 
@@ -289,6 +329,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     } else {
       // Otherwise, just exit fullscreen mode
       setIsFullscreen(false);
+      setWasInitiallyMobile(false);
+      setRotateHintDismissed(false);
     }
   };
 
@@ -301,7 +343,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   const currentGame = gameScores[selectedSetIndex] || { gameNumber: 1, homeScore: 0, awayScore: 0 };
 
   // Fullscreen Scoreboard View (Mobile Only)
-  if (isFullscreen && isMobile && !isUnauthorized) {
+  // Keep fullscreen open if it was opened on a mobile device, even after rotation
+  if (isFullscreen && (isMobile || wasInitiallyMobile) && !isUnauthorized) {
     return (
       <div className="fullscreen-scoreboard">
         <div className="scoreboard-content">
@@ -328,6 +371,37 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
               ))}
             </div>
           </div>
+
+          {/* Rotate Hint */}
+          {showRotateHint && !isLandscape && (
+            <div className="rotate-hint">
+              <svg className="rotate-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M7.5 6.5C7.5 3.46 9.96 1 13 1s5.5 2.46 5.5 5.5-2.46 5.5-5.5 5.5H3"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M6 9L3 12L6 15"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span>Rotate device for better view</span>
+              <button
+                className="dismiss-hint-btn"
+                onClick={() => setRotateHintDismissed(true)}
+                aria-label="Dismiss hint"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+          )}
 
           {/* Scoreboard */}
           <div className="scoreboard-main">
