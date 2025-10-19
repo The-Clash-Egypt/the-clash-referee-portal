@@ -36,6 +36,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   const [showRotateHint, setShowRotateHint] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
   const [rotateHintDismissed, setRotateHintDismissed] = useState(false);
+  const [sidesSwapped, setSidesSwapped] = useState(false);
 
   // Check if device is mobile and orientation
   useEffect(() => {
@@ -307,6 +308,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     setPreservedSelectedSetIndex(0);
     setWasInitiallyMobile(false);
     setRotateHintDismissed(false);
+    setSidesSwapped(false);
     onClose();
   };
 
@@ -319,6 +321,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     setIsFullscreen(false);
     setWasInitiallyMobile(false);
     setRotateHintDismissed(false);
+    setSidesSwapped(false);
     onClose();
   };
 
@@ -370,6 +373,28 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                 </button>
               ))}
             </div>
+
+            {/* Switch Sides Button */}
+            <button className="switch-sides-btn" onClick={() => setSidesSwapped(!sidesSwapped)} title="Switch sides">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M7 16L3 12L7 8"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path d="M3 12H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path
+                  d="M17 8L21 12L17 16"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path d="M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
           </div>
 
           {/* Rotate Hint */}
@@ -406,16 +431,19 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
           {/* Scoreboard */}
           <div className="scoreboard-main">
             <div className="team-section home">
-              <div className="team-name">{match.homeTeamName}</div>
-              <div className="score-display">{currentGame.homeScore}</div>
+              <div className="team-name">{sidesSwapped ? match.awayTeamName : match.homeTeamName}</div>
+              <div className="score-display">{sidesSwapped ? currentGame.awayScore : currentGame.homeScore}</div>
               <div className="score-controls">
-                <button className="score-btn add" onClick={() => quickUpdateScore("home", "add")}>
+                <button
+                  className="score-btn add"
+                  onClick={() => quickUpdateScore(sidesSwapped ? "away" : "home", "add")}
+                >
                   +
                 </button>
                 <button
                   className="score-btn subtract"
-                  onClick={() => quickUpdateScore("home", "subtract")}
-                  disabled={currentGame.homeScore === 0}
+                  onClick={() => quickUpdateScore(sidesSwapped ? "away" : "home", "subtract")}
+                  disabled={sidesSwapped ? currentGame.awayScore === 0 : currentGame.homeScore === 0}
                 >
                   -
                 </button>
@@ -423,16 +451,19 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
             </div>
 
             <div className="team-section away">
-              <div className="team-name">{match.awayTeamName}</div>
-              <div className="score-display">{currentGame.awayScore}</div>
+              <div className="team-name">{sidesSwapped ? match.homeTeamName : match.awayTeamName}</div>
+              <div className="score-display">{sidesSwapped ? currentGame.homeScore : currentGame.awayScore}</div>
               <div className="score-controls">
-                <button className="score-btn add" onClick={() => quickUpdateScore("away", "add")}>
+                <button
+                  className="score-btn add"
+                  onClick={() => quickUpdateScore(sidesSwapped ? "home" : "away", "add")}
+                >
                   +
                 </button>
                 <button
                   className="score-btn subtract"
-                  onClick={() => quickUpdateScore("away", "subtract")}
-                  disabled={currentGame.awayScore === 0}
+                  onClick={() => quickUpdateScore(sidesSwapped ? "home" : "away", "subtract")}
+                  disabled={sidesSwapped ? currentGame.homeScore === 0 : currentGame.awayScore === 0}
                 >
                   -
                 </button>
@@ -444,8 +475,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
           {!isBestOfOne(match) && (
             <div className="match-progress">
               <div className="progress-item">
-                <span className="label">Home Wins</span>
-                <span className="value">{homeWins}</span>
+                <span className="label">{sidesSwapped ? "Away Wins" : "Home Wins"}</span>
+                <span className="value">{sidesSwapped ? awayWins : homeWins}</span>
               </div>
               <div className="progress-item">
                 <span className="label">Sets</span>
@@ -454,8 +485,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                 </span>
               </div>
               <div className="progress-item">
-                <span className="label">Away Wins</span>
-                <span className="value">{awayWins}</span>
+                <span className="label">{sidesSwapped ? "Home Wins" : "Away Wins"}</span>
+                <span className="value">{sidesSwapped ? homeWins : awayWins}</span>
               </div>
             </div>
           )}

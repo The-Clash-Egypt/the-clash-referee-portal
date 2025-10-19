@@ -542,6 +542,26 @@
           }
         }
       }
+
+      .switch-sides-btn {
+        background: rgba(0, 0, 0, 0.1);
+        border: none;
+        color: black;
+        padding: 12px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.5);
+          transform: scale(1.1);
+        }
+
+        svg {
+          width: 24px;
+          height: 24px;
+        }
+      }
     }
 
     /* Rotate Hint */
@@ -1066,6 +1086,17 @@
             font-size: 13px;
           }
         }
+
+        .switch-sides-btn {
+          padding: 8px;
+          position: absolute;
+          right: 16px;
+
+          svg {
+            width: 18px;
+            height: 18px;
+          }
+        }
       }
 
       .scoreboard-main {
@@ -1170,6 +1201,15 @@
             padding: 4px 10px;
             font-size: 11px;
             min-width: 45px;
+          }
+        }
+
+        .switch-sides-btn {
+          padding: 8px;
+
+          svg {
+            width: 20px;
+            height: 20px;
           }
         }
       }
@@ -1372,6 +1412,15 @@
             padding: 6px 12px;
             font-size: 12px;
             min-width: 50px;
+          }
+        }
+
+        .switch-sides-btn {
+          padding: 10px;
+
+          svg {
+            width: 22px;
+            height: 22px;
           }
         }
       }
