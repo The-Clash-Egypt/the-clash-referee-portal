@@ -154,7 +154,7 @@ const MatchesManagement: React.FC = () => {
 
   const isSuperAdmin = user?.adminRoles?.includes(AdminRole.SUPERADMIN);
   const isRefereeAdmin = user?.adminRoles?.includes(AdminRole.REFEREE_ADMIN);
-  const canUpdateScores = isSuperAdmin || isRefereeAdmin;
+  const hasFullAccess = isSuperAdmin || isRefereeAdmin;
 
   // Initialize filters from URL params on component mount
   useEffect(() => {
@@ -435,7 +435,7 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleAssignReferee = async (refereeIds: string[]) => {
-    if (!selectedMatch || !isSuperAdmin || refereeIds.length === 0) return;
+    if (!selectedMatch || !hasFullAccess || refereeIds.length === 0) return;
 
     try {
       setAssigningReferee(true);
@@ -471,7 +471,7 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleBulkAssignReferee = async (refereeIds: string[], matchIds: string[]) => {
-    if (!isSuperAdmin) return;
+    if (!hasFullAccess) return;
     try {
       setBulkAssigningReferee(true);
 
@@ -509,7 +509,7 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleBulkUpdateScores = async (matchScores: { matchId: string; gameScores: MatchGameScore[] }[]) => {
-    if (!canUpdateScores) return;
+    if (!hasFullAccess) return;
     try {
       setBulkUpdatingScores(true);
 
@@ -555,7 +555,7 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleUnassignReferee = async (refereeId: string, matchId: string) => {
-    if (!isSuperAdmin) return;
+    if (!hasFullAccess) return;
     try {
       await unassignRefereeFromMatch(refereeId, matchId);
 
@@ -999,7 +999,7 @@ const MatchesManagement: React.FC = () => {
       </div>
 
       {/* Tab Navigation */}
-      {isSuperAdmin && (
+      {hasFullAccess && (
         <div className="tab-navigation">
           <button
             className={`tab-button ${activeTab === "matches" ? "active" : ""}`}
@@ -1035,7 +1035,7 @@ const MatchesManagement: React.FC = () => {
           )}
 
           {/* Management Actions - Admin Only */}
-          {!loading && isSuperAdmin && totalMatches > 0 && (
+          {!loading && hasFullAccess && totalMatches > 0 && (
             <div className="management-actions-section">
               {/* Export Controls - Compact */}
               <div className="export-controls-compact">
@@ -1170,7 +1170,7 @@ const MatchesManagement: React.FC = () => {
           )}
 
           {/* Bulk Assignment Controls */}
-          {!loading && canUpdateScores && totalMatches > 0 && (
+          {!loading && hasFullAccess && totalMatches > 0 && (
             <div className="bulk-assignment-controls">
               <div className="bulk-info">
                 {selectedMatches.size > 0 ? (
@@ -1184,11 +1184,7 @@ const MatchesManagement: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <span className="selection-prompt">
-                      {isSuperAdmin
-                        ? "Select matches to bulk assign referee or update scores"
-                        : "Select matches to bulk update scores"}
-                    </span>
+                    <span className="selection-prompt">Select matches to bulk assign referee or update scores</span>
                     <button
                       className="select-all-btn"
                       onClick={() => {
@@ -1203,15 +1199,13 @@ const MatchesManagement: React.FC = () => {
               </div>
               {selectedMatches.size > 0 && (
                 <div className="bulk-actions">
-                  {isSuperAdmin && (
-                    <button className="bulk-assign-btn" onClick={() => setShowBulkAssignmentModal(true)}>
-                      Bulk Assign Referee
-                    </button>
-                  )}
+                  <button className="bulk-assign-btn" onClick={() => setShowBulkAssignmentModal(true)}>
+                    Bulk Assign Referee
+                  </button>
                   <button className="bulk-update-score-btn" onClick={() => setShowBulkUpdateScoreModal(true)}>
                     Bulk Update Scores
                   </button>
-                  {isSuperAdmin && (
+                  {hasFullAccess && (
                     <button className="bulk-whatsapp-btn" onClick={handleBulkWhatsAppShare}>
                       <svg
                         width="16"
@@ -1291,7 +1285,7 @@ const MatchesManagement: React.FC = () => {
           {!loading && matches && matches.length > 0 && (
             <>
               {/* Tournament Day Durations - Admin Only */}
-              {isSuperAdmin &&
+              {hasFullAccess &&
                 (() => {
                   const dayGroups = groupMatchesByDay(matches);
                   const daysWithDuration = Object.entries(dayGroups).filter(
@@ -1361,12 +1355,12 @@ const MatchesManagement: React.FC = () => {
                     onUpdateScore={handleUpdateScore}
                     onAssignReferee={openAssignmentModal}
                     onUnassignReferee={handleUnassignReferee}
-                    showAdminActions={isSuperAdmin}
-                    showUpdateScore={!match.isCompleted || canUpdateScores}
-                    isSelectable={canUpdateScores}
+                    showAdminActions={hasFullAccess}
+                    showUpdateScore={!match.isCompleted || hasFullAccess}
+                    isSelectable={hasFullAccess}
                     isSelected={selectedMatches.has(match.id)}
                     onSelectionChange={handleMatchSelection}
-                    showDuration={isSuperAdmin}
+                    showDuration={hasFullAccess}
                   />
                 ))}
               </div>
@@ -1461,7 +1455,7 @@ const MatchesManagement: React.FC = () => {
             match={selectedMatchForScore}
             onClose={handleScoreboardClose}
             onSubmit={handleSubmitScore}
-            openInFullscreen={!isSuperAdmin}
+            openInFullscreen={!hasFullAccess}
             loading={updatingScore}
           />
 
