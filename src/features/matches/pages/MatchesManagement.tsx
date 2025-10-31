@@ -22,6 +22,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "../../../store";
 import { Match, MatchGameScore, MatchFilters, FilterOptions } from "../types/match";
 import { groupMatchesByDay, getTournamentDayDuration, getTournamentDayTimeRange } from "../../../utils/durationUtils";
+import { AdminRole } from "../../auth/types/adminRoles";
 import "./MatchesManagement.scss";
 import "../components/PrintableView.scss";
 import "../components/SearchableDropdown.scss";
@@ -151,7 +152,9 @@ const MatchesManagement: React.FC = () => {
     referee: "all",
   });
 
-  const isAdmin = user?.role === "admin";
+  const isSuperAdmin = user?.adminRoles?.includes(AdminRole.SUPERADMIN);
+  const isRefereeAdmin = user?.adminRoles?.includes(AdminRole.REFEREE_ADMIN);
+  const canUpdateScores = isSuperAdmin || isRefereeAdmin;
 
   // Initialize filters from URL params on component mount
   useEffect(() => {
@@ -432,7 +435,7 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleAssignReferee = async (refereeIds: string[]) => {
-    if (!selectedMatch || !isAdmin || refereeIds.length === 0) return;
+    if (!selectedMatch || !isSuperAdmin || refereeIds.length === 0) return;
 
     try {
       setAssigningReferee(true);
@@ -468,7 +471,7 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleBulkAssignReferee = async (refereeIds: string[], matchIds: string[]) => {
-    if (!isAdmin) return;
+    if (!isSuperAdmin) return;
     try {
       setBulkAssigningReferee(true);
 
@@ -506,7 +509,7 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleBulkUpdateScores = async (matchScores: { matchId: string; gameScores: MatchGameScore[] }[]) => {
-    if (!isAdmin) return;
+    if (!canUpdateScores) return;
     try {
       setBulkUpdatingScores(true);
 
@@ -552,7 +555,7 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleUnassignReferee = async (refereeId: string, matchId: string) => {
-    if (!isAdmin) return;
+    if (!isSuperAdmin) return;
     try {
       await unassignRefereeFromMatch(refereeId, matchId);
 
@@ -996,7 +999,7 @@ const MatchesManagement: React.FC = () => {
       </div>
 
       {/* Tab Navigation */}
-      {isAdmin && (
+      {isSuperAdmin && (
         <div className="tab-navigation">
           <button
             className={`tab-button ${activeTab === "matches" ? "active" : ""}`}
@@ -1032,7 +1035,7 @@ const MatchesManagement: React.FC = () => {
           )}
 
           {/* Management Actions - Admin Only */}
-          {!loading && isAdmin && totalMatches > 0 && (
+          {!loading && isSuperAdmin && totalMatches > 0 && (
             <div className="management-actions-section">
               {/* Export Controls - Compact */}
               <div className="export-controls-compact">
@@ -1167,7 +1170,7 @@ const MatchesManagement: React.FC = () => {
           )}
 
           {/* Bulk Assignment Controls */}
-          {!loading && isAdmin && totalMatches > 0 && (
+          {!loading && canUpdateScores && totalMatches > 0 && (
             <div className="bulk-assignment-controls">
               <div className="bulk-info">
                 {selectedMatches.size > 0 ? (
@@ -1181,7 +1184,11 @@ const MatchesManagement: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <span className="selection-prompt">Select matches to bulk assign referee or update scores</span>
+                    <span className="selection-prompt">
+                      {isSuperAdmin
+                        ? "Select matches to bulk assign referee or update scores"
+                        : "Select matches to bulk update scores"}
+                    </span>
                     <button
                       className="select-all-btn"
                       onClick={() => {
@@ -1196,18 +1203,28 @@ const MatchesManagement: React.FC = () => {
               </div>
               {selectedMatches.size > 0 && (
                 <div className="bulk-actions">
-                  <button className="bulk-assign-btn" onClick={() => setShowBulkAssignmentModal(true)}>
-                    Bulk Assign Referee
-                  </button>
+                  {isSuperAdmin && (
+                    <button className="bulk-assign-btn" onClick={() => setShowBulkAssignmentModal(true)}>
+                      Bulk Assign Referee
+                    </button>
+                  )}
                   <button className="bulk-update-score-btn" onClick={() => setShowBulkUpdateScoreModal(true)}>
                     Bulk Update Scores
                   </button>
-                  <button className="bulk-whatsapp-btn" onClick={handleBulkWhatsAppShare}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: "8px" }}>
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
-                    </svg>
-                    Bulk WhatsApp
-                  </button>
+                  {isSuperAdmin && (
+                    <button className="bulk-whatsapp-btn" onClick={handleBulkWhatsAppShare}>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        style={{ marginRight: "8px" }}
+                      >
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
+                      </svg>
+                      Bulk WhatsApp
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -1274,7 +1291,7 @@ const MatchesManagement: React.FC = () => {
           {!loading && matches && matches.length > 0 && (
             <>
               {/* Tournament Day Durations - Admin Only */}
-              {isAdmin &&
+              {isSuperAdmin &&
                 (() => {
                   const dayGroups = groupMatchesByDay(matches);
                   const daysWithDuration = Object.entries(dayGroups).filter(
@@ -1344,12 +1361,12 @@ const MatchesManagement: React.FC = () => {
                     onUpdateScore={handleUpdateScore}
                     onAssignReferee={openAssignmentModal}
                     onUnassignReferee={handleUnassignReferee}
-                    showAdminActions={isAdmin}
-                    showUpdateScore={!match.isCompleted || isAdmin}
-                    isSelectable={isAdmin}
+                    showAdminActions={isSuperAdmin}
+                    showUpdateScore={!match.isCompleted || canUpdateScores}
+                    isSelectable={canUpdateScores}
                     isSelected={selectedMatches.has(match.id)}
                     onSelectionChange={handleMatchSelection}
-                    showDuration={isAdmin}
+                    showDuration={isSuperAdmin}
                   />
                 ))}
               </div>
@@ -1444,7 +1461,7 @@ const MatchesManagement: React.FC = () => {
             match={selectedMatchForScore}
             onClose={handleScoreboardClose}
             onSubmit={handleSubmitScore}
-            openInFullscreen={!isAdmin}
+            openInFullscreen={!isSuperAdmin}
             loading={updatingScore}
           />
 

@@ -1,4 +1,5 @@
 import api from "../../../api/axios";
+import { AdminRole } from "../types/adminRoles";
 
 export interface LoginRequest {
   email: string;
@@ -18,6 +19,7 @@ export interface UserDto {
   photo?: string;
   emailVerified: boolean;
   role: "referee" | "player" | "representer" | "admin";
+  adminRoles?: AdminRole[];
   nationality?: string;
   instagramAccount?: string;
   tshirtSize?: string;
@@ -48,3 +50,5 @@ export const signup = (data: any, invitationToken?: string): Promise<any> => {
   const payload = invitationToken ? { ...data, invitationToken } : data;
   return api.post("auth/signup", payload);
 };
+
+export const getCurrentUser = (): Promise<{ data: ServiceResponse<UserDto> }> => api.get("auth/me");

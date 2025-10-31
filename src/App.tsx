@@ -32,42 +32,43 @@ const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <Provider store={store}>
-        <AppInitializer />
-        <Router>
-          <div className="app">
-            <Navbar />
-            <main className="app-main">
-              <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute requireAuth={true}>
-                      <Tournaments />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/login"
-                  element={
-                    <ProtectedRoute requireAuth={false}>
-                      <LoginPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="tournaments/:id/matches"
-                  element={
-                    <ProtectedRoute>
-                      <MatchesManagement />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="venue/shared" element={<GuestVenuePage />} />
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </main>
-          </div>
-        </Router>
+        <AppInitializer>
+          <Router>
+            <div className="app">
+              <Navbar />
+              <main className="app-main">
+                <Routes>
+                  <Route
+                    path="/"
+                    element={
+                      <ProtectedRoute requireAuth={true}>
+                        <Tournaments />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/login"
+                    element={
+                      <ProtectedRoute requireAuth={false}>
+                        <LoginPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="tournaments/:id/matches"
+                    element={
+                      <ProtectedRoute>
+                        <MatchesManagement />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="venue/shared" element={<GuestVenuePage />} />
+                  <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+              </main>
+            </div>
+          </Router>
+        </AppInitializer>
       </Provider>
     </QueryClientProvider>
   );

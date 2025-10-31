@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { AdminRole } from "../../features/auth/types/adminRoles";
 
 export interface User {
   id: string;
@@ -13,6 +14,7 @@ export interface User {
   photo?: string;
   emailVerified: boolean;
   role: "referee" | "player" | "representer" | "admin";
+  adminRoles?: AdminRole[];
   nationality?: string;
   instagramAccount?: string;
   tshirtSize?: string;
