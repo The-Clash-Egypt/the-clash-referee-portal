@@ -8,6 +8,10 @@
   color: #1e293b;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   border: 1px solid #e2e8f0;
+  max-height: 100vh; /* Limit height to viewport */
+  overflow-y: auto; /* Make scrollable if content exceeds viewport */
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 
   // Switch Side Reminder
   .switch-reminder {

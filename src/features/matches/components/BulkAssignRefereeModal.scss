@@ -11,6 +11,7 @@
   justify-content: center;
   z-index: 1000;
   padding: 0;
+  overflow: hidden; /* Prevent scrolling on the overlay */
 
   /* Modal Content */
   .modal-content {

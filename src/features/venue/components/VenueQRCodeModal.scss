@@ -13,6 +13,7 @@
   z-index: 9999;
   padding: 20px;
   backdrop-filter: blur(4px);
+  overflow: hidden; /* Prevent scrolling on the overlay */
 }
 
 .venue-qr-modal {
