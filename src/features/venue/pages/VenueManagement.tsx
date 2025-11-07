@@ -3,6 +3,7 @@ import { Venue, UpdateVenueDTO, VenueFilters } from "../types/venue";
 import { useVenues, useUpdateVenue } from "../hooks/useVenues";
 import { generateVenueToken } from "../api/venue";
 import { VenueList } from "../components";
+import VenueQRCodeModal from "../components/VenueQRCodeModal";
 import "./VenueManagement.scss";
 
 interface VenueManagementProps {
@@ -15,6 +16,15 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
   const [generatingTokenFor, setGeneratingTokenFor] = useState<string | null>(null);
   const [filters, setFilters] = useState<VenueFilters>({
     ...(tournamentId && { tournamentId }),
+  });
+  const [qrCodeModal, setQrCodeModal] = useState<{
+    isOpen: boolean;
+    venueName: string;
+    shareUrl: string;
+  }>({
+    isOpen: false,
+    venueName: "",
+    shareUrl: "",
   });
 
   // API hooks
@@ -94,6 +104,42 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
     }
   };
 
+  // Handle show QR code
+  const handleShowQRCode = async (venue: Venue) => {
+    setGeneratingTokenFor(venue.id);
+    try {
+      // Generate a new access token
+      const response = await generateVenueToken(venue.id);
+
+      if (response.data.success && response.data.data) {
+        const shareUrl = `${window.location.origin}/venue/shared?venueId=${venue.id}&token=${response.data.data}`;
+        setQrCodeModal({
+          isOpen: true,
+          venueName: venue.name,
+          shareUrl,
+        });
+      } else {
+        // Handle API error response
+        const errorMessage = response.data.message || "Failed to generate QR code. Please try again.";
+        alert(`Error: ${errorMessage}`);
+      }
+    } catch (error) {
+      console.error("Error generating QR code:", error);
+      alert("Failed to generate QR code. Please try again.");
+    } finally {
+      setGeneratingTokenFor(null);
+    }
+  };
+
+  // Handle close QR code modal
+  const handleCloseQRCode = () => {
+    setQrCodeModal({
+      isOpen: false,
+      venueName: "",
+      shareUrl: "",
+    });
+  };
+
   return (
     <div className="venue-management">
       {venues.length > 0 && (
@@ -110,6 +156,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
           venues={venues}
           onUpdate={handleUpdateVenue}
           onShare={handleShareVenue}
+          onShowQRCode={handleShowQRCode}
           onSearch={handleSearch}
           onFilter={handleFilter}
           isLoading={isLoading}
@@ -130,6 +177,14 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
           <span>Failed to load venues. Please try again.</span>
         </div>
       )}
+
+      {/* QR Code Modal */}
+      <VenueQRCodeModal
+        isOpen={qrCodeModal.isOpen}
+        venueName={qrCodeModal.venueName}
+        shareUrl={qrCodeModal.shareUrl}
+        onClose={handleCloseQRCode}
+      />
     </div>
   );
 };

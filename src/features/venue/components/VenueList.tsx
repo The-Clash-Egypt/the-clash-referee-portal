@@ -7,6 +7,7 @@ interface VenueListProps {
   venues: Venue[];
   onUpdate: (id: string, data: UpdateVenueDTO) => void;
   onShare?: (venue: Venue) => void;
+  onShowQRCode?: (venue: Venue) => void;
   onSearch: (searchTerm: string) => void;
   onFilter: (filters: any) => void;
   isLoading?: boolean;
@@ -21,6 +22,7 @@ const VenueList: React.FC<VenueListProps> = ({
   venues,
   onUpdate,
   onShare,
+  onShowQRCode,
   onSearch,
   onFilter,
   isLoading = false,
@@ -265,6 +267,7 @@ const VenueList: React.FC<VenueListProps> = ({
                 venue={venue}
                 onUpdate={onUpdate}
                 onShare={onShare}
+                onShowQRCode={onShowQRCode}
                 showActions={showActions}
                 isGeneratingToken={generatingTokenFor === venue.id}
                 isUpdating={isUpdating}
