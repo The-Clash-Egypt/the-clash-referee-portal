@@ -479,7 +479,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden; /* Prevent scrolling on the fullscreen container */
+  overflow: hidden;
 
   .scoreboard-content {
     width: 100%;
@@ -487,9 +487,9 @@
     display: flex;
     flex-direction: column;
     background: white;
-    overflow-y: auto; /* Make content scrollable */
+    overflow-y: auto;
     overflow-x: hidden;
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
 
     /* Header */
     .scoreboard-header {
@@ -662,23 +662,23 @@
 
     /* Main Scoreboard */
     .scoreboard-main {
-      flex: 1 1 auto; /* Allow flex to shrink */
+      flex: 1;
       display: flex;
       flex-direction: column;
       position: relative;
-      overflow: visible; /* Allow content to determine height */
-      min-height: 200px; /* Set a minimum height instead of 0 */
+      overflow: hidden;
+      min-height: 0;
 
       .team-section {
-        flex: 1 1 auto; /* Allow flex to shrink */
+        flex: 1;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         padding: 30px 20px;
         position: relative;
-        min-height: 150px; /* Set a minimum height */
-        overflow: visible;
+        min-height: 0;
+        overflow: hidden;
 
         &.home {
           background: #dc2626; /* Red */
@@ -813,7 +813,6 @@
       align-items: center;
       gap: 8px;
       flex-shrink: 0;
-      min-height: 66px; /* Ensure buttons area is always visible */
 
       .add-game-btn {
         flex: 1;
@@ -828,7 +827,6 @@
         justify-content: center;
         gap: 6px;
         height: 38px;
-        cursor: pointer;
       }
 
       .save-btn {
@@ -1106,21 +1104,19 @@
       }
 
       .scoreboard-main {
-        min-height: 180px; /* Ensure minimum height in portrait */
-
         .team-section {
           padding: 20px 16px;
-          min-height: 90px; /* Reduce minimum height for portrait */
-          overflow: visible;
+          min-height: 0;
+          overflow: hidden;
 
           .team-name {
-            font-size: 18px; /* Slightly smaller for portrait */
-            margin-bottom: 12px;
+            font-size: 20px;
+            margin-bottom: 15px;
           }
 
           .score-display {
-            font-size: 55px; /* Slightly smaller for portrait */
-            margin-bottom: 12px;
+            font-size: 65px;
+            margin-bottom: 15px;
           }
 
           .score-controls {
@@ -1165,17 +1161,15 @@
 
       .save-section {
         padding: 12px 16px;
-        min-height: 60px; /* Ensure buttons area is always visible */
 
         .add-game-btn {
           font-size: 13px;
-          height: 40px; /* Slightly larger for easier tapping */
-          cursor: pointer;
+          height: 36px;
         }
 
         .save-btn {
           font-size: 13px;
-          height: 40px; /* Slightly larger for easier tapping */
+          height: 36px;
         }
       }
     }
@@ -1227,14 +1221,14 @@
       /* Main Scoreboard - Side by Side Layout */
       .scoreboard-main {
         flex-direction: row;
-        overflow: visible;
-        min-height: 150px; /* Ensure minimum height in small landscape */
+        overflow: hidden;
+        min-height: 0;
 
         .team-section {
-          flex: 1 1 auto; /* Allow flex to shrink */
+          flex: 1;
           padding: 15px 20px;
-          min-height: 120px; /* Set minimum height for landscape */
-          overflow: visible;
+          min-height: 0;
+          overflow: hidden;
 
           &.home {
             background: #dc2626; /* Red */
@@ -1348,7 +1342,6 @@
         align-items: center;
         gap: 6px;
         flex-shrink: 0;
-        min-height: 48px; /* Ensure buttons area is always visible in landscape */
 
         .add-game-btn {
           flex: 1;
@@ -1363,7 +1356,6 @@
           justify-content: center;
           gap: 4px;
           height: 32px;
-          cursor: pointer;
         }
 
         .save-btn {
@@ -1440,14 +1432,14 @@
       /* Main Scoreboard - Side by Side Layout */
       .scoreboard-main {
         flex-direction: row;
-        overflow: visible;
-        min-height: 180px; /* Ensure minimum height in larger landscape */
+        overflow: hidden;
+        min-height: 0;
 
         .team-section {
-          flex: 1 1 auto; /* Allow flex to shrink */
+          flex: 1;
           padding: 20px 30px;
-          min-height: 140px; /* Set minimum height for larger landscape */
-          overflow: visible;
+          min-height: 0;
+          overflow: hidden;
 
           &.home {
             background: #dc2626; /* Red */
@@ -1561,7 +1553,6 @@
         align-items: center;
         gap: 8px;
         flex-shrink: 0;
-        min-height: 56px; /* Ensure buttons area is always visible in larger landscape */
 
         .add-game-btn {
           flex: 1;
@@ -1576,7 +1567,6 @@
           justify-content: center;
           gap: 5px;
           height: 36px;
-          cursor: pointer;
         }
 
         .save-btn {
