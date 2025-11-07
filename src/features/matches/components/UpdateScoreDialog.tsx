@@ -90,14 +90,26 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   // Prevent background scrolling when modal is open
   useEffect(() => {
     if (isOpen) {
+      // Save current scroll position
+      const scrollY = window.scrollY;
+      
+      // Prevent scrolling
       document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+      
+      return () => {
+        // Restore scrolling
+        document.body.style.overflow = "";
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.width = "";
+        
+        // Restore scroll position
+        window.scrollTo(0, scrollY);
+      };
     }
-
-    return () => {
-      document.body.style.overflow = "unset";
-    };
   }, [isOpen]);
 
   // Initialize game scores when match changes
