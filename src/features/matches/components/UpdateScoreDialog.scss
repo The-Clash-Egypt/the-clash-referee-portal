@@ -806,7 +806,8 @@
 
     /* Save Section */
     .save-section {
-      padding: 14px 20px;
+      padding: 14px 20px !important;
+      padding-bottom: 64px !important;
       text-align: center;
       background: rgba(0, 0, 0, 0.1);
       display: flex;
