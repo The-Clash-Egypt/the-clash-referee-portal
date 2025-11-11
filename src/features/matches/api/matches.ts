@@ -40,6 +40,9 @@ export const getRefereeMatches = (filters?: MatchFilters): Promise<{ data: Refer
   if (filters?.referee && filters.referee !== "all") {
     params.append("referee", filters.referee);
   }
+  if (filters?.date && filters.date !== "all") {
+    params.append("date", filters.date);
+  }
   if (filters?.pageNumber) {
     params.append("pageNumber", filters.pageNumber.toString());
   }

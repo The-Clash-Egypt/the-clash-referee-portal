@@ -132,6 +132,7 @@ export interface FilterOptions {
   venues: string[];
   teams: (string | { id: string; name?: string; fullName?: string })[];
   referees: (string | { id: string; fullName?: string; name?: string })[];
+  dates: string[];
 }
 
 export interface AdminMatchesResponse {
@@ -176,6 +177,7 @@ export interface MatchFilters {
   venue?: string;
   team?: string;
   referee?: string;
+  date?: string;
   pageNumber?: number;
   pageSize?: number;
 }

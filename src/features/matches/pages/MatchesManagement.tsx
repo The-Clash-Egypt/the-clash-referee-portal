@@ -52,6 +52,7 @@ const MatchesManagement: React.FC = () => {
   const [filterVenue, setFilterVenue] = useState<string>("all");
   const [filterTeam, setFilterTeam] = useState<string>("all");
   const [filterReferee, setFilterReferee] = useState<string>("all");
+  const [filterDate, setFilterDate] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedMatches, setSelectedMatches] = useState<Set<string>>(new Set());
   const [showBulkAssignmentModal, setShowBulkAssignmentModal] = useState(false);
@@ -117,6 +118,7 @@ const MatchesManagement: React.FC = () => {
     venues: [],
     teams: [],
     referees: [],
+    dates: [],
   });
 
   // URL params sync state
@@ -150,6 +152,7 @@ const MatchesManagement: React.FC = () => {
     venue: "all",
     team: "all",
     referee: "all",
+    date: "all",
   });
 
   const isSuperAdmin = user?.adminRoles?.includes(AdminRole.SUPERADMIN);
@@ -171,6 +174,7 @@ const MatchesManagement: React.FC = () => {
     const urlVenue = urlParams.get("venue") || "all";
     const urlTeam = urlParams.get("team") || "all";
     const urlReferee = urlParams.get("referee") || "all";
+    const urlDate = urlParams.get("date") || "all";
     const urlPage = parseInt(urlParams.get("page") || "1", 10);
     const urlPageSize = parseInt(urlParams.get("pageSize") || "30", 10);
 
@@ -183,6 +187,7 @@ const MatchesManagement: React.FC = () => {
     setFilterVenue(urlVenue);
     setFilterTeam(urlTeam);
     setFilterReferee(urlReferee);
+    setFilterDate(urlDate);
     setCurrentPage(urlPage);
     setPageSize(urlPageSize);
 
@@ -194,6 +199,7 @@ const MatchesManagement: React.FC = () => {
       venue: urlVenue,
       team: urlTeam,
       referee: urlReferee,
+      date: urlDate,
     };
 
     setIsInitialized(true);
@@ -229,6 +235,7 @@ const MatchesManagement: React.FC = () => {
     if (filterVenue !== "all") urlParams.set("venue", filterVenue);
     if (filterTeam !== "all") urlParams.set("team", filterTeam);
     if (filterReferee !== "all") urlParams.set("referee", filterReferee);
+    if (filterDate !== "all") urlParams.set("date", filterDate);
 
     // Add pagination to URL params
     if (currentPage > 1) urlParams.set("page", currentPage.toString());
@@ -247,6 +254,7 @@ const MatchesManagement: React.FC = () => {
     filterVenue,
     filterTeam,
     filterReferee,
+    filterDate,
     currentPage,
     pageSize,
     tournamentName,
@@ -267,6 +275,7 @@ const MatchesManagement: React.FC = () => {
       venue: filterVenue !== "all" ? filterVenue : undefined,
       team: filterTeam !== "all" ? filterTeam : undefined,
       referee: filterReferee !== "all" ? filterReferee : undefined,
+      date: filterDate !== "all" ? filterDate : undefined,
       pageSize: pageSize,
       pageNumber: currentPage,
     };
@@ -290,6 +299,7 @@ const MatchesManagement: React.FC = () => {
       venue: filterVenue !== "all" ? filterVenue : undefined,
       team: filterTeam !== "all" ? filterTeam : undefined,
       referee: filterReferee !== "all" ? filterReferee : undefined,
+      date: filterDate !== "all" ? filterDate : undefined,
       pageSize: pageSize,
       pageNumber: currentPage,
     };
@@ -306,6 +316,7 @@ const MatchesManagement: React.FC = () => {
     filterVenue,
     filterTeam,
     filterReferee,
+    filterDate,
     currentPage,
     pageSize,
   ]);
@@ -314,7 +325,7 @@ const MatchesManagement: React.FC = () => {
   useEffect(() => {
     if (!isInitialized || isRestoringFromURL.current) return;
     setCurrentPage(1);
-  }, [isInitialized, filterStatus, filterCategory, filterFormat, filterRound, filterVenue, filterTeam, filterReferee]);
+  }, [isInitialized, filterStatus, filterCategory, filterFormat, filterRound, filterVenue, filterTeam, filterReferee, filterDate]);
 
   // Reset matches loaded flag when filters change (except for pagination)
   useEffect(() => {
@@ -330,6 +341,7 @@ const MatchesManagement: React.FC = () => {
     filterVenue,
     filterTeam,
     filterReferee,
+    filterDate,
   ]);
 
   // Reset round filter when format changes to avoid invalid selections
@@ -396,6 +408,7 @@ const MatchesManagement: React.FC = () => {
         venues: [],
         teams: [],
         referees: [],
+        dates: [],
       };
 
       // Debug: Log the filter options to see the actual structure
@@ -455,6 +468,7 @@ const MatchesManagement: React.FC = () => {
         venue: filterVenue !== "all" ? filterVenue : undefined,
         team: filterTeam !== "all" ? filterTeam : undefined,
         referee: filterReferee !== "all" ? filterReferee : undefined,
+        date: filterDate !== "all" ? filterDate : undefined,
         pageSize: pageSize,
         pageNumber: currentPage,
       };
@@ -491,6 +505,7 @@ const MatchesManagement: React.FC = () => {
         venue: filterVenue !== "all" ? filterVenue : undefined,
         team: filterTeam !== "all" ? filterTeam : undefined,
         referee: filterReferee !== "all" ? filterReferee : undefined,
+        date: filterDate !== "all" ? filterDate : undefined,
         pageSize: pageSize,
         pageNumber: currentPage,
       };
@@ -540,6 +555,7 @@ const MatchesManagement: React.FC = () => {
         venue: filterVenue !== "all" ? filterVenue : undefined,
         team: filterTeam !== "all" ? filterTeam : undefined,
         referee: filterReferee !== "all" ? filterReferee : undefined,
+        date: filterDate !== "all" ? filterDate : undefined,
         pageSize: pageSize,
         pageNumber: currentPage,
       };
@@ -569,6 +585,7 @@ const MatchesManagement: React.FC = () => {
         venue: filterVenue !== "all" ? filterVenue : undefined,
         team: filterTeam !== "all" ? filterTeam : undefined,
         referee: filterReferee !== "all" ? filterReferee : undefined,
+        date: filterDate !== "all" ? filterDate : undefined,
         pageSize: pageSize,
         pageNumber: currentPage,
       };
@@ -604,6 +621,7 @@ const MatchesManagement: React.FC = () => {
       venue: filterVenue !== "all" ? filterVenue : undefined,
       team: filterTeam !== "all" ? filterTeam : undefined,
       referee: filterReferee !== "all" ? filterReferee : undefined,
+      date: filterDate !== "all" ? filterDate : undefined,
       pageSize: pageSize,
       pageNumber: currentPage,
     };
@@ -636,6 +654,7 @@ const MatchesManagement: React.FC = () => {
         venue: filterVenue !== "all" ? filterVenue : undefined,
         team: filterTeam !== "all" ? filterTeam : undefined,
         referee: filterReferee !== "all" ? filterReferee : undefined,
+        date: filterDate !== "all" ? filterDate : undefined,
         pageSize: pageSize,
         pageNumber: currentPage,
       };
@@ -659,6 +678,7 @@ const MatchesManagement: React.FC = () => {
     setFilterVenue("all");
     setFilterTeam("all");
     setFilterReferee("all");
+    setFilterDate("all");
 
     // Update previous filters ref to prevent unwanted resets
     previousFilters.current = {
@@ -668,6 +688,7 @@ const MatchesManagement: React.FC = () => {
       venue: "all",
       team: "all",
       referee: "all",
+      date: "all",
     };
   };
 
@@ -721,6 +742,11 @@ const MatchesManagement: React.FC = () => {
   const handleFilterRefereeChange = (value: string) => {
     setFilterReferee(value);
     previousFilters.current.referee = value;
+  };
+
+  const handleFilterDateChange = (value: string) => {
+    setFilterDate(value);
+    previousFilters.current.date = value;
   };
 
   const handleExportView = (type: "venue" | "referee" | "team" | "general") => {
@@ -919,6 +945,16 @@ const MatchesManagement: React.FC = () => {
     // Add referee filter
     if (filterReferee !== "all") {
       activeFilters.push(`Referee: ${getRefereeName(filterReferee)}`);
+    }
+
+    // Add date filter
+    if (filterDate !== "all") {
+      const formattedDate = new Date(filterDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      activeFilters.push(`Date: ${formattedDate}`);
     }
 
     // Add search term if present
@@ -1160,6 +1196,31 @@ const MatchesManagement: React.FC = () => {
                   />
                 </div>
 
+                {filterOptions.dates && filterOptions.dates.length > 1 && (
+                  <div className="filter-group">
+                    <select
+                      value={filterDate}
+                      onChange={(e) => handleFilterDateChange(e.target.value)}
+                      className="filter-select"
+                    >
+                      <option value="all">All Dates</option>
+                      {filterOptions.dates.map((date) => {
+                        const formattedDate = new Date(date).toLocaleDateString("en-US", {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        });
+                        return (
+                          <option key={date} value={date}>
+                            {formattedDate}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
+
                 <div className="filter-group">
                   <button onClick={clearAllFilters} className="clear-filters-btn">
                     Clear Filters
@@ -1262,7 +1323,8 @@ const MatchesManagement: React.FC = () => {
                   filterRound !== "all" ||
                   filterVenue !== "all" ||
                   filterTeam !== "all" ||
-                  filterReferee !== "all"
+                  filterReferee !== "all" ||
+                  filterDate !== "all"
                     ? "No matches match your current filters. Try adjusting your search or filters."
                     : "There are no matches available to manage."}
                 </p>
@@ -1273,7 +1335,8 @@ const MatchesManagement: React.FC = () => {
                   filterRound !== "all" ||
                   filterVenue !== "all" ||
                   filterTeam !== "all" ||
-                  filterReferee !== "all") && (
+                  filterReferee !== "all" ||
+                  filterDate !== "all") && (
                   <button onClick={clearAllFilters} className="btn btn-primary">
                     Clear All Filters
                   </button>
