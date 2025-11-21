@@ -13,7 +13,7 @@ interface VenueManagementProps {
 const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
   // State management
   const [searchTerm, setSearchTerm] = useState("");
-  const [generatingTokenFor, setGeneratingTokenFor] = useState<string | null>(null);
+  const [loadingAction, setLoadingAction] = useState<{ venueId: string; action: "share" | "regenerate" | "qrCode" } | null>(null);
   const [filters, setFilters] = useState<VenueFilters>({
     ...(tournamentId && { tournamentId }),
   });
@@ -28,7 +28,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
   });
 
   // API hooks
-  const { data: venuesResponse, isLoading, error } = useVenues(filters);
+  const { data: venuesResponse, isLoading, error, refetch: refetchVenues } = useVenues(filters);
   const updateVenueMutation = useUpdateVenue();
 
   const venues = venuesResponse?.data?.data || [];
@@ -65,12 +65,15 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
 
   // Handle share venue
   const handleShareVenue = async (venue: Venue) => {
-    setGeneratingTokenFor(venue.id);
+    setLoadingAction({ venueId: venue.id, action: "share" });
     try {
-      // Generate a new access token
-      const response = await generateVenueToken(venue.id);
+      // Generate a new access token (use existing if valid)
+      const response = await generateVenueToken(venue.id, false);
 
       if (response.data.success && response.data.data) {
+        // Refresh the venues list to show updated expiry time
+        await refetchVenues();
+
         const shareUrl = `${window.location.origin}/venue/shared?venueId=${venue.id}&token=${response.data.data}`;
         const shareData = {
           title: `Referee Portal - ${venue.name}`,
@@ -100,18 +103,21 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
       console.error("Error generating share link:", error);
       alert("Failed to generate share link. Please try again.");
     } finally {
-      setGeneratingTokenFor(null);
+      setLoadingAction(null);
     }
   };
 
   // Handle show QR code
   const handleShowQRCode = async (venue: Venue) => {
-    setGeneratingTokenFor(venue.id);
+    setLoadingAction({ venueId: venue.id, action: "qrCode" });
     try {
-      // Generate a new access token
-      const response = await generateVenueToken(venue.id);
+      // Generate a new access token (use existing if valid)
+      const response = await generateVenueToken(venue.id, false);
 
       if (response.data.success && response.data.data) {
+        // Refresh the venues list to show updated expiry time
+        await refetchVenues();
+
         const shareUrl = `${window.location.origin}/venue/shared?venueId=${venue.id}&token=${response.data.data}`;
         setQrCodeModal({
           isOpen: true,
@@ -127,7 +133,30 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
       console.error("Error generating QR code:", error);
       alert("Failed to generate QR code. Please try again.");
     } finally {
-      setGeneratingTokenFor(null);
+      setLoadingAction(null);
+    }
+  };
+
+  // Handle force generate token
+  const handleForceGenerateToken = async (venue: Venue) => {
+    setLoadingAction({ venueId: venue.id, action: "regenerate" });
+    try {
+      // Force generate a new access token
+      const response = await generateVenueToken(venue.id, true);
+
+      if (response.data.success && response.data.data) {
+        // Refresh the venues list to show updated expiry time
+        await refetchVenues();
+      } else {
+        // Handle API error response
+        const errorMessage = response.data.message || "Failed to generate new token. Please try again.";
+        alert(`Error: ${errorMessage}`);
+      }
+    } catch (error) {
+      console.error("Error force generating token:", error);
+      alert("Failed to generate new token. Please try again.");
+    } finally {
+      setLoadingAction(null);
     }
   };
 
@@ -157,13 +186,14 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
           onUpdate={handleUpdateVenue}
           onShare={handleShareVenue}
           onShowQRCode={handleShowQRCode}
+          onForceGenerateToken={handleForceGenerateToken}
           onSearch={handleSearch}
           onFilter={handleFilter}
           isLoading={isLoading}
           searchTerm={searchTerm}
           showActions={true}
           showSearchAndFilters={venues.length > 0}
-          generatingTokenFor={generatingTokenFor}
+          loadingAction={loadingAction}
           isUpdating={updateVenueMutation.isPending}
         />
       </div>

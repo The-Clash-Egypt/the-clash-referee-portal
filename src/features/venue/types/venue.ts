@@ -29,6 +29,7 @@ export interface Venue {
   name: string;
   password?: string | null;
   accessToken?: string | null;
+  accessTokenExpiry?: string | null;
   isLocked: boolean;
   tournamentId: string;
   tournamentName?: string;

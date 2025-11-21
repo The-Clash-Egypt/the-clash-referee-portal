@@ -19,7 +19,7 @@
   &__header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     border-bottom: 1px solid var(--border-primary);
     padding-bottom: 12px;
   }
@@ -31,7 +31,7 @@
   &__name-section {
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 8px;
   }
 
   &__match-stats {
@@ -273,45 +273,29 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-top: 4px;
+    flex-wrap: wrap;
   }
 
-  &__qr-btn {
-    background: none;
-    border: none;
-    padding: 6px;
-    border-radius: 4px;
+  &__action-btn {
+    background: var(--gray-50);
+    border: 1px solid var(--border-primary);
+    padding: 6px 12px;
+    border-radius: 6px;
     cursor: pointer;
-    color: var(--text-secondary);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
 
     &:hover:not(:disabled) {
       background: var(--gray-100);
-      color: var(--primary-color);
-    }
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-  }
-
-  &__share-btn {
-    background: none;
-    border: none;
-    padding: 6px;
-    border-radius: 4px;
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &:hover:not(:disabled) {
-      background: var(--gray-100);
+      border-color: var(--border-secondary);
       color: var(--primary-color);
     }
 
@@ -436,10 +420,49 @@
   }
 
   &__token {
-    color: var(--info-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    padding: 8px 0;
+    margin-top: 8px;
 
     svg {
       color: var(--info-color);
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+    }
+
+    &--expired {
+      color: var(--error-color);
+
+      svg {
+        color: var(--error-color);
+      }
+    }
+  }
+
+  &__token-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+  }
+
+  &__token-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  &__token-expiry {
+    font-weight: 400;
+    color: var(--info-color);
+
+    &--expired {
+      color: var(--error-color);
+      font-weight: 500;
     }
   }
 

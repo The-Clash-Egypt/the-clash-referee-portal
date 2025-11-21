@@ -7,8 +7,9 @@ interface VenueCardProps {
   onUpdate: (id: string, data: UpdateVenueDTO) => void;
   onShare?: (venue: Venue) => void;
   onShowQRCode?: (venue: Venue) => void;
+  onForceGenerateToken?: (venue: Venue) => void;
   showActions?: boolean;
-  isGeneratingToken?: boolean;
+  loadingAction?: "share" | "regenerate" | "qrCode" | null;
   isUpdating?: boolean;
 }
 
@@ -17,8 +18,9 @@ const VenueCard: React.FC<VenueCardProps> = ({
   onUpdate,
   onShare,
   onShowQRCode,
+  onForceGenerateToken,
   showActions = true,
-  isGeneratingToken = false,
+  loadingAction = null,
   isUpdating = false,
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
@@ -122,6 +124,38 @@ const VenueCard: React.FC<VenueCardProps> = ({
     }
   };
 
+  // Format expiry time for display
+  const formatExpiryTime = (expiry: string | null | undefined): string => {
+    if (!expiry) return "";
+    try {
+      const expiryDate = new Date(expiry);
+      const now = new Date();
+      const diffMs = expiryDate.getTime() - now.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      if (diffMs < 0) {
+        return "Expired";
+      } else if (diffHours > 0) {
+        return `Expires in ${diffHours}h ${diffMinutes}m`;
+      } else {
+        return `Expires in ${diffMinutes}m`;
+      }
+    } catch {
+      return "";
+    }
+  };
+
+  const isTokenExpired = (expiry: string | null | undefined): boolean => {
+    if (!expiry) return false;
+    try {
+      const expiryDate = new Date(expiry);
+      return expiryDate.getTime() < new Date().getTime();
+    } catch {
+      return false;
+    }
+  };
+
   return (
     <div className={`venue-card ${venue.isLocked ? "locked" : ""} ${isUpdating ? "updating" : ""}`}>
       <div className="venue-card__header">
@@ -175,6 +209,58 @@ const VenueCard: React.FC<VenueCardProps> = ({
                   </span>
                 </div>
               )}
+              {showActions && (
+                <div className="venue-card__actions">
+                  {onShowQRCode && (
+                    <button
+                      className="venue-card__action-btn venue-card__qr-btn"
+                      onClick={() => onShowQRCode(venue)}
+                      disabled={isUpdating || loadingAction !== null}
+                    >
+                      {loadingAction === "qrCode" ? (
+                        <>
+                          <div className="loading-spinner-small"></div>
+                          <span>Generating...</span>
+                        </>
+                      ) : (
+                        "Show QR Code"
+                      )}
+                    </button>
+                  )}
+                  {onShare && (
+                    <button
+                      className="venue-card__action-btn venue-card__share-btn"
+                      onClick={() => onShare(venue)}
+                      disabled={loadingAction !== null || isUpdating}
+                    >
+                      {loadingAction === "share" ? (
+                        <>
+                          <div className="loading-spinner-small"></div>
+                          <span>Generating...</span>
+                        </>
+                      ) : (
+                        "Share"
+                      )}
+                    </button>
+                  )}
+                  {onForceGenerateToken && venue.accessToken && (
+                    <button
+                      className="venue-card__action-btn venue-card__force-generate-btn"
+                      onClick={() => onForceGenerateToken(venue)}
+                      disabled={loadingAction !== null || isUpdating}
+                    >
+                      {loadingAction === "regenerate" ? (
+                        <>
+                          <div className="loading-spinner-small"></div>
+                          <span>Regenerating...</span>
+                        </>
+                      ) : (
+                        "Regenerate Token"
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -194,38 +280,6 @@ const VenueCard: React.FC<VenueCardProps> = ({
             </svg>
             {venue.isLocked ? "Locked" : "Unlocked"}
           </button>
-          {showActions && (
-            <div className="venue-card__actions">
-              {onShowQRCode && (
-                <button
-                  className="venue-card__qr-btn"
-                  onClick={() => onShowQRCode(venue)}
-                  disabled={isUpdating}
-                  title="Show QR Code"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M3,11H5V13H3V11M11,5H13V9H11V5M9,11H13V15H11V13H9V11M15,11H17V13H19V11H21V13H19V15H21V19H19V21H17V19H13V21H11V17H15V15H17V13H15V11M19,19V15H17V19H19M15,3H21V9H15V3M17,5V7H19V5H17M3,3H9V9H3V3M5,5V7H7V5H5M3,15H9V21H3V15M5,17V19H7V17H5Z" />
-                  </svg>
-                </button>
-              )}
-              {onShare && (
-                <button
-                  className="venue-card__share-btn"
-                  onClick={() => onShare(venue)}
-                  disabled={isGeneratingToken || isUpdating}
-                  title="Generate Share Link"
-                >
-                  {isGeneratingToken ? (
-                    <div className="loading-spinner-small"></div>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M18,16.08C17.24,16.08 16.56,16.38 16.04,16.85L8.91,12.7C8.96,12.47 9,12.24 9,12C9,11.76 8.96,11.53 8.91,11.3L15.96,7.19C16.5,7.69 17.21,8 18,8A3,3 0 0,0 21,5A3,3 0 0,0 18,2A3,3 0 0,0 15,5C15,5.24 15.04,5.47 15.09,5.7L8.04,9.81C7.5,9.31 6.79,9 6,9A3,3 0 0,0 3,12A3,3 0 0,0 6,15C6.79,15 7.5,14.69 8.04,14.19L15.16,18.34C15.11,18.55 15.08,18.77 15.08,19C15.08,20.61 16.39,21.91 18,21.91C19.61,21.91 20.92,20.61 20.92,19A2.92,2.92 0 0,0 18,16.08Z" />
-                    </svg>
-                  )}
-                </button>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
@@ -302,6 +356,29 @@ const VenueCard: React.FC<VenueCardProps> = ({
             </div>
           )}
         </div>
+
+        {/* Access Token Expiry */}
+        {venue.accessTokenExpiry && (
+          <div
+            className={`venue-card__token ${
+              isTokenExpired(venue.accessTokenExpiry) ? "venue-card__token--expired" : ""
+            }`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z" />
+            </svg>
+            <div className="venue-card__token-info">
+              <span className="venue-card__token-label">Access Token: </span>
+              <span
+                className={`venue-card__token-expiry ${
+                  isTokenExpired(venue.accessTokenExpiry) ? "venue-card__token-expiry--expired" : ""
+                }`}
+              >
+                {formatExpiryTime(venue.accessTokenExpiry)}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Admin message explaining lock status */}
         <div className={`venue-card__admin-message ${venue.isLocked ? "venue-card__admin-message--locked" : ""}`}>

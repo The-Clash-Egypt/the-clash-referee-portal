@@ -71,9 +71,10 @@ export const getFilteredVenues = (filters: VenueFilterDTO): Promise<{ data: Venu
 
 // Generate access token for venue
 export const generateVenueToken = (
-  venueId: string
+  venueId: string,
+  forceNew: boolean = false
 ): Promise<{ data: { data: string; success: boolean; message: string; errors: string[] } }> => {
-  return api.post(`/venue/${venueId}/generate-token`);
+  return api.post(`/venue/${venueId}/generate-token`, { forceNew });
 };
 
 // Validate venue access token
