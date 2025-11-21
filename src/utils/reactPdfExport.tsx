@@ -147,3 +147,148 @@ export const exportMatchesToPDFWithFilename = async (
     ...filters,
   });
 };
+
+/**
+ * Opens matches PDF in a new window for preview
+ * @param matches - Array of matches to export
+ * @param options - Export options
+ */
+export const previewMatchesPDF = async (matches: Match[], options: PDFExportOptions): Promise<void> => {
+  const {
+    viewType,
+    tournamentName,
+    categoryName,
+    venueName,
+    refereeName,
+    teamName,
+    formatName,
+  } = options;
+
+  try {
+    console.log("Starting React PDF preview with options:", options);
+    console.log(`Previewing ${matches.length} matches`);
+
+    // Create the PDF document
+    const doc = (
+      <MatchesPDFDocument
+        matches={matches}
+        tournamentName={tournamentName}
+        categoryName={categoryName}
+        venueName={venueName}
+        refereeName={refereeName}
+        teamName={teamName}
+        formatName={formatName}
+        viewType={viewType}
+      />
+    );
+
+    console.log("PDF document created, generating blob...");
+
+    // Generate PDF blob
+    const blob = await pdf(doc).toBlob();
+
+    console.log("PDF blob generated successfully, size:", blob.size);
+
+    // Create object URL and open in new window
+    const url = URL.createObjectURL(blob);
+    const newWindow = window.open(url, "_blank", "noopener,noreferrer");
+
+    if (!newWindow) {
+      // If popup was blocked, fall back to download
+      console.warn("Popup blocked, falling back to download");
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = options.filename || "matches-report.pdf";
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      // Clean up URL after download
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+    } else {
+      // Clean up URL after a delay to allow the window to load
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+    }
+
+    console.log("PDF preview opened successfully");
+  } catch (error) {
+    console.error("Error previewing PDF with React PDF:", error);
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      matches: matches.length,
+      options,
+    });
+    throw new Error(`Failed to preview PDF: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
+};
+
+/**
+ * Opens matches PDF in a new window with automatic filename generation
+ * @param matches - Array of matches to export
+ * @param viewType - Type of view being exported
+ * @param tournamentName - Name of the tournament
+ * @param filters - Additional filter information
+ */
+export const previewMatchesPDFWithFilename = async (
+  matches: Match[],
+  viewType: "venue" | "referee" | "team" | "general",
+  tournamentName: string,
+  filters: {
+    categoryName?: string;
+    venueName?: string;
+    refereeName?: string;
+    teamName?: string;
+    formatName?: string;
+  } = {}
+): Promise<void> => {
+  // Generate filename based on filters
+  const timestamp = new Date().toISOString().split("T")[0];
+  const filterParts = [];
+
+  // Add primary filter based on view type
+  switch (viewType) {
+    case "venue":
+      if (filters.venueName) filterParts.push(filters.venueName);
+      break;
+    case "referee":
+      if (filters.refereeName) filterParts.push(filters.refereeName);
+      break;
+    case "team":
+      if (filters.teamName) filterParts.push(filters.teamName);
+      break;
+    default:
+      // For general view, add all active filters
+      if (filters.venueName) filterParts.push(filters.venueName);
+      if (filters.refereeName) filterParts.push(filters.refereeName);
+      if (filters.teamName) filterParts.push(filters.teamName);
+      break;
+  }
+
+  // Add additional filters
+  if (filters.categoryName) filterParts.push(filters.categoryName);
+  if (filters.formatName) filterParts.push(filters.formatName);
+
+  // Build filename
+  let filename;
+  if (filterParts.length > 0) {
+    const filterString = filterParts.join("-");
+    filename = `${tournamentName}-${filterString}-matches-${timestamp}.pdf`;
+  } else {
+    filename = `${tournamentName}-matches-${timestamp}.pdf`;
+  }
+
+  // Clean filename for filesystem
+  filename = filename.replace(/[^a-z0-9.-]/gi, "-").toLowerCase();
+
+  await previewMatchesPDF(matches, {
+    filename,
+    viewType,
+    tournamentName,
+    ...filters,
+  });
+};

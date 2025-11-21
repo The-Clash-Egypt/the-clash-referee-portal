@@ -325,7 +325,17 @@ const MatchesManagement: React.FC = () => {
   useEffect(() => {
     if (!isInitialized || isRestoringFromURL.current) return;
     setCurrentPage(1);
-  }, [isInitialized, filterStatus, filterCategory, filterFormat, filterRound, filterVenue, filterTeam, filterReferee, filterDate]);
+  }, [
+    isInitialized,
+    filterStatus,
+    filterCategory,
+    filterFormat,
+    filterRound,
+    filterVenue,
+    filterTeam,
+    filterReferee,
+    filterDate,
+  ]);
 
   // Reset matches loaded flag when filters change (except for pagination)
   useEffect(() => {
@@ -750,8 +760,34 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleExportView = (type: "venue" | "referee" | "team" | "general") => {
-    setPrintableViewType(type);
-    setShowPrintableView(true);
+    if (!id) return;
+
+    // Build query parameters for the preview page
+    const params = new URLSearchParams();
+    params.set("tournamentName", tournamentName || "Tournament");
+    params.set("viewType", type);
+
+    // Add filter values
+    if (filterStatus !== "all") params.set("status", filterStatus);
+    if (filterCategory !== "all") params.set("category", filterCategory);
+    if (filterFormat !== "all") params.set("format", filterFormat);
+    if (filterRound !== "all") params.set("round", filterRound);
+    if (filterVenue !== "all") params.set("venue", filterVenue);
+    if (filterTeam !== "all") params.set("team", filterTeam);
+    if (filterReferee !== "all") params.set("referee", filterReferee);
+    if (filterDate !== "all") params.set("date", filterDate);
+    if (searchTerm) params.set("search", searchTerm);
+
+    // Add display names for filters
+    if (filterCategory !== "all") params.set("categoryName", filterCategory);
+    if (filterVenue !== "all") params.set("venueName", filterVenue);
+    if (filterReferee !== "all") params.set("refereeName", getRefereeName(filterReferee));
+    if (filterTeam !== "all") params.set("teamName", getTeamName(filterTeam));
+    if (filterFormat !== "all") params.set("formatName", filterFormat);
+
+    // Navigate to preview page in new window
+    const previewUrl = `/tournaments/${id}/matches/preview?${params.toString()}`;
+    window.open(previewUrl, "_blank");
   };
 
   const handleCloseExportView = () => {
@@ -1083,7 +1119,7 @@ const MatchesManagement: React.FC = () => {
                 <button
                   onClick={() => handleExportView(getExportType())}
                   className="export-btn-compact"
-                  title="Export matches to PDF"
+                  title="Preview matches for export"
                 >
                   Preview PDF
                 </button>

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Match, MatchGameScore } from "../types/match";
-import { exportMatchesToPDFWithFilename } from "../../../utils/reactPdfExport";
+import { previewMatchesPDFWithFilename } from "../../../utils/reactPdfExport";
 
 interface PrintableViewProps {
   matches: Match[];
@@ -150,12 +150,12 @@ const PrintableView: React.FC<PrintableViewProps> = ({
     onClose();
   };
 
-  const handleExportPDF = async () => {
+  const handlePreviewPDF = async () => {
     try {
       setIsExportingPDF(true);
 
-      // Use the new React PDF export
-      await exportMatchesToPDFWithFilename(matches, viewType, tournamentName, {
+      // Open PDF in new window for preview
+      await previewMatchesPDFWithFilename(matches, viewType, tournamentName, {
         categoryName,
         venueName,
         refereeName,
@@ -163,11 +163,15 @@ const PrintableView: React.FC<PrintableViewProps> = ({
         formatName,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to export PDF. Please try again.";
-      alert(`PDF Export Error: ${errorMessage}`);
+      const errorMessage = error instanceof Error ? error.message : "Failed to preview PDF. Please try again.";
+      alert(`PDF Preview Error: ${errorMessage}`);
     } finally {
       setIsExportingPDF(false);
     }
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   return (
@@ -176,11 +180,14 @@ const PrintableView: React.FC<PrintableViewProps> = ({
       <div className="print-controls no-print">
         <div className="print-header">
           <h2>Export Preview</h2>
-          <p>Review the document before exporting to PDF.</p>
+          <p>Review the document before previewing PDF or printing.</p>
         </div>
         <div className="print-actions">
-          <button onClick={handleExportPDF} className="pdf-btn" disabled={isExportingPDF}>
-            {isExportingPDF ? "Exporting..." : "Export PDF"}
+          <button onClick={handlePreviewPDF} className="pdf-btn" disabled={isExportingPDF}>
+            {isExportingPDF ? "Opening..." : "Preview PDF"}
+          </button>
+          <button onClick={handlePrint} className="print-btn">
+            Print
           </button>
           <button onClick={handleClose} className="close-btn">
             Close Preview
@@ -228,6 +235,12 @@ const PrintableView: React.FC<PrintableViewProps> = ({
 
                   {/* Match Information - Center Aligned */}
                   <div className="match-info-simple">
+                    {match.categoryName && (
+                      <div className="info-item">
+                        <span className="info-value">{match.categoryName}</span>
+                      </div>
+                    )}
+
                     <div className="info-item">
                       <span className="info-value">{match.round || "TBD"}</span>
                     </div>

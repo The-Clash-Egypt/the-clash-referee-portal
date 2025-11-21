@@ -12,6 +12,14 @@
   overflow: hidden;
   box-sizing: border-box;
 
+  // When used as a standalone page (not in modal)
+  .printable-view-page & {
+    position: static;
+    background: white;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
   @media (max-width: 768px) {
     background: rgba(0, 0, 0, 0.9);
   }
@@ -127,10 +135,46 @@
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        &::before {
-          content: "📄";
-          font-size: 16px;
+      }
+
+      .print-btn {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2);
+
+        @media (max-width: 768px) {
+          padding: 10px 20px;
+          font-size: 14px;
         }
+
+        @media (max-width: 480px) {
+          padding: 8px 16px;
+          font-size: 14px;
+          width: 100%;
+          justify-content: center;
+        }
+
+        &:hover {
+          background: #218838;
+          transform: translateY(-1px);
+          box-shadow: 0 6px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        &:active {
+          transform: translateY(0);
+          box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2);
+        }
+
       }
 
       .close-btn {

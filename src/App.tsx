@@ -13,6 +13,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
 import Tournaments from "./features/tournaments/pages";
 import MatchesManagement from "./features/matches/pages/MatchesManagement";
+import PrintableViewPage from "./features/matches/pages/PrintableViewPage";
 import GuestVenuePage from "./features/venue/pages/GuestVenuePage";
 
 // Create a client
@@ -59,6 +60,14 @@ const App: React.FC = () => {
                     element={
                       <ProtectedRoute>
                         <MatchesManagement />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="tournaments/:id/matches/preview"
+                    element={
+                      <ProtectedRoute>
+                        <PrintableViewPage />
                       </ProtectedRoute>
                     }
                   />
