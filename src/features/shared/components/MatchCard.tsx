@@ -9,6 +9,7 @@ interface MatchCardProps {
   onAssignReferee?: (match: Match) => void;
   onUnassignReferee?: (refereeId: string, matchId: string) => Promise<void>;
   onUpdateScore?: (match: Match) => void;
+  onEditMatch?: (match: Match) => void;
   onShareRefereeWhatsApp?: (referee: any) => void;
   showAdminActions?: boolean;
   showUpdateScore?: boolean;
@@ -24,6 +25,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
   onAssignReferee,
   onUnassignReferee,
   onUpdateScore,
+  onEditMatch,
   onShareRefereeWhatsApp,
   showAdminActions = false,
   showUpdateScore = true,
@@ -134,13 +136,15 @@ const MatchCard: React.FC<MatchCardProps> = ({
               </span>
               {match.venue && <span className="match-time-divider">•</span>}
               {match.venue && <span className="match-venue">{match.venue}</span>}
+              {match.bestOf && <span className="match-time-divider">•</span>}
+              {match.bestOf && <span className="match-best-of">Best of {match.bestOf}</span>}
             </div>
           </div>
         </div>
       </div>
 
       {/* Match Times & Duration - Admin Only */}
-      {showDuration && (
+      {showDuration && match?.startedAt && match?.endedAt && (
         <div className="match-duration">
           {match.startedAt && (
             <div className="duration-info">
@@ -280,6 +284,11 @@ const MatchCard: React.FC<MatchCardProps> = ({
         {showAdminActions && onAssignReferee && (
           <button className="btn btn-primary" onClick={() => onAssignReferee(match)}>
             Assign Referee
+          </button>
+        )}
+        {showAdminActions && onEditMatch && (
+          <button className="btn btn-secondary" onClick={() => onEditMatch(match)}>
+            Edit Match
           </button>
         )}
         {onUpdateScore && showUpdateScore && (

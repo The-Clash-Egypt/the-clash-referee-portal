@@ -88,6 +88,12 @@
             color: var(--black);
           }
 
+          .match-best-of {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--grey);
+          }
+
           .match-venue {
             font-size: 13px;
             font-weight: 500;
@@ -540,6 +546,10 @@
           .match-time-venue {
             .match-time {
               font-size: 12px;
+            }
+
+            .match-best-of {
+              font-size: 11px;
             }
 
             .match-venue {

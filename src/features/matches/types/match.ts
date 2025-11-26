@@ -93,6 +93,9 @@ export interface GameScoreDTO {
 }
 
 export interface UpdateMatchDTO {
+  venue?: string | null;
+  startTime?: string | null;
+  bestOf?: number | null;
   gameScores?: GameScoreDTO[];
 }
 

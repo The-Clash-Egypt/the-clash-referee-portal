@@ -13,6 +13,8 @@ import AssignRefereeModal from "../components/AssignRefereeModal";
 import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
 import UpdateScoreDialog from "../components/UpdateScoreDialog";
 import BulkUpdateScoreModal from "../components/BulkUpdateScoreModal";
+import EditMatchModal from "../components/EditMatchModal";
+import BulkEditMatchModal from "../components/BulkEditMatchModal";
 import PrintableView from "../components/PrintableView";
 import SearchableDropdown from "../components/SearchableDropdown";
 import VolleyballLoading from "../../../components/VolleyballLoading";
@@ -59,8 +61,11 @@ const MatchesManagement: React.FC = () => {
   const [bulkAssigningReferee, setBulkAssigningReferee] = useState(false);
   const [showBulkUpdateScoreModal, setShowBulkUpdateScoreModal] = useState(false);
   const [bulkUpdatingScores, setBulkUpdatingScores] = useState(false);
+  const [showEditMatchModal, setShowEditMatchModal] = useState(false);
+  const [editingMatch, setEditingMatch] = useState(false);
+  const [showBulkEditMatchModal, setShowBulkEditMatchModal] = useState(false);
+  const [bulkEditingMatches, setBulkEditingMatches] = useState(false);
   const [showPrintableView, setShowPrintableView] = useState(false);
-  const [printableViewType, setPrintableViewType] = useState<"venue" | "referee" | "team" | "general">("general");
   const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false);
   const [selectedReferee, setSelectedReferee] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"matches" | "venues">(() => {
@@ -603,6 +608,106 @@ const MatchesManagement: React.FC = () => {
     } catch (error: any) {
       console.error("Error unassigning referee:", error);
       alert("Failed to unassign referee. Please try again.");
+    }
+  };
+
+  const handleEditMatch = (match: Match) => {
+    setSelectedMatch(match);
+    setShowEditMatchModal(true);
+  };
+
+  const handleSubmitEditMatch = async (data: {
+    venue?: string | null;
+    startTime?: string | null;
+    bestOf?: number | null;
+  }) => {
+    if (!selectedMatch || !hasFullAccess) return;
+
+    try {
+      setEditingMatch(true);
+
+      // Call the appropriate API based on match format
+      if (selectedMatch.format === "Group") {
+        await updateGroupMatch(selectedMatch.id, data);
+      } else if (selectedMatch.format === "League") {
+        await updateLeagueMatch(selectedMatch.id, data);
+      } else if (selectedMatch.format === "Knockout") {
+        await updateKnockoutMatch(selectedMatch.id, data);
+      }
+
+      // Refresh data to show updated match
+      const currentFilters: MatchFilters = {
+        search: debouncedSearchTerm || undefined,
+        status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+        tournament: id,
+        category: filterCategory !== "all" ? filterCategory : undefined,
+        format: filterFormat !== "all" ? filterFormat : undefined,
+        round: filterRound !== "all" ? filterRound : undefined,
+        venue: filterVenue !== "all" ? filterVenue : undefined,
+        team: filterTeam !== "all" ? filterTeam : undefined,
+        referee: filterReferee !== "all" ? filterReferee : undefined,
+        date: filterDate !== "all" ? filterDate : undefined,
+        pageSize: pageSize,
+        pageNumber: currentPage,
+      };
+      setShowEditMatchModal(false);
+      setSelectedMatch(null);
+      await fetchData(currentFilters);
+    } catch (error: any) {
+      console.error("Error editing match:", error);
+      alert("Failed to update match. Please try again.");
+    } finally {
+      setEditingMatch(false);
+    }
+  };
+
+  const handleBulkEditMatches = async (
+    updates: { matchId: string; venue?: string | null; bestOf?: number | null }[]
+  ) => {
+    if (!hasFullAccess) return;
+
+    try {
+      setBulkEditingMatches(true);
+
+      // Group updates by format and call appropriate API
+      const updatePromises = updates.map(async ({ matchId, ...data }) => {
+        const match = matches.find((m) => m.id === matchId);
+        if (!match) return;
+
+        if (match.format === "Group") {
+          return updateGroupMatch(matchId, data);
+        } else if (match.format === "League") {
+          return updateLeagueMatch(matchId, data);
+        } else if (match.format === "Knockout") {
+          return updateKnockoutMatch(matchId, data);
+        }
+      });
+
+      await Promise.all(updatePromises);
+
+      // Refresh data to show updated matches
+      const currentFilters: MatchFilters = {
+        search: debouncedSearchTerm || undefined,
+        status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+        tournament: id,
+        category: filterCategory !== "all" ? filterCategory : undefined,
+        format: filterFormat !== "all" ? filterFormat : undefined,
+        round: filterRound !== "all" ? filterRound : undefined,
+        venue: filterVenue !== "all" ? filterVenue : undefined,
+        team: filterTeam !== "all" ? filterTeam : undefined,
+        referee: filterReferee !== "all" ? filterReferee : undefined,
+        date: filterDate !== "all" ? filterDate : undefined,
+        pageSize: pageSize,
+        pageNumber: currentPage,
+      };
+      setShowBulkEditMatchModal(false);
+      setSelectedMatches(new Set());
+      await fetchData(currentFilters);
+    } catch (error: any) {
+      console.error("Error bulk editing matches:", error);
+      alert("Failed to update one or more matches. Please try again.");
+    } finally {
+      setBulkEditingMatches(false);
     }
   };
 
@@ -1303,6 +1408,11 @@ const MatchesManagement: React.FC = () => {
                     Bulk Update Scores
                   </button>
                   {hasFullAccess && (
+                    <button className="bulk-edit-btn" onClick={() => setShowBulkEditMatchModal(true)}>
+                      Bulk Edit Matches
+                    </button>
+                  )}
+                  {hasFullAccess && (
                     <button className="bulk-whatsapp-btn" onClick={handleBulkWhatsAppShare}>
                       <svg
                         width="16"
@@ -1326,7 +1436,7 @@ const MatchesManagement: React.FC = () => {
               <div className="matches-count">
                 <span className="stat-label">Total Matches</span>
                 <span className="stat-value">{totalMatches}</span>
-                {totalMatches > 0 && totalMatches !== totalMatches && (
+                {totalMatches > 0 && sortedMatches.length < totalMatches && (
                   <span className="current-page-info">(Showing {sortedMatches.length} on this page)</span>
                 )}
               </div>
@@ -1451,6 +1561,7 @@ const MatchesManagement: React.FC = () => {
                   <MatchCard
                     key={match.id}
                     match={match}
+                    onEditMatch={(match) => handleEditMatch(match)}
                     onUpdateScore={handleUpdateScore}
                     onAssignReferee={openAssignmentModal}
                     onUnassignReferee={handleUnassignReferee}
@@ -1554,7 +1665,7 @@ const MatchesManagement: React.FC = () => {
             match={selectedMatchForScore}
             onClose={handleScoreboardClose}
             onSubmit={handleSubmitScore}
-            openInFullscreen={!hasFullAccess}
+            openInFullscreen={false}
             loading={updatingScore}
           />
 
@@ -1565,6 +1676,29 @@ const MatchesManagement: React.FC = () => {
             onClose={() => setShowBulkUpdateScoreModal(false)}
             onSubmit={handleBulkUpdateScores}
             loading={bulkUpdatingScores}
+          />
+
+          {/* Edit Match Modal */}
+          <EditMatchModal
+            isOpen={showEditMatchModal}
+            match={selectedMatch}
+            onClose={() => {
+              setShowEditMatchModal(false);
+              setSelectedMatch(null);
+            }}
+            onSubmit={handleSubmitEditMatch}
+            loading={editingMatch}
+            availableVenues={filterOptions.venues || []}
+          />
+
+          {/* Bulk Edit Match Modal */}
+          <BulkEditMatchModal
+            isOpen={showBulkEditMatchModal}
+            selectedMatches={sortedMatches?.filter((match) => selectedMatches.has(match.id)) || []}
+            onClose={() => setShowBulkEditMatchModal(false)}
+            onSubmit={handleBulkEditMatches}
+            loading={bulkEditingMatches}
+            availableVenues={filterOptions.venues || []}
           />
 
           {/* Bulk WhatsApp Modal */}
@@ -1636,7 +1770,7 @@ const MatchesManagement: React.FC = () => {
               matches={sortedMatches}
               tournamentName={tournamentName || "Tournament"}
               categoryName={filterCategory !== "all" ? filterCategory : undefined}
-              viewType={printableViewType}
+              viewType={"general"}
               venueName={filterVenue !== "all" ? filterVenue : undefined}
               refereeName={filterReferee !== "all" ? getRefereeName(filterReferee) : undefined}
               teamName={filterTeam !== "all" ? getTeamName(filterTeam) : undefined}
