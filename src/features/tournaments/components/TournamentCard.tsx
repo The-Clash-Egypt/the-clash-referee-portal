@@ -1,6 +1,7 @@
 import React from "react";
 import { Tournament } from "../types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate } from "react-router-dom";
 import { faCalendar } from "@fortawesome/free-solid-svg-icons";
 import "./TournamentCard.scss";
 
@@ -15,6 +16,17 @@ const TournamentCard: React.FC<TournamentCardProps> = ({ tournament, onSelect, s
     if (onSelect) {
       onSelect(tournament);
     }
+  };
+
+  const navigate = useNavigate();
+
+  const handleCategoryClick = (e: React.MouseEvent, category: string) => {
+    e.stopPropagation();
+    // Navigate to tournament matches page filtered by the clicked category
+    const params = new URLSearchParams();
+    params.set("name", tournament.name || "Tournament");
+    params.set("category", category);
+    navigate(`/tournaments/${tournament.id}/matches?${params.toString()}`);
   };
 
   const getStatusColor = (status: string) => {
@@ -101,12 +113,21 @@ const TournamentCard: React.FC<TournamentCardProps> = ({ tournament, onSelect, s
           <div className="categories-info">
             <div className="categories-list">
               {tournament.categories.slice(0, 2).map((category, index) => (
-                <span key={index} className="category-tag">
+                <button
+                  key={index}
+                  className="category-tag"
+                  onClick={(e) => handleCategoryClick(e, category)}
+                >
                   {category}
-                </span>
+                </button>
               ))}
               {tournament.categories.length > 2 && (
-                <span className="category-count">+{tournament.categories.length - 2}</span>
+                <button
+                  className="category-count"
+                  onClick={(e) => handleCategoryClick(e, tournament.categories[2])}
+                >
+                  +{tournament.categories.length - 2}
+                </button>
               )}
             </div>
           </div>
