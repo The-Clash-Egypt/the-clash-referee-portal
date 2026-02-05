@@ -113,19 +113,12 @@ const TournamentCard: React.FC<TournamentCardProps> = ({ tournament, onSelect, s
           <div className="categories-info">
             <div className="categories-list">
               {tournament.categories.slice(0, 2).map((category, index) => (
-                <button
-                  key={index}
-                  className="category-tag"
-                  onClick={(e) => handleCategoryClick(e, category)}
-                >
+                <button key={index} className="category-tag" onClick={(e) => handleCategoryClick(e, category)}>
                   {category}
                 </button>
               ))}
               {tournament.categories.length > 2 && (
-                <button
-                  className="category-count"
-                  onClick={(e) => handleCategoryClick(e, tournament.categories[2])}
-                >
+                <button className="category-count" onClick={(e) => handleCategoryClick(e, tournament.categories[2])}>
                   +{tournament.categories.length - 2}
                 </button>
               )}
