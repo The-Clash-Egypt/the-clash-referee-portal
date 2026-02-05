@@ -18,6 +18,12 @@ const Tournaments = () => {
   });
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSports, setSelectedSports] = useState<string[]>([]);
+
+  // Get unique sports (or types) from all tournaments
+  const tournamentSports = Array.from(
+    new Set(tournaments.filter((t) => t.sport || (t as any).type).map((t) => (t.sport || (t as any).type) as string)),
+  ).sort();
 
   const handleTournamentSelect = (tournament: Tournament) => {
     navigate(`/tournaments/${tournament.id}/matches?name=${tournament.name}`);
@@ -30,10 +36,19 @@ const Tournaments = () => {
     }));
   };
 
-  // Filter tournaments based on search query
-  const filteredTournaments = tournaments.filter((tournament) =>
-    tournament.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter tournaments based on search query and sport/type filter (applies to all sections)
+  const filteredTournaments = tournaments.filter((tournament) => {
+    // First apply search filter
+    const matchesSearch = tournament.name.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
+    // Apply sport/type filter across all tournaments when one or more sports are selected
+    if (selectedSports.length > 0) {
+      return selectedSports.includes((tournament.sport || (tournament as any).type) as string);
+    }
+
+    return true;
+  });
 
   // Sort tournaments by date based on status
   const sortTournamentsByDate = (tournaments: Tournament[], status: string) => {
@@ -52,23 +67,26 @@ const Tournaments = () => {
   };
 
   // Group tournaments by status
-  const groupedTournaments = filteredTournaments.reduce((acc, tournament) => {
-    const status = tournament.status;
-    if (!acc[status]) {
-      acc[status] = [];
-    }
-    acc[status].push(tournament);
-    return acc;
-  }, {} as Record<string, Tournament[]>);
+  const groupedTournaments = filteredTournaments.reduce(
+    (acc, tournament) => {
+      const status = tournament.status;
+      if (!acc[status]) {
+        acc[status] = [];
+      }
+      acc[status].push(tournament);
+      return acc;
+    },
+    {} as Record<string, Tournament[]>,
+  );
 
   // Apply sorting to each status group
   Object.keys(groupedTournaments).forEach((status) => {
     groupedTournaments[status] = sortTournamentsByDate(groupedTournaments[status], status);
   });
 
-  // Auto-expand sections that contain search results
+  // Auto-expand sections that contain search results or when sport filters are active
   useEffect(() => {
-    if (searchQuery && filteredTournaments.length > 0) {
+    if ((searchQuery && filteredTournaments.length > 0) || selectedSports.length > 0) {
       const sectionsToExpand: string[] = [];
 
       // Check which sections have matching tournaments
@@ -78,7 +96,7 @@ const Tournaments = () => {
         }
       });
 
-      // Expand all sections that have search results
+      // Expand all sections that have results
       if (sectionsToExpand.length > 0) {
         setCollapsedSections((prev) => {
           const newState = { ...prev };
@@ -86,7 +104,6 @@ const Tournaments = () => {
 
           sectionsToExpand.forEach((status) => {
             if (prev[status] !== false) {
-              // Only update if not already expanded
               newState[status] = false; // false means expanded
               hasChanges = true;
             }
@@ -95,15 +112,14 @@ const Tournaments = () => {
           return hasChanges ? newState : prev;
         });
       }
-    } else if (!searchQuery) {
-      // When search is cleared, return to default collapsed state
-      setCollapsedSections({
-        active: false,
-        upcoming: true,
-        past: true,
-      });
     }
-  }, [searchQuery, filteredTournaments.length]);
+  }, [searchQuery, filteredTournaments.length, selectedSports.length]);
+
+  const toggleSport = (sport: string) => {
+    setSelectedSports((prev) => (prev.includes(sport) ? prev.filter((s) => s !== sport) : [...prev, sport]));
+  };
+
+  // (removed: per-section expand effect) handled by combined auto-expand effect above
 
   // Define status order and labels
   const statusConfig = {
@@ -238,6 +254,31 @@ const Tournaments = () => {
         </div>
       </div>
 
+      {/* Sports filter (applies across all sections) */}
+      {tournamentSports.length > 0 && (
+        <div className="sports-filter-top">
+          <div className="sport-pills">
+            <button
+              type="button"
+              className={`pill ${selectedSports.length === 0 ? "active" : ""}`}
+              onClick={() => setSelectedSports([])}
+            >
+              All Sports
+            </button>
+            {tournamentSports.map((sport) => (
+              <button
+                key={sport}
+                type="button"
+                className={`pill ${selectedSports.includes(sport) ? "active" : ""}`}
+                onClick={() => toggleSport(sport)}
+              >
+                {sport}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="tournament-sections">
         {statusOrder.map((status) => {
           const statusTournaments = groupedTournaments[status] || [];
@@ -255,6 +296,7 @@ const Tournaments = () => {
                 </div>
                 <div className="section-divider"></div>
               </div>
+
               <div
                 className={`tournament-grid ${isCollapsed ? "collapsed" : "expanded"}`}
                 style={{

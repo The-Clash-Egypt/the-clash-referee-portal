@@ -1,3 +1,13 @@
+export interface VenueMatchPlayer {
+  id: string;
+  playerId: string;
+  firstName: string;
+  lastName: string;
+  nationality: string;
+  isCaptain: boolean;
+  notes?: string;
+}
+
 export interface VenueMatch {
   id: string;
   categoryName: string;
@@ -16,6 +26,8 @@ export interface VenueMatch {
   awayTeamSets: number;
   isCompleted: boolean;
   gameScores: VenueMatchGameScore[];
+  homeTeamPlayers?: VenueMatchPlayer[];
+  awayTeamPlayers?: VenueMatchPlayer[];
 }
 
 export interface VenueMatchGameScore {

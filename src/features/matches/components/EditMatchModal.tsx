@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Match } from "../types/match";
+import { Match, TeamMember } from "../types/match";
 import "./EditMatchModal.scss";
 
 // Helper function to convert date to local datetime-local format
@@ -120,6 +120,25 @@ const EditMatchModal: React.FC<EditMatchModalProps> = ({
     };
   }, [isOpen]);
 
+  // Helper function to render team members (max 3, captain indicator only if more than 3)
+  const renderTeamMembers = (members: TeamMember[] | undefined) => {
+    if (!members || members.length === 0) return null;
+
+    const displayMembers = members.slice(0, 3);
+    const hasMore = members.length > 3;
+
+    return (
+      <div className="team-members-display">
+        {displayMembers.map((member) => (
+          <span key={member.id} className="member-name">
+            {member.firstName} {member.lastName}
+            {hasMore && member.isCaptain && <span className="captain-badge">(C)</span>}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
   if (!isOpen || !match) return null;
 
   return (
@@ -135,10 +154,19 @@ const EditMatchModal: React.FC<EditMatchModalProps> = ({
         </div>
 
         <div className="modal-body">
-          <div className="match-info-header">
-            <p className="match-teams">
-              {match.homeTeamName ? match.homeTeamName : "TBD"} vs {match.awayTeamName ? match.awayTeamName : "TBD"}
-            </p>
+          {/* Teams Display */}
+          <div className="teams-section">
+            <div className="teams-row">
+              <div className="team-card home">
+                <span className="team-name">{match.homeTeamName || "TBD"}</span>
+                {renderTeamMembers(match.homeTeamMembers)}
+              </div>
+              <span className="vs-text">vs</span>
+              <div className="team-card away">
+                <span className="team-name">{match.awayTeamName || "TBD"}</span>
+                {renderTeamMembers(match.awayTeamMembers)}
+              </div>
+            </div>
             <div className="match-info-badges">
               {match.format && <span className="format-badge">{match.format}</span>}
               {match.round && <span className="round-badge">{match.round}</span>}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Match, MatchGameScore } from "../types/match";
+import { Match, MatchGameScore, TeamMember } from "../types/match";
 import { updateLiveScore } from "../api/matches";
 import "./UpdateScoreDialog.scss";
 
@@ -337,6 +337,25 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     }
   };
 
+  // Helper function to render team members (max 3, captain indicator only if more than 3)
+  const renderTeamMembers = (members: TeamMember[] | undefined, compact: boolean = false) => {
+    if (!members || members.length === 0) return null;
+
+    const displayMembers = members.slice(0, 3);
+    const hasMore = members.length > 3;
+
+    return (
+      <div className={`team-members-display ${compact ? "compact" : ""}`}>
+        {displayMembers.map((member, index) => (
+          <span key={member.id} className="member-name">
+            {member.firstName} {member.lastName}
+            {hasMore && member.isCaptain && <span className="captain-badge">(C)</span>}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
   if (!isOpen || !match) return null;
 
   // Only count completed sets (sets that have been played)
@@ -432,6 +451,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
           <div className="scoreboard-main">
             <div className="team-section home">
               <div className="team-name">{sidesSwapped ? match.awayTeamName : match.homeTeamName}</div>
+              {renderTeamMembers(sidesSwapped ? match.awayTeamMembers : match.homeTeamMembers, true)}
               <div className="score-display">{sidesSwapped ? currentGame.awayScore : currentGame.homeScore}</div>
               <div className="score-controls">
                 <button
@@ -452,6 +472,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
 
             <div className="team-section away">
               <div className="team-name">{sidesSwapped ? match.homeTeamName : match.awayTeamName}</div>
+              {renderTeamMembers(sidesSwapped ? match.homeTeamMembers : match.awayTeamMembers, true)}
               <div className="score-display">{sidesSwapped ? currentGame.homeScore : currentGame.awayScore}</div>
               <div className="score-controls">
                 <button
@@ -515,45 +536,56 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     <div className="update-score-modal-overlay" onClick={handleClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="header-content">
+          <div className="header-title-row">
             <h3>Enter Match Scores</h3>
-            <p className="match-teams">
-              {match.homeTeamName} vs {match.awayTeamName}
-            </p>
-            <div className="match-info">
-              <span className="best-of-badge">Best of {getBestOfValue(match)}</span>
-              {!isBestOfOne(match) && (
-                <span className="sets-progress">
-                  {completedSets.length} of {getBestOfValue(match)} sets completed
-                </span>
+            <div className="header-actions">
+              {isMobile && (
+                <button
+                  className="fullscreen-toggle"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsFullscreen(true);
+                  }}
+                  title="Enter fullscreen scoreboard"
+                  disabled={isUnauthorized}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="2" width="20" height="20" rx="3" stroke="currentColor" strokeWidth="1.5" fill="none" />
+                    <text x="12" y="16" textAnchor="middle" fontSize="11" fontWeight="bold" fill="currentColor">
+                      1:0
+                    </text>
+                  </svg>
+                </button>
               )}
-            </div>
-          </div>
-          <div className="header-actions">
-            {/* Show fullscreen button only on mobile */}
-            {isMobile && (
-              <button
-                className="fullscreen-toggle"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsFullscreen(true);
-                }}
-                title="Enter fullscreen scoreboard"
-                disabled={isUnauthorized}
-              >
+              <button className="modal-close" onClick={handleClose}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <rect x="2" y="2" width="20" height="20" rx="3" stroke="currentColor" strokeWidth="1.5" fill="none" />
-                  <text x="12" y="16" textAnchor="middle" fontSize="11" fontWeight="bold" fill="currentColor">
-                    1:0
-                  </text>
+                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </button>
+            </div>
+          </div>
+          <div className="match-info">
+            <span className="best-of-badge">Best of {getBestOfValue(match)}</span>
+            {!isBestOfOne(match) && (
+              <span className="sets-progress">
+                {completedSets.length} of {getBestOfValue(match)} sets completed
+              </span>
             )}
-            <button className="modal-close" onClick={handleClose}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
+          </div>
+        </div>
+
+        {/* Sticky Teams Display */}
+        <div className="sticky-teams" onClick={(e) => e.stopPropagation()}>
+          <div className="dialog-teams-row">
+            <div className="dialog-team-card home">
+              <span className="dialog-team-name">{match.homeTeamName}</span>
+              {renderTeamMembers(match.homeTeamMembers)}
+            </div>
+            <span className="dialog-vs">vs</span>
+            <div className="dialog-team-card away">
+              <span className="dialog-team-name">{match.awayTeamName}</span>
+              {renderTeamMembers(match.awayTeamMembers)}
+            </div>
           </div>
         </div>
 
@@ -564,8 +596,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
               <div key={score.gameNumber} className="score-row">
                 <div className="set-label">Set {score.gameNumber}</div>
                 <div className="score-inputs-container">
-                  <div className="team-input">
-                    <label>{match.homeTeamName}</label>
+                  <div className="team-input home">
                     <input
                       type="number"
                       min="0"
@@ -578,8 +609,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                     />
                   </div>
                   <div className="score-divider">-</div>
-                  <div className="team-input">
-                    <label>{match.awayTeamName}</label>
+                  <div className="team-input away">
                     <input
                       type="number"
                       min="0"
@@ -641,7 +671,10 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
               ))}
             </div>
           )}
+        </div>
 
+        {/* Sticky Footer */}
+        <div className="modal-footer" onClick={(e) => e.stopPropagation()}>
           <div className="modal-actions">
             <button
               className="btn btn-secondary"

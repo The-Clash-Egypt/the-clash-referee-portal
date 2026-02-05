@@ -35,6 +35,11 @@ const MatchesManagement: React.FC = () => {
   const tournamentName = searchParams.get("name");
   const user = useSelector((state: RootState) => state.user.user);
 
+  // Scroll to top when component mounts (navigating to tournament page)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const [matches, setMatches] = useState<Match[]>([]);
   const [totalMatches, setTotalMatches] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -662,7 +667,7 @@ const MatchesManagement: React.FC = () => {
   };
 
   const handleBulkEditMatches = async (
-    updates: { matchId: string; venue?: string | null; bestOf?: number | null }[]
+    updates: { matchId: string; venue?: string | null; bestOf?: number | null }[],
   ) => {
     if (!hasFullAccess) return;
 
@@ -908,12 +913,15 @@ const MatchesManagement: React.FC = () => {
     const tournamentName = firstMatch?.tournamentName || "Tournament";
 
     // Group matches by category first, then by date within each category
-    const matchesByCategory = refereeMatches.reduce((acc, match) => {
-      const category = match.categoryName || "General";
-      if (!acc[category]) acc[category] = [];
-      acc[category].push(match);
-      return acc;
-    }, {} as Record<string, Match[]>);
+    const matchesByCategory = refereeMatches.reduce(
+      (acc, match) => {
+        const category = match.categoryName || "General";
+        if (!acc[category]) acc[category] = [];
+        acc[category].push(match);
+        return acc;
+      },
+      {} as Record<string, Match[]>,
+    );
 
     let message = `🏐 *Referee Assignment*
 
@@ -928,14 +936,17 @@ const MatchesManagement: React.FC = () => {
       message += `\n\n*${category}:*`;
 
       // Group matches within this category by date
-      const matchesByDate = categoryMatches.reduce((acc, match) => {
-        const date = match.startTime
-          ? new Date(match.startTime).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-          : "TBD";
-        if (!acc[date]) acc[date] = [];
-        acc[date].push(match);
-        return acc;
-      }, {} as Record<string, Match[]>);
+      const matchesByDate = categoryMatches.reduce(
+        (acc, match) => {
+          const date = match.startTime
+            ? new Date(match.startTime).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+            : "TBD";
+          if (!acc[date]) acc[date] = [];
+          acc[date].push(match);
+          return acc;
+        },
+        {} as Record<string, Match[]>,
+      );
 
       Object.entries(matchesByDate).forEach(([date, matches]) => {
         message += `\n\n  *${date}:*`;
@@ -1004,7 +1015,7 @@ const MatchesManagement: React.FC = () => {
     if (referee) {
       // Get all matches for this referee from selected matches
       const refereeMatches = matches.filter(
-        (match) => selectedMatches.has(match.id) && match.referees?.some((ref) => ref.id === referee.id)
+        (match) => selectedMatches.has(match.id) && match.referees?.some((ref) => ref.id === referee.id),
       );
 
       if (refereeMatches.length > 0) {
@@ -1262,11 +1273,29 @@ const MatchesManagement: React.FC = () => {
                     className="filter-select"
                   >
                     <option value="all">All Formats</option>
-                    {filterOptions.formats?.map((format) => (
-                      <option key={format} value={format}>
-                        {format}
-                      </option>
-                    ))}
+                    {filterOptions.formats?.map((format) => {
+                      // Support API returning either strings or objects for formats.
+                      // Prefer showing `alias` when present, otherwise fall back to `name`/`type`/`id`.
+                      const isString = typeof format === "string";
+                      const formatValue = isString
+                        ? (format as string)
+                        : ((format as any).alias ??
+                          (format as any).name ??
+                          (format as any).type ??
+                          (format as any).id ??
+                          "");
+                      const alias = isString ? (format as string) : (format as any).alias;
+                      const labelFallback = isString
+                        ? (format as string)
+                        : ((format as any).name ?? (format as any).type ?? (format as any).id ?? "");
+                      const formatLabel = alias && String(alias).trim() !== "" ? alias : labelFallback;
+
+                      return (
+                        <option key={formatValue || formatLabel} value={formatValue || formatLabel}>
+                          {formatLabel}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -1498,7 +1527,7 @@ const MatchesManagement: React.FC = () => {
                 (() => {
                   const dayGroups = groupMatchesByDay(matches);
                   const daysWithDuration = Object.entries(dayGroups).filter(
-                    ([_, dayMatches]) => getTournamentDayDuration(dayMatches) !== null
+                    ([_, dayMatches]) => getTournamentDayDuration(dayMatches) !== null,
                   );
 
                   return daysWithDuration.length > 0 ? (

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getGuestVenue, validateVenueToken } from "../api/venue";
-import { VenueMatch, VenueMatchGameScore } from "../types/venue";
+import { VenueMatch } from "../types/venue";
 import MatchCard from "../../shared/components/MatchCard";
 import { Match, MatchGameScore } from "../../matches/types/match";
 import UpdateScoreDialog from "../../matches/components/UpdateScoreDialog";
@@ -36,8 +36,8 @@ const GuestVenuePage: React.FC = () => {
       id: venueMatch.id,
       venue: venueMatch.venue,
       tournamentName: undefined, // Don't show tournament name in guest venue
-      categoryName: venueMatch.categoryName, // Default category for venue matches
-      format: venueMatch.formatName ? venueMatch.formatName : venueMatch.formatType, // Not available in VenueMatch
+      categoryName: venueMatch.categoryName,
+      format: venueMatch.formatName ? venueMatch.formatName : venueMatch.formatType,
       bestOf: venueMatch.bestOf,
       startTime: venueMatch.startTime,
       round: venueMatch.round,
@@ -48,9 +48,39 @@ const GuestVenuePage: React.FC = () => {
       homeScore: venueMatch.homeTeamSets,
       awayScore: venueMatch.awayTeamSets,
       gameScores: gameScores,
-      referees: [], // Not available in VenueMatch
-      homeTeamMembers: [], // Not available in VenueMatch
-      awayTeamMembers: [], // Not available in VenueMatch
+      referees: [],
+      homeTeamMembers: venueMatch.homeTeamPlayers?.map((player) => ({
+        id: player.id,
+        teamMemberId: player.id,
+        playerId: player.playerId,
+        isCaptain: player.isCaptain,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        nationality: player.nationality,
+        gender: "",
+        registrationStatus: "",
+        paymentStatus: "",
+        consent: false,
+        addedAt: "",
+        phoneNumber: "",
+        email: "",
+      })) || [],
+      awayTeamMembers: venueMatch.awayTeamPlayers?.map((player) => ({
+        id: player.id,
+        teamMemberId: player.id,
+        playerId: player.playerId,
+        isCaptain: player.isCaptain,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        nationality: player.nationality,
+        gender: "",
+        registrationStatus: "",
+        paymentStatus: "",
+        consent: false,
+        addedAt: "",
+        phoneNumber: "",
+        email: "",
+      })) || [],
       isCompleted: venueMatch.isCompleted,
     };
   };

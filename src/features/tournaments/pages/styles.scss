@@ -134,6 +134,67 @@
             color: $primary-color;
           }
         }
+
+        .sport-pills {
+          margin-top: 8px;
+          margin-bottom: 16px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+
+          .pill {
+            padding: 6px 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: $text-primary;
+            background: $white;
+            border: 1px solid $border-primary;
+            border-radius: 20px;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+
+            &:hover {
+              border-color: $primary-color;
+            }
+
+            &.active {
+              background: $primary-color;
+              color: $white;
+              border-color: $primary-color;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .sport-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+
+    .pill {
+      padding: 6px 10px;
+      font-size: 13px;
+      font-weight: 500;
+      color: $text-primary;
+      background: $white;
+      border: 1px solid $border-primary;
+      border-radius: 20px;
+      outline: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        border-color: $primary-color;
+      }
+
+      &.active {
+        background: $primary-color;
+        color: $white;
+        border-color: $primary-color;
       }
     }
   }
@@ -221,6 +282,73 @@
 
         .section-divider {
           display: none;
+        }
+      }
+
+      /* Section Filter (for sport filtering in past tournaments) */
+      .section-filter {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 0;
+        border-bottom: 1px solid $border-primary;
+
+        label {
+          font-size: 13px;
+          font-weight: 500;
+          color: $text-secondary;
+        }
+
+        .sport-filter-select {
+          padding: 6px 12px;
+          font-size: 13px;
+          font-weight: 500;
+          color: $text-primary;
+          background: $white;
+          border: 1px solid $border-primary;
+          border-radius: 6px;
+          outline: none;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          min-width: 150px;
+
+          &:hover {
+            border-color: $primary-color;
+          }
+
+          &:focus {
+            border-color: $primary-color;
+            box-shadow: 0 0 0 3px rgba(0, 74, 173, 0.1);
+          }
+        }
+
+        .sport-pills {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+
+          .pill {
+            padding: 6px 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: $text-primary;
+            background: $white;
+            border: 1px solid $border-primary;
+            border-radius: 20px;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+
+            &:hover {
+              border-color: $primary-color;
+            }
+
+            &.active {
+              background: $primary-color;
+              color: $white;
+              border-color: $primary-color;
+            }
+          }
         }
       }
 
@@ -493,6 +621,21 @@
           }
         }
 
+        .section-filter {
+          padding: 10px 0;
+          gap: 8px;
+
+          label {
+            font-size: 12px;
+          }
+
+          .sport-filter-select {
+            padding: 5px 10px;
+            font-size: 12px;
+            min-width: 130px;
+          }
+        }
+
         .tournament-grid {
           padding: 16px 0;
           gap: 16px;
@@ -612,6 +755,21 @@
               width: 16px;
               height: 16px;
             }
+          }
+        }
+
+        .section-filter {
+          padding: 8px 0;
+          gap: 6px;
+
+          label {
+            font-size: 11px;
+          }
+
+          .sport-filter-select {
+            padding: 4px 8px;
+            font-size: 11px;
+            min-width: 120px;
           }
         }
 
