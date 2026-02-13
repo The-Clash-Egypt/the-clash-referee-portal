@@ -255,9 +255,33 @@ const PrintableView: React.FC<PrintableViewProps> = ({
 
                     <div className="info-item teams-scores">
                       <div className="teams-row">
-                        <span className="team-name">{match.homeTeamName || "TBD"}</span>
+                        <div className="team-column">
+                          <span className="team-name">{match.homeTeamName || "TBD"}</span>
+                          {match.homeTeamMembers && match.homeTeamMembers.length > 0 && (
+                            <div className="team-members-list">
+                              {match.homeTeamMembers.map((member) => (
+                                <span key={member.id} className="team-member">
+                                  {member.firstName} {member.lastName}
+                                  {member.isCaptain && " (C)"}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <span className="score-display">{formatScore(match)}</span>
-                        <span className="team-name">{match.awayTeamName || "TBD"}</span>
+                        <div className="team-column">
+                          <span className="team-name">{match.awayTeamName || "TBD"}</span>
+                          {match.awayTeamMembers && match.awayTeamMembers.length > 0 && (
+                            <div className="team-members-list">
+                              {match.awayTeamMembers.map((member) => (
+                                <span key={member.id} className="team-member">
+                                  {member.firstName} {member.lastName}
+                                  {member.isCaptain && " (C)"}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

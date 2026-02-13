@@ -148,6 +148,12 @@ const styles = StyleSheet.create({
     color: "#1a202c",
     textAlign: "center",
   },
+  teamMemberInline: {
+    fontSize: 9,
+    color: "#4a5568",
+    textAlign: "center",
+    marginTop: 2,
+  },
   scoreDisplay: {
     fontSize: 20,
     fontWeight: "bold",
@@ -441,10 +447,24 @@ const MatchesPDFDocument: React.FC<MatchesPDFDocumentProps> = ({
                   <View style={styles.teamsRow}>
                     <View style={styles.teamContainer}>
                       <Text style={styles.teamName}>{getTeamName(match.homeTeamName)}</Text>
+                      {match.homeTeamMembers && match.homeTeamMembers.length > 0 &&
+                        match.homeTeamMembers.map((member) => (
+                          <Text key={member.id} style={styles.teamMemberInline}>
+                            {ensureTextEncoding(`${member.firstName} ${member.lastName}`)}
+                            {member.isCaptain ? " (C)" : ""}
+                          </Text>
+                        ))}
                     </View>
                     <Text style={styles.scoreDisplay}>{formatScore(match)}</Text>
                     <View style={styles.teamContainer}>
                       <Text style={styles.teamName}>{getTeamName(match.awayTeamName)}</Text>
+                      {match.awayTeamMembers && match.awayTeamMembers.length > 0 &&
+                        match.awayTeamMembers.map((member) => (
+                          <Text key={member.id} style={styles.teamMemberInline}>
+                            {ensureTextEncoding(`${member.firstName} ${member.lastName}`)}
+                            {member.isCaptain ? " (C)" : ""}
+                          </Text>
+                        ))}
                     </View>
                   </View>
                 </View>
@@ -454,60 +474,6 @@ const MatchesPDFDocument: React.FC<MatchesPDFDocumentProps> = ({
                   <Text style={styles.refereesText}>Referees: {getRefereesList(match.referees)}</Text>
                 </View>
 
-                {/* Team Members */}
-                {(match.homeTeamMembers && match.homeTeamMembers.length > 0) ||
-                (match.awayTeamMembers && match.awayTeamMembers.length > 0) ? (
-                  <View style={styles.teamMembersSection}>
-                    <Text style={styles.teamMembersHeader}>Team Members</Text>
-                    <View style={styles.teamMembersGrid}>
-                      {/* Home Team Members */}
-                      {match.homeTeamMembers && match.homeTeamMembers.length > 0 && (
-                        <View style={styles.teamMembersGroup}>
-                          <Text style={styles.teamMembersGroupHeader}>Home Team ({match.homeTeamMembers.length})</Text>
-                          <View style={styles.membersList}>
-                            {match.homeTeamMembers.slice(0, 3).map((member, index) => (
-                              <View key={member.id} style={styles.memberItem}>
-                                <Text style={styles.memberName}>
-                                  {ensureTextEncoding(`${member.firstName} ${member.lastName}`)}
-                                  {member.isCaptain && " (C)"}
-                                </Text>
-                                <Text style={styles.memberDetails}>
-                                  {ensureTextEncoding(member.nationality)} • {member.gender}
-                                </Text>
-                              </View>
-                            ))}
-                            {match.homeTeamMembers.length > 3 && (
-                              <Text style={styles.moreMembers}>+{match.homeTeamMembers.length - 3} more</Text>
-                            )}
-                          </View>
-                        </View>
-                      )}
-
-                      {/* Away Team Members */}
-                      {match.awayTeamMembers && match.awayTeamMembers.length > 0 && (
-                        <View style={styles.teamMembersGroup}>
-                          <Text style={styles.teamMembersGroupHeader}>Away Team ({match.awayTeamMembers.length})</Text>
-                          <View style={styles.membersList}>
-                            {match.awayTeamMembers.slice(0, 3).map((member, index) => (
-                              <View key={member.id} style={styles.memberItem}>
-                                <Text style={styles.memberName}>
-                                  {ensureTextEncoding(`${member.firstName} ${member.lastName}`)}
-                                  {member.isCaptain && " (C)"}
-                                </Text>
-                                <Text style={styles.memberDetails}>
-                                  {ensureTextEncoding(member.nationality)} • {member.gender}
-                                </Text>
-                              </View>
-                            ))}
-                            {match.awayTeamMembers.length > 3 && (
-                              <Text style={styles.moreMembers}>+{match.awayTeamMembers.length - 3} more</Text>
-                            )}
-                          </View>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                ) : null}
 
                 {/* Game Scores */}
                 {match.gameScores && match.gameScores.length > 0 && (
