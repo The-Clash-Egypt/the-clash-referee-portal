@@ -37,6 +37,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   const [isLandscape, setIsLandscape] = useState(false);
   const [rotateHintDismissed, setRotateHintDismissed] = useState(false);
   const [sidesSwapped, setSidesSwapped] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // Check if device is mobile and orientation
   useEffect(() => {
@@ -281,11 +282,15 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     return newErrors.length === 0;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!validateScores()) {
       return;
     }
+    setShowConfirmation(true);
+  };
 
+  const handleConfirmSave = async () => {
+    setShowConfirmation(false);
     const playedGames = gameScores.filter((score) => score.homeScore > 0 || score.awayScore > 0);
 
     try {
@@ -309,6 +314,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     setWasInitiallyMobile(false);
     setRotateHintDismissed(false);
     setSidesSwapped(false);
+    setShowConfirmation(false);
     onClose();
   };
 
@@ -526,6 +532,63 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
               {loading ? "Saving..." : "Save Scores"}
             </button>
           </div>
+
+          {/* Confirmation Overlay */}
+          {showConfirmation && (
+            <div className="confirmation-overlay" onClick={() => setShowConfirmation(false)}>
+              <div className="confirmation-dialog" onClick={(e) => e.stopPropagation()}>
+                <h4>Confirm Save</h4>
+                <p>Are you sure you want to save these scores?</p>
+                <div className="confirmation-teams-summary">
+                  <div className="confirmation-team home">
+                    <span className="confirmation-team-name">{match.homeTeamName || "TBD"}</span>
+                    {match.homeTeamMembers && match.homeTeamMembers.length > 0 && (
+                      <div className="confirmation-members">
+                        {match.homeTeamMembers.map((m) => (
+                          <span key={m.id} className="confirmation-member">
+                            {m.firstName} {m.lastName}{m.isCaptain ? " (C)" : ""}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <span className="confirmation-vs">vs</span>
+                  <div className="confirmation-team away">
+                    <span className="confirmation-team-name">{match.awayTeamName || "TBD"}</span>
+                    {match.awayTeamMembers && match.awayTeamMembers.length > 0 && (
+                      <div className="confirmation-members">
+                        {match.awayTeamMembers.map((m) => (
+                          <span key={m.id} className="confirmation-member">
+                            {m.firstName} {m.lastName}{m.isCaptain ? " (C)" : ""}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="confirmation-scores-summary">
+                  {gameScores
+                    .filter((s) => s.homeScore > 0 || s.awayScore > 0)
+                    .map((s) => (
+                      <div key={s.gameNumber} className="confirmation-set">
+                        <span className="set-label">Set {s.gameNumber}:</span>
+                        <span className="home-score">{s.homeScore}</span>
+                        <span className="score-dash">-</span>
+                        <span className="away-score">{s.awayScore}</span>
+                      </div>
+                    ))}
+                </div>
+                <div className="confirmation-actions">
+                  <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)}>
+                    Cancel
+                  </button>
+                  <button className="btn btn-primary" onClick={handleConfirmSave} disabled={loading}>
+                    {loading ? "Saving..." : "Confirm"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -698,6 +761,63 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Confirmation Overlay */}
+        {showConfirmation && (
+          <div className="confirmation-overlay" onClick={() => setShowConfirmation(false)}>
+            <div className="confirmation-dialog" onClick={(e) => e.stopPropagation()}>
+              <h4>Confirm Save</h4>
+              <p>Are you sure you want to save these scores?</p>
+              <div className="confirmation-teams-summary">
+                <div className="confirmation-team home">
+                  <span className="confirmation-team-name">{match.homeTeamName || "TBD"}</span>
+                  {match.homeTeamMembers && match.homeTeamMembers.length > 0 && (
+                    <div className="confirmation-members">
+                      {match.homeTeamMembers.map((m) => (
+                        <span key={m.id} className="confirmation-member">
+                          {m.firstName} {m.lastName}{m.isCaptain ? " (C)" : ""}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className="confirmation-vs">vs</span>
+                <div className="confirmation-team away">
+                  <span className="confirmation-team-name">{match.awayTeamName || "TBD"}</span>
+                  {match.awayTeamMembers && match.awayTeamMembers.length > 0 && (
+                    <div className="confirmation-members">
+                      {match.awayTeamMembers.map((m) => (
+                        <span key={m.id} className="confirmation-member">
+                          {m.firstName} {m.lastName}{m.isCaptain ? " (C)" : ""}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="confirmation-scores-summary">
+                {gameScores
+                  .filter((s) => s.homeScore > 0 || s.awayScore > 0)
+                  .map((s) => (
+                    <div key={s.gameNumber} className="confirmation-set">
+                      <span className="set-label">Set {s.gameNumber}:</span>
+                      <span className="home-score">{s.homeScore}</span>
+                      <span className="score-dash">-</span>
+                      <span className="away-score">{s.awayScore}</span>
+                    </div>
+                  ))}
+              </div>
+              <div className="confirmation-actions">
+                <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={handleConfirmSave} disabled={loading}>
+                  {loading ? "Saving..." : "Confirm"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

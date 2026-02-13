@@ -971,7 +971,7 @@ const MatchesManagement: React.FC = () => {
     return message;
   };
 
-  // Get all unique referees from selected matches
+  // Get all unique referees from selected matches (deduplicated by phone number)
   const getAllRefereesFromSelectedMatches = () => {
     const allReferees = new Map();
 
@@ -980,7 +980,7 @@ const MatchesManagement: React.FC = () => {
       if (match?.referees) {
         match.referees.forEach((referee) => {
           if (referee.phoneNumber) {
-            allReferees.set(referee.id, referee);
+            allReferees.set(referee.phoneNumber, referee);
           }
         });
       }
@@ -1000,12 +1000,12 @@ const MatchesManagement: React.FC = () => {
     }
 
     console.log("Setting selected referees and opening modal");
-    setSelectedReferee(availableReferees.map((ref) => ref.id)[0]);
+    setSelectedReferee(availableReferees.map((ref) => ref.phoneNumber)[0]);
     setShowBulkWhatsAppModal(true);
   };
 
   const sendBulkWhatsAppMessages = () => {
-    const referee = getAllRefereesFromSelectedMatches().find((ref) => ref.id === selectedReferee);
+    const referee = getAllRefereesFromSelectedMatches().find((ref) => ref.phoneNumber === selectedReferee);
 
     if (selectedReferee === "") {
       alert("No referees selected");
@@ -1013,9 +1013,10 @@ const MatchesManagement: React.FC = () => {
     }
 
     if (referee) {
-      // Get all matches for this referee from selected matches
+      // Get all matches for this referee from selected matches (match by phone number to consolidate across categories)
       const refereeMatches = matches.filter(
-        (match) => selectedMatches.has(match.id) && match.referees?.some((ref) => ref.id === referee.id),
+        (match) =>
+          selectedMatches.has(match.id) && match.referees?.some((ref) => ref.phoneNumber === referee.phoneNumber),
       );
 
       if (refereeMatches.length > 0) {
@@ -1755,19 +1756,19 @@ const MatchesManagement: React.FC = () => {
                   <p>Select one of the assigned referees to share matches on WhatsApp</p>
                   <div className="referees-list">
                     {getAllRefereesFromSelectedMatches().map((referee) => (
-                      <div key={referee.id} className="referee-item">
+                      <div key={referee.phoneNumber} className="referee-item">
                         <label
                           className="referee-checkbox"
                           onClick={() => {
-                            setSelectedReferee(referee.id);
+                            setSelectedReferee(referee.phoneNumber);
                           }}
                         >
                           <input
                             type="radio"
                             name="selectedReferee"
-                            checked={selectedReferee === referee.id}
+                            checked={selectedReferee === referee.phoneNumber}
                             onChange={() => {
-                              setSelectedReferee(referee.id);
+                              setSelectedReferee(referee.phoneNumber);
                             }}
                           />
                           <span className="referee-name">{referee.fullName}</span>
