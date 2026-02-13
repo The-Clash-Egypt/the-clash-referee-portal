@@ -670,6 +670,72 @@
       overflow: hidden;
       min-height: 0;
 
+      .switch-court-reminder {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 20px;
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        border-radius: 24px;
+        z-index: 2;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        animation: switchCourtPulse 1.5s ease-in-out infinite;
+
+        .switch-court-content {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: #78350f;
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          white-space: nowrap;
+
+          svg {
+            width: 16px;
+            height: 16px;
+          }
+        }
+
+        .switch-court-dismiss {
+          background: rgba(120, 53, 15, 0.15);
+          border: none;
+          border-radius: 50%;
+          width: 22px;
+          height: 22px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: #78350f;
+          flex-shrink: 0;
+          padding: 0;
+
+          svg {
+            width: 12px;
+            height: 12px;
+          }
+
+          &:hover {
+            background: rgba(120, 53, 15, 0.25);
+          }
+        }
+      }
+
+      @keyframes switchCourtPulse {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.8;
+        }
+      }
+
       .team-section {
         flex: 1;
         display: flex;

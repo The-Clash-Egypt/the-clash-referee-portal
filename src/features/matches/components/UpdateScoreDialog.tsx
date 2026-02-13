@@ -38,6 +38,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   const [rotateHintDismissed, setRotateHintDismissed] = useState(false);
   const [sidesSwapped, setSidesSwapped] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [switchCourtDismissedAt, setSwitchCourtDismissedAt] = useState<number | null>(null);
 
   // Check if device is mobile and orientation
   useEffect(() => {
@@ -475,6 +476,49 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Switch Court Reminder - between team cards */}
+            {(() => {
+              const totalPoints = currentGame.homeScore + currentGame.awayScore;
+              const shouldSwitch = totalPoints > 0 && totalPoints % 7 === 0;
+              if (shouldSwitch && switchCourtDismissedAt !== totalPoints) {
+                return (
+                  <div className="switch-court-reminder">
+                    <div className="switch-court-content">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M7 16L3 12L7 8"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path d="M3 12H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        <path
+                          d="M17 8L21 12L17 16"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path d="M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                      <span>Switch Courts!</span>
+                    </div>
+                    <button
+                      className="switch-court-dismiss"
+                      onClick={() => setSwitchCourtDismissedAt(totalPoints)}
+                      aria-label="Dismiss"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             <div className="team-section away">
               <div className="team-name">{sidesSwapped ? match.homeTeamName : match.awayTeamName}</div>
