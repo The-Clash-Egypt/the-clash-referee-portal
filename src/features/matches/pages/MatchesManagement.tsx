@@ -447,6 +447,47 @@ const MatchesManagement: React.FC = () => {
       setInProgressCount(inProgressCount);
       setIncomingCount(incomingCount);
       setCompletedCount(completedCount);
+      // Sort venues with natural numeric ordering (Court 1, Court 2, ..., Court 10, Court 11)
+      if (apiFilterOptions.venues) {
+        apiFilterOptions.venues = apiFilterOptions.venues.sort((a, b) =>
+          a.localeCompare(b, undefined, { numeric: true }),
+        );
+      }
+      // Sort rounds: regular rounds first (Round 1, Round 2, ...) then knockouts in tournament order
+      if (apiFilterOptions.rounds) {
+        const knockoutOrder: Record<string, number> = {
+          r16: 1,
+          "round of 16": 1,
+          quarter: 2,
+          "quarter final": 2,
+          quarterfinals: 2,
+          "quarter-final": 2,
+          "quarter-finals": 2,
+          semi: 3,
+          "semi final": 3,
+          semifinals: 3,
+          "semi-final": 3,
+          "semi-finals": 3,
+          final: 4,
+          finals: 4,
+          "third place": 5,
+          "3rd place": 5,
+        };
+        apiFilterOptions.rounds = apiFilterOptions.rounds.sort((a, b) => {
+          const aLower = a.toLowerCase().trim();
+          const bLower = b.toLowerCase().trim();
+          const aKnockout = knockoutOrder[aLower];
+          const bKnockout = knockoutOrder[bLower];
+          // Both are knockout rounds - sort by tournament order
+          if (aKnockout && bKnockout) return aKnockout - bKnockout;
+          // Only a is knockout - regular rounds come first
+          if (aKnockout) return 1;
+          // Only b is knockout - regular rounds come first
+          if (bKnockout) return -1;
+          // Both are regular rounds - sort naturally (Round 1, Round 2, ...)
+          return a.localeCompare(b, undefined, { numeric: true });
+        });
+      }
       setFilterOptions(apiFilterOptions);
     } catch (error: any) {
       console.error("Error fetching data:", error);
