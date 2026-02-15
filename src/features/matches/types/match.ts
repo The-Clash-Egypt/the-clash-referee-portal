@@ -4,6 +4,7 @@ export interface Match {
   tournamentName?: string;
   categoryName?: string;
   format?: string;
+  formatType?: string;
   bestOf?: number;
   startTime?: string;
   startedAt?: string;

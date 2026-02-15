@@ -38,6 +38,7 @@ const GuestVenuePage: React.FC = () => {
       tournamentName: undefined, // Don't show tournament name in guest venue
       categoryName: venueMatch.categoryName,
       format: venueMatch.formatName ? venueMatch.formatName : venueMatch.formatType,
+      formatType: venueMatch.formatType,
       bestOf: venueMatch.bestOf,
       startTime: venueMatch.startTime,
       round: venueMatch.round,
@@ -106,12 +107,12 @@ const GuestVenuePage: React.FC = () => {
     try {
       setUpdatingScore(true);
 
-      // Call API to update match scores based on format
-      if (selectedMatchForScore.format === "Group") {
+      // Call API to update match scores based on formatType (block type)
+      if (selectedMatchForScore.formatType === "Group") {
         await updateGroupMatch(selectedMatchForScore.id, { gameScores });
-      } else if (selectedMatchForScore.format === "League") {
+      } else if (selectedMatchForScore.formatType === "League") {
         await updateLeagueMatch(selectedMatchForScore.id, { gameScores });
-      } else if (selectedMatchForScore.format === "Knockout") {
+      } else if (selectedMatchForScore.formatType === "Knockout") {
         await updateKnockoutMatch(selectedMatchForScore.id, { gameScores });
       }
 

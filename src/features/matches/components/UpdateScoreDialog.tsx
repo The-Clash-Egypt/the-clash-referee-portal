@@ -291,14 +291,15 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   };
 
   const handleConfirmSave = async () => {
-    setShowConfirmation(false);
     const playedGames = gameScores.filter((score) => score.homeScore > 0 || score.awayScore > 0);
 
     try {
       await onSubmit(playedGames);
+      setShowConfirmation(false);
       onClose();
     } catch (error) {
       console.error("Error updating scores:", error);
+      setShowConfirmation(false);
     }
   };
 

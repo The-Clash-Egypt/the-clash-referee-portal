@@ -594,11 +594,11 @@ const MatchesManagement: React.FC = () => {
         const match = matches?.find((m) => m.id === matchId);
         if (!match) return;
 
-        if (match.format === "Group") {
+        if (match.formatType === "Group") {
           return updateGroupMatch(matchId, { gameScores });
-        } else if (match.format === "League") {
+        } else if (match.formatType === "League") {
           return updateLeagueMatch(matchId, { gameScores });
-        } else if (match.format === "Knockout") {
+        } else if (match.formatType === "Knockout") {
           return updateKnockoutMatch(matchId, { gameScores });
         }
       });
@@ -672,12 +672,12 @@ const MatchesManagement: React.FC = () => {
     try {
       setEditingMatch(true);
 
-      // Call the appropriate API based on match format
-      if (selectedMatch.format === "Group") {
+      // Call the appropriate API based on match formatType (block type)
+      if (selectedMatch.formatType === "Group") {
         await updateGroupMatch(selectedMatch.id, data);
-      } else if (selectedMatch.format === "League") {
+      } else if (selectedMatch.formatType === "League") {
         await updateLeagueMatch(selectedMatch.id, data);
-      } else if (selectedMatch.format === "Knockout") {
+      } else if (selectedMatch.formatType === "Knockout") {
         await updateKnockoutMatch(selectedMatch.id, data);
       }
 
@@ -720,11 +720,11 @@ const MatchesManagement: React.FC = () => {
         const match = matches.find((m) => m.id === matchId);
         if (!match) return;
 
-        if (match.format === "Group") {
+        if (match.formatType === "Group") {
           return updateGroupMatch(matchId, data);
-        } else if (match.format === "League") {
+        } else if (match.formatType === "League") {
           return updateLeagueMatch(matchId, data);
-        } else if (match.format === "Knockout") {
+        } else if (match.formatType === "Knockout") {
           return updateKnockoutMatch(matchId, data);
         }
       });
@@ -795,12 +795,16 @@ const MatchesManagement: React.FC = () => {
     try {
       setUpdatingScore(true);
 
-      // Call API to update match scores
-      if (selectedMatchForScore.format === "Group") {
+      // Call API to update match scores based on formatType (block type: Group/League/Knockout)
+      const formatType = selectedMatchForScore.formatType;
+      if (formatType === "Group") {
         await updateGroupMatch(selectedMatchForScore.id, { gameScores });
-      } else if (selectedMatchForScore.format === "League") {
+      } else if (formatType === "League") {
         await updateLeagueMatch(selectedMatchForScore.id, { gameScores });
-      } else if (selectedMatchForScore.format === "Knockout") {
+      } else if (formatType === "Knockout") {
+        await updateKnockoutMatch(selectedMatchForScore.id, { gameScores });
+      } else {
+        console.warn("Unknown match formatType:", formatType, "- attempting knockout update as fallback");
         await updateKnockoutMatch(selectedMatchForScore.id, { gameScores });
       }
 
