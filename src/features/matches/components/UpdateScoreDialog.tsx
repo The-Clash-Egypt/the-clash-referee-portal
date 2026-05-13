@@ -271,13 +271,16 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
       newErrors.push("At least one game must have scores entered.");
     }
 
-    gameScores.forEach((score, index) => {
-      if (score.homeScore > 0 || score.awayScore > 0) {
-        if (score.homeScore === score.awayScore) {
-          newErrors.push(`Game ${index + 1} cannot end in a tie.`);
+    const drawsAllowed = (match?.pointsForDraw ?? 0) > 0;
+    if (!drawsAllowed) {
+      gameScores.forEach((score, index) => {
+        if (score.homeScore > 0 || score.awayScore > 0) {
+          if (score.homeScore === score.awayScore) {
+            newErrors.push(`Game ${index + 1} cannot end in a tie.`);
+          }
         }
-      }
-    });
+      });
+    }
 
     setErrors(newErrors);
     return newErrors.length === 0;

@@ -6,6 +6,7 @@ export interface Match {
   format?: string;
   formatType?: string;
   bestOf?: number;
+  pointsForDraw?: number | null;
   startTime?: string;
   startedAt?: string;
   endedAt?: string;
