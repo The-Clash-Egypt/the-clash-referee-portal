@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Match, MatchGameScore, TeamMember, isFixedPointsFormat } from "../types/match";
+import { Match, MatchGameScore, TeamMember, isFixedPointsFormat, sideDisplayName } from "../types/match";
 import { updateLiveScore } from "../api/matches";
 import "./UpdateScoreDialog.scss";
 
@@ -390,6 +390,9 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
 
   if (!isOpen || !match) return null;
 
+  const homeSideName = sideDisplayName(match.homeTeamName, match.homeTeam2Name);
+  const awaySideName = sideDisplayName(match.awayTeamName, match.awayTeam2Name);
+
   // Only count completed sets (sets that have been played)
   const completedSets = gameScores.filter((score) => score.homeScore > 0 || score.awayScore > 0);
   const homeWins = completedSets.filter((score) => score.homeScore > score.awayScore).length;
@@ -482,7 +485,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
           {/* Scoreboard */}
           <div className="scoreboard-main">
             <div className="team-section home">
-              <div className="team-name">{sidesSwapped ? match.awayTeamName : match.homeTeamName}</div>
+              <div className="team-name">{sidesSwapped ? awaySideName : homeSideName}</div>
               {renderTeamMembers(sidesSwapped ? match.awayTeamMembers : match.homeTeamMembers, true)}
               <div className="score-display">{sidesSwapped ? currentGame.awayScore : currentGame.homeScore}</div>
               <div className="score-controls">
@@ -546,7 +549,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
             })()}
 
             <div className="team-section away">
-              <div className="team-name">{sidesSwapped ? match.homeTeamName : match.awayTeamName}</div>
+              <div className="team-name">{sidesSwapped ? homeSideName : awaySideName}</div>
               {renderTeamMembers(sidesSwapped ? match.homeTeamMembers : match.awayTeamMembers, true)}
               <div className="score-display">{sidesSwapped ? currentGame.homeScore : currentGame.awayScore}</div>
               <div className="score-controls">
@@ -610,7 +613,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                 <p>Are you sure you want to save these scores?</p>
                 <div className="confirmation-teams-summary">
                   <div className="confirmation-team home">
-                    <span className="confirmation-team-name">{match.homeTeamName || "TBD"}</span>
+                    <span className="confirmation-team-name">{homeSideName}</span>
                     {match.homeTeamMembers && match.homeTeamMembers.length > 0 && (
                       <div className="confirmation-members">
                         {match.homeTeamMembers.map((m) => (
@@ -623,7 +626,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                   </div>
                   <span className="confirmation-vs">vs</span>
                   <div className="confirmation-team away">
-                    <span className="confirmation-team-name">{match.awayTeamName || "TBD"}</span>
+                    <span className="confirmation-team-name">{awaySideName}</span>
                     {match.awayTeamMembers && match.awayTeamMembers.length > 0 && (
                       <div className="confirmation-members">
                         {match.awayTeamMembers.map((m) => (
@@ -714,12 +717,12 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
         <div className="sticky-teams" onClick={(e) => e.stopPropagation()}>
           <div className="dialog-teams-row">
             <div className="dialog-team-card home">
-              <span className="dialog-team-name">{match.homeTeamName}</span>
+              <span className="dialog-team-name">{homeSideName}</span>
               {renderTeamMembers(match.homeTeamMembers)}
             </div>
             <span className="dialog-vs">vs</span>
             <div className="dialog-team-card away">
-              <span className="dialog-team-name">{match.awayTeamName}</span>
+              <span className="dialog-team-name">{awaySideName}</span>
               {renderTeamMembers(match.awayTeamMembers)}
             </div>
           </div>
@@ -843,7 +846,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
               <p>Are you sure you want to save these scores?</p>
               <div className="confirmation-teams-summary">
                 <div className="confirmation-team home">
-                  <span className="confirmation-team-name">{match.homeTeamName || "TBD"}</span>
+                  <span className="confirmation-team-name">{homeSideName}</span>
                   {match.homeTeamMembers && match.homeTeamMembers.length > 0 && (
                     <div className="confirmation-members">
                       {match.homeTeamMembers.map((m) => (
@@ -856,7 +859,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                 </div>
                 <span className="confirmation-vs">vs</span>
                 <div className="confirmation-team away">
-                  <span className="confirmation-team-name">{match.awayTeamName || "TBD"}</span>
+                  <span className="confirmation-team-name">{awaySideName}</span>
                   {match.awayTeamMembers && match.awayTeamMembers.length > 0 && (
                     <div className="confirmation-members">
                       {match.awayTeamMembers.map((m) => (
