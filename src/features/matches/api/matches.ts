@@ -71,6 +71,12 @@ export const updateLeagueMatch = (matchId: string, data: UpdateMatchDTO) => api.
 export const updateKnockoutMatch = (matchId: string, data: UpdateMatchDTO) =>
   api.put(`/Knockout/match/${matchId}`, data);
 
+export const updateAmericanoMatch = (matchId: string, data: UpdateMatchDTO) =>
+  api.put(`/Americano/match/${matchId}`, data);
+
+export const updateMexicanoMatch = (matchId: string, data: UpdateMatchDTO) =>
+  api.put(`/Mexicano/match/${matchId}`, data);
+
 export const assignRefereeToMatch = (refereeId: string, matchId: string) =>
   api.post(`/Referee/${refereeId}/assign/${matchId}`);
 

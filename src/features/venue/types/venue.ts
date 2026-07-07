@@ -20,6 +20,11 @@ export interface VenueMatch {
   homeTeamName: string;
   awayTeamId: string;
   awayTeamName: string;
+  homeTeam2Id?: string | null;
+  homeTeam2Name?: string | null;
+  awayTeam2Id?: string | null;
+  awayTeam2Name?: string | null;
+  pointsPerMatch?: number | null;
   bestOf: number;
   winnerTeamId: string;
   homeTeamSets: number;

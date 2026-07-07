@@ -7,6 +7,7 @@ export interface Match {
   formatType?: string;
   bestOf?: number;
   pointsForDraw?: number | null;
+  pointsPerMatch?: number | null;
   startTime?: string;
   startedAt?: string;
   endedAt?: string;
@@ -15,6 +16,10 @@ export interface Match {
   homeTeamName?: string;
   awayTeamId?: string;
   awayTeamName?: string;
+  homeTeam2Id?: string | null;
+  homeTeam2Name?: string | null;
+  awayTeam2Id?: string | null;
+  awayTeam2Name?: string | null;
   homeScore?: number;
   awayScore?: number;
   gameScores?: MatchGameScore[];
@@ -198,3 +203,11 @@ export interface PlayerSuggestion {
 }
 
 // The API returns PlayerSuggestion[] directly, not wrapped in a response object
+
+// Americano/Mexicano: matches are a single game to a fixed points total (ties legal and complete the match)
+export const isFixedPointsFormat = (formatType?: string | null): boolean =>
+  formatType === "Americano" || formatType === "Mexicano";
+
+// Render a match side that may be two units ("A & B") for Americano/Mexicano
+export const sideDisplayName = (name?: string | null, name2?: string | null): string =>
+  name ? (name2 ? `${name} & ${name2}` : name) : "TBD";
