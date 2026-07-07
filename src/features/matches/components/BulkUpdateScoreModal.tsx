@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Match, MatchGameScore } from "../types/match";
+import { Match, MatchGameScore, isFixedPointsFormat } from "../types/match";
 import "./BulkUpdateScoreModal.scss";
 
 interface BulkUpdateScoreModalProps {
@@ -124,16 +124,35 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
       const hasPlayedGames = matchScore.gameScores.some((score) => score.homeScore > 0 || score.awayScore > 0);
 
       if (hasPlayedGames) {
-        // Check for valid game outcomes (no ties in most sports) only for games with scores
-        matchScore.gameScores.forEach((score, index) => {
-          if (score.homeScore > 0 || score.awayScore > 0) {
-            if (score.homeScore === score.awayScore) {
+        if (isFixedPointsFormat(match.formatType)) {
+          // Americano/Mexicano: single game to a fixed total; ties are legal
+          const played = matchScore.gameScores.filter((score) => score.homeScore > 0 || score.awayScore > 0);
+          if (played.length > 1) {
+            newErrors.push(
+              `${match.homeTeamName} vs ${match.awayTeamName}: single-game match - enter one score pair only.`
+            );
+          }
+          const target = match.pointsPerMatch;
+          if (played.length === 1 && typeof target === "number" && target > 0) {
+            const total = played[0].homeScore + played[0].awayScore;
+            if (total !== target) {
               newErrors.push(
-                `${match.homeTeamName} vs ${match.awayTeamName} - Game ${index + 1}: Cannot end in a tie.`
+                `${match.homeTeamName} vs ${match.awayTeamName}: total points must equal ${target} (currently ${total}).`
               );
             }
           }
-        });
+        } else {
+          // Check for valid game outcomes (no ties in most sports) only for games with scores
+          matchScore.gameScores.forEach((score, index) => {
+            if (score.homeScore > 0 || score.awayScore > 0) {
+              if (score.homeScore === score.awayScore) {
+                newErrors.push(
+                  `${match.homeTeamName} vs ${match.awayTeamName} - Game ${index + 1}: Cannot end in a tie.`
+                );
+              }
+            }
+          });
+        }
       }
     });
 

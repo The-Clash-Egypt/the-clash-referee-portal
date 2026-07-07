@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Match, MatchGameScore } from "../types/match";
+import { Match, MatchGameScore, isFixedPointsFormat } from "../types/match";
 import { updateLiveScore } from "../api/matches";
 import "./Scoreboard.scss";
 
@@ -105,7 +105,7 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ match, onScoreUpdate, switchSid
   };
 
   const completeSet = () => {
-    const drawsAllowed = (match?.pointsForDraw ?? 0) > 0;
+    const drawsAllowed = (match?.pointsForDraw ?? 0) > 0 || isFixedPointsFormat(match?.formatType);
     if (currentSet.homeScore === currentSet.awayScore && !drawsAllowed) {
       alert("A set cannot end in a tie. Please continue playing.");
       return;
