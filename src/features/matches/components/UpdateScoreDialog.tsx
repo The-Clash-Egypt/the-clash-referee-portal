@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Match, MatchGameScore, TeamMember } from "../types/match";
+import { Match, MatchGameScore, TeamMember, isFixedPointsFormat } from "../types/match";
 import { updateLiveScore } from "../api/matches";
 import "./UpdateScoreDialog.scss";
 
@@ -129,6 +129,11 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
         setWasInitiallyMobile(false);
       }
 
+      // Americano/Mexicano matches are exactly one game — never carry extra sets
+      if (isFixedPointsFormat(match.formatType)) {
+        initialScores = initialScores.slice(0, 1);
+      }
+
       setGameScores(initialScores);
       setOriginalGameScores([...initialScores]); // Store original scores for reset functionality
       setErrors([]);
@@ -166,6 +171,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
 
   const canAddMoreSets = (): boolean => {
     if (!match) return false;
+    if (isFixedPointsFormat(match.formatType)) return false;
     const bestOf = getBestOfValue(match);
     // For best of N, we can have up to N games
     // We can add more games if we haven't reached the maximum possible games
@@ -271,15 +277,30 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
       newErrors.push("At least one game must have scores entered.");
     }
 
-    const drawsAllowed = (match?.pointsForDraw ?? 0) > 0;
-    if (!drawsAllowed) {
-      gameScores.forEach((score, index) => {
-        if (score.homeScore > 0 || score.awayScore > 0) {
-          if (score.homeScore === score.awayScore) {
-            newErrors.push(`Game ${index + 1} cannot end in a tie.`);
-          }
+    if (isFixedPointsFormat(match?.formatType)) {
+      // Americano/Mexicano: single game to a fixed points total; ties are legal and complete the match
+      const target = match?.pointsPerMatch;
+      const played = gameScores.filter((score) => score.homeScore > 0 || score.awayScore > 0);
+      if (played.length > 1) {
+        newErrors.push("This match is a single game — enter one score pair only.");
+      }
+      if (played.length === 1 && typeof target === "number" && target > 0) {
+        const total = played[0].homeScore + played[0].awayScore;
+        if (total !== target) {
+          newErrors.push(`Total points must equal ${target} (currently ${total}).`);
         }
-      });
+      }
+    } else {
+      const drawsAllowed = (match?.pointsForDraw ?? 0) > 0;
+      if (!drawsAllowed) {
+        gameScores.forEach((score, index) => {
+          if (score.homeScore > 0 || score.awayScore > 0) {
+            if (score.homeScore === score.awayScore) {
+              newErrors.push(`Game ${index + 1} cannot end in a tie.`);
+            }
+          }
+        });
+      }
     }
 
     setErrors(newErrors);
@@ -676,7 +697,11 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
             </div>
           </div>
           <div className="match-info">
-            <span className="best-of-badge">Best of {getBestOfValue(match)}</span>
+            <span className="best-of-badge">
+              {isFixedPointsFormat(match.formatType) && match.pointsPerMatch
+                ? `Game to ${match.pointsPerMatch} points`
+                : `Best of ${getBestOfValue(match)}`}
+            </span>
             {!isBestOfOne(match) && (
               <span className="sets-progress">
                 {completedSets.length} of {getBestOfValue(match)} sets completed
