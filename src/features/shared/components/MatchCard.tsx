@@ -1,5 +1,5 @@
 import React from "react";
-import { Match } from "../../matches/types/match";
+import { Match, sideDisplayName } from "../../matches/types/match";
 import "./MatchCard.scss";
 import moment from "moment";
 import { getMatchDuration } from "../../../utils/durationUtils";
@@ -74,7 +74,10 @@ const MatchCard: React.FC<MatchCardProps> = ({
     const appUrl = window.location.origin;
     const matchTime = match.startTime ? moment(match.startTime).format("MMMM Do YYYY, h:mm a") : "TBD";
     const venue = match.venue || "TBD";
-    const teams = `${match.homeTeamName || "TBD"} vs ${match.awayTeamName || "TBD"}`;
+    const teams = `${sideDisplayName(match.homeTeamName, match.homeTeam2Name)} vs ${sideDisplayName(
+      match.awayTeamName,
+      match.awayTeam2Name
+    )}`;
     const tournamentName = match.tournamentName || "Tournament";
     const categoryName = match.categoryName || "";
     const round = match.round || "";
@@ -172,7 +175,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
         <div className={`team home-team ${matchWinner === "home" ? "winner" : ""}`}>
           <div className="team-info">
             <div className="team-name-container">
-              <span className="team-name">{match.homeTeamName || "TBD"}</span>
+              <span className="team-name">{sideDisplayName(match.homeTeamName, match.homeTeam2Name)}</span>
               {/* Home Team Members */}
               {match.homeTeamMembers && match.homeTeamMembers.length > 0 && (
                 <div className="team-members-compact">
@@ -203,7 +206,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
         <div className={`team away-team ${matchWinner === "away" ? "winner" : ""}`}>
           <div className="team-info">
             <div className="team-name-container">
-              <span className="team-name">{match.awayTeamName || "TBD"}</span>
+              <span className="team-name">{sideDisplayName(match.awayTeamName, match.awayTeam2Name)}</span>
               {/* Away Team Members */}
               {match.awayTeamMembers && match.awayTeamMembers.length > 0 && (
                 <div className="team-members-compact">

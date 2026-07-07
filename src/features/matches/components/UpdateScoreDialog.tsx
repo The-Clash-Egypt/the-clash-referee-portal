@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Match, MatchGameScore, TeamMember } from "../types/match";
+import { Match, MatchGameScore, TeamMember, isFixedPointsFormat, sideDisplayName } from "../types/match";
 import { updateLiveScore } from "../api/matches";
 import "./UpdateScoreDialog.scss";
 
@@ -129,6 +129,11 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
         setWasInitiallyMobile(false);
       }
 
+      // Americano/Mexicano matches are exactly one game — never carry extra sets
+      if (isFixedPointsFormat(match.formatType)) {
+        initialScores = initialScores.slice(0, 1);
+      }
+
       setGameScores(initialScores);
       setOriginalGameScores([...initialScores]); // Store original scores for reset functionality
       setErrors([]);
@@ -166,6 +171,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
 
   const canAddMoreSets = (): boolean => {
     if (!match) return false;
+    if (isFixedPointsFormat(match.formatType)) return false;
     const bestOf = getBestOfValue(match);
     // For best of N, we can have up to N games
     // We can add more games if we haven't reached the maximum possible games
@@ -271,15 +277,30 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
       newErrors.push("At least one game must have scores entered.");
     }
 
-    const drawsAllowed = (match?.pointsForDraw ?? 0) > 0;
-    if (!drawsAllowed) {
-      gameScores.forEach((score, index) => {
-        if (score.homeScore > 0 || score.awayScore > 0) {
-          if (score.homeScore === score.awayScore) {
-            newErrors.push(`Game ${index + 1} cannot end in a tie.`);
-          }
+    if (isFixedPointsFormat(match?.formatType)) {
+      // Americano/Mexicano: single game to a fixed points total; ties are legal and complete the match
+      const target = match?.pointsPerMatch;
+      const played = gameScores.filter((score) => score.homeScore > 0 || score.awayScore > 0);
+      if (played.length > 1) {
+        newErrors.push("This match is a single game — enter one score pair only.");
+      }
+      if (played.length === 1 && typeof target === "number" && target > 0) {
+        const total = played[0].homeScore + played[0].awayScore;
+        if (total !== target) {
+          newErrors.push(`Total points must equal ${target} (currently ${total}).`);
         }
-      });
+      }
+    } else {
+      const drawsAllowed = (match?.pointsForDraw ?? 0) > 0;
+      if (!drawsAllowed) {
+        gameScores.forEach((score, index) => {
+          if (score.homeScore > 0 || score.awayScore > 0) {
+            if (score.homeScore === score.awayScore) {
+              newErrors.push(`Game ${index + 1} cannot end in a tie.`);
+            }
+          }
+        });
+      }
     }
 
     setErrors(newErrors);
@@ -368,6 +389,9 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   };
 
   if (!isOpen || !match) return null;
+
+  const homeSideName = sideDisplayName(match.homeTeamName, match.homeTeam2Name);
+  const awaySideName = sideDisplayName(match.awayTeamName, match.awayTeam2Name);
 
   // Only count completed sets (sets that have been played)
   const completedSets = gameScores.filter((score) => score.homeScore > 0 || score.awayScore > 0);
@@ -461,7 +485,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
           {/* Scoreboard */}
           <div className="scoreboard-main">
             <div className="team-section home">
-              <div className="team-name">{sidesSwapped ? match.awayTeamName : match.homeTeamName}</div>
+              <div className="team-name">{sidesSwapped ? awaySideName : homeSideName}</div>
               {renderTeamMembers(sidesSwapped ? match.awayTeamMembers : match.homeTeamMembers, true)}
               <div className="score-display">{sidesSwapped ? currentGame.awayScore : currentGame.homeScore}</div>
               <div className="score-controls">
@@ -525,7 +549,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
             })()}
 
             <div className="team-section away">
-              <div className="team-name">{sidesSwapped ? match.homeTeamName : match.awayTeamName}</div>
+              <div className="team-name">{sidesSwapped ? homeSideName : awaySideName}</div>
               {renderTeamMembers(sidesSwapped ? match.homeTeamMembers : match.awayTeamMembers, true)}
               <div className="score-display">{sidesSwapped ? currentGame.homeScore : currentGame.awayScore}</div>
               <div className="score-controls">
@@ -589,7 +613,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                 <p>Are you sure you want to save these scores?</p>
                 <div className="confirmation-teams-summary">
                   <div className="confirmation-team home">
-                    <span className="confirmation-team-name">{match.homeTeamName || "TBD"}</span>
+                    <span className="confirmation-team-name">{homeSideName}</span>
                     {match.homeTeamMembers && match.homeTeamMembers.length > 0 && (
                       <div className="confirmation-members">
                         {match.homeTeamMembers.map((m) => (
@@ -602,7 +626,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                   </div>
                   <span className="confirmation-vs">vs</span>
                   <div className="confirmation-team away">
-                    <span className="confirmation-team-name">{match.awayTeamName || "TBD"}</span>
+                    <span className="confirmation-team-name">{awaySideName}</span>
                     {match.awayTeamMembers && match.awayTeamMembers.length > 0 && (
                       <div className="confirmation-members">
                         {match.awayTeamMembers.map((m) => (
@@ -676,7 +700,11 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
             </div>
           </div>
           <div className="match-info">
-            <span className="best-of-badge">Best of {getBestOfValue(match)}</span>
+            <span className="best-of-badge">
+              {isFixedPointsFormat(match.formatType) && match.pointsPerMatch
+                ? `Game to ${match.pointsPerMatch} points`
+                : `Best of ${getBestOfValue(match)}`}
+            </span>
             {!isBestOfOne(match) && (
               <span className="sets-progress">
                 {completedSets.length} of {getBestOfValue(match)} sets completed
@@ -689,12 +717,12 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
         <div className="sticky-teams" onClick={(e) => e.stopPropagation()}>
           <div className="dialog-teams-row">
             <div className="dialog-team-card home">
-              <span className="dialog-team-name">{match.homeTeamName}</span>
+              <span className="dialog-team-name">{homeSideName}</span>
               {renderTeamMembers(match.homeTeamMembers)}
             </div>
             <span className="dialog-vs">vs</span>
             <div className="dialog-team-card away">
-              <span className="dialog-team-name">{match.awayTeamName}</span>
+              <span className="dialog-team-name">{awaySideName}</span>
               {renderTeamMembers(match.awayTeamMembers)}
             </div>
           </div>
@@ -818,7 +846,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
               <p>Are you sure you want to save these scores?</p>
               <div className="confirmation-teams-summary">
                 <div className="confirmation-team home">
-                  <span className="confirmation-team-name">{match.homeTeamName || "TBD"}</span>
+                  <span className="confirmation-team-name">{homeSideName}</span>
                   {match.homeTeamMembers && match.homeTeamMembers.length > 0 && (
                     <div className="confirmation-members">
                       {match.homeTeamMembers.map((m) => (
@@ -831,7 +859,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                 </div>
                 <span className="confirmation-vs">vs</span>
                 <div className="confirmation-team away">
-                  <span className="confirmation-team-name">{match.awayTeamName || "TBD"}</span>
+                  <span className="confirmation-team-name">{awaySideName}</span>
                   {match.awayTeamMembers && match.awayTeamMembers.length > 0 && (
                     <div className="confirmation-members">
                       {match.awayTeamMembers.map((m) => (

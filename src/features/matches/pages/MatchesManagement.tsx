@@ -6,6 +6,8 @@ import {
   updateKnockoutMatch,
   updateLeagueMatch,
   updateGroupMatch,
+  updateAmericanoMatch,
+  updateMexicanoMatch,
   getRefereeMatches,
 } from "../api/matches";
 import MatchCard from "../../shared/components/MatchCard";
@@ -600,6 +602,10 @@ const MatchesManagement: React.FC = () => {
           return updateLeagueMatch(matchId, { gameScores });
         } else if (match.formatType === "Knockout") {
           return updateKnockoutMatch(matchId, { gameScores });
+        } else if (match.formatType === "Americano") {
+          return updateAmericanoMatch(matchId, { gameScores });
+        } else if (match.formatType === "Mexicano") {
+          return updateMexicanoMatch(matchId, { gameScores });
         }
       });
 
@@ -679,6 +685,10 @@ const MatchesManagement: React.FC = () => {
         await updateLeagueMatch(selectedMatch.id, data);
       } else if (selectedMatch.formatType === "Knockout") {
         await updateKnockoutMatch(selectedMatch.id, data);
+      } else if (selectedMatch.formatType === "Americano") {
+        await updateAmericanoMatch(selectedMatch.id, data);
+      } else if (selectedMatch.formatType === "Mexicano") {
+        await updateMexicanoMatch(selectedMatch.id, data);
       }
 
       // Refresh data to show updated match
@@ -726,6 +736,10 @@ const MatchesManagement: React.FC = () => {
           return updateLeagueMatch(matchId, data);
         } else if (match.formatType === "Knockout") {
           return updateKnockoutMatch(matchId, data);
+        } else if (match.formatType === "Americano") {
+          return updateAmericanoMatch(matchId, data);
+        } else if (match.formatType === "Mexicano") {
+          return updateMexicanoMatch(matchId, data);
         }
       });
 
@@ -803,6 +817,10 @@ const MatchesManagement: React.FC = () => {
         await updateLeagueMatch(selectedMatchForScore.id, { gameScores });
       } else if (formatType === "Knockout") {
         await updateKnockoutMatch(selectedMatchForScore.id, { gameScores });
+      } else if (formatType === "Americano") {
+        await updateAmericanoMatch(selectedMatchForScore.id, { gameScores });
+      } else if (formatType === "Mexicano") {
+        await updateMexicanoMatch(selectedMatchForScore.id, { gameScores });
       } else {
         console.warn("Unknown match formatType:", formatType, "- attempting knockout update as fallback");
         await updateKnockoutMatch(selectedMatchForScore.id, { gameScores });
