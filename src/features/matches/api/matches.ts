@@ -31,7 +31,11 @@ export const getRefereeMatches = (filters?: MatchFilters): Promise<{ data: Refer
   if (filters?.round && filters.round !== "all") {
     params.append("round", filters.round);
   }
-  if (filters?.venue && filters.venue !== "all") {
+  // One `venues` entry per venue rather than a CSV: venue names are free text and
+  // may contain commas. A single venue keeps using the original `venue` param.
+  if (filters?.venues && filters.venues.length > 0) {
+    filters.venues.forEach((venue) => params.append("venues", venue));
+  } else if (filters?.venue && filters.venue !== "all") {
     params.append("venue", filters.venue);
   }
   if (filters?.team && filters.team !== "all") {

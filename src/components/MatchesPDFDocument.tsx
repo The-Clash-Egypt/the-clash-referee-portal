@@ -1,302 +1,322 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
-import { Match } from "../features/matches/types/match";
+import { Match, sideDisplayName } from "../features/matches/types/match";
+import { PDF_FONT_FAMILY, registerPdfFonts } from "../utils/pdfFonts";
+import { UNASSIGNED_VENUE_LABEL, groupMatchesByVenue, shouldGroupByVenue } from "../utils/venueGrouping";
+import {
+  SCORE_CELL_HEIGHT,
+  SCORE_GRID_BORDER,
+  ScoreCell,
+  ScoreDrafts,
+  isCellWinner,
+  scoreCellWidth,
+  scoreCellsFor,
+} from "../utils/matchScoreCells";
+import {
+  dayKey,
+  formatClock,
+  headerCategory,
+  shouldLabelCategories,
+  formatDayLabel,
+  formatMembers,
+  formatReferees,
+  matchIsLive,
+  printedOnLabel,
+  sheetMeta,
+} from "../utils/matchSheetFormat";
 
-// Use default fonts - React PDF handles Cyrillic better with built-in fonts
-// No custom font registration to avoid encoding issues
+registerPdfFonts();
 
-// Utility function to ensure proper text encoding for Cyrillic characters
-const ensureTextEncoding = (text: string | undefined): string => {
-  if (!text) return "";
+// Brand tokens, mirroring src/styles/colors.scss.
+const BRAND = "#004aad";
+const BRAND_MUTED = "#a9c4e8";
+const LIVE = "#fcc353";
+const INK = "#111827";
+const INK_SOFT = "#374151";
+const MUTED = "#6b7280";
+const FAINT = "#9ca3af";
+const RULE = "#e5e7eb";
+const RULE_STRONG = "#cbd5e1";
+const WASH = "#f9fafb";
+const DAY_WASH = "#eef2f7";
 
-  try {
-    // First normalize the text to ensure proper Unicode representation
-    let normalized = text.normalize("NFC");
+const PAGE_X = 34;
+const HEADER_HEIGHT = 96;
+const RAIL_WIDTH = 70;
+const SCORE_WIDTH = 150;
 
-    // Check if the text contains Cyrillic characters
-    const hasCyrillic = /[\u0400-\u04FF]/.test(normalized);
-    console.log("Text contains Cyrillic:", hasCyrillic, "Text:", normalized);
-
-    if (hasCyrillic) {
-      // For Cyrillic text, ensure proper UTF-8 encoding
-      normalized = decodeURIComponent(encodeURIComponent(normalized));
-    }
-
-    // Remove any control characters that might cause issues
-    // eslint-disable-next-line no-control-regex
-    normalized = normalized.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
-
-    return normalized;
-  } catch (error) {
-    console.warn("Text encoding error:", error, "Original text:", text);
-    return text;
-  }
-};
-
-// Define styles
 const styles = StyleSheet.create({
   page: {
-    flexDirection: "column",
+    fontFamily: PDF_FONT_FAMILY,
     backgroundColor: "#ffffff",
-    padding: 20,
-    fontFamily: "Helvetica",
+    color: INK,
+    paddingTop: HEADER_HEIGHT,
+    paddingBottom: 38,
   },
-  header: {
-    backgroundColor: "#f8fafc",
-    padding: 20,
-    marginBottom: 20,
-    borderBottom: "3px solid #004aad",
-    textAlign: "center",
-  },
-  tournamentTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1a202c",
-    marginBottom: 8,
-  },
-  viewTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#004aad",
-    marginBottom: 4,
-  },
-  categoryTitle: {
-    fontSize: 14,
-    color: "#4a5568",
+
+  // Running header: repeats on every page so a sheet torn off mid-section
+  // still names its court.
+  header: { position: "absolute", top: 0, left: 0, right: 0 },
+  band: { backgroundColor: BRAND, paddingHorizontal: PAGE_X, paddingTop: 15, paddingBottom: 13 },
+  bandTitle: { fontSize: 22, fontWeight: "bold", color: "#ffffff" },
+  bandMeta: { flexDirection: "row", marginTop: 5 },
+  bandMetaItem: { fontSize: 8.5, color: BRAND_MUTED, marginRight: 14 },
+
+  columnHeader: {
+    flexDirection: "row",
+    paddingHorizontal: PAGE_X,
+    paddingTop: 6,
+    paddingBottom: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: RULE_STRONG,
     backgroundColor: "#ffffff",
-    padding: "4px 12px",
-    borderRadius: 12,
-    border: "1px solid #e2e8f0",
-    alignSelf: "center",
   },
-  matchesContainer: {
-    marginBottom: 20,
+  columnLabel: { fontSize: 7.5, color: MUTED },
+
+  dayRow: {
+    paddingHorizontal: PAGE_X,
+    paddingVertical: 4,
+    backgroundColor: DAY_WASH,
+    borderBottomWidth: 0.75,
+    borderBottomColor: RULE_STRONG,
   },
-  matchCard: {
-    backgroundColor: "#ffffff",
-    border: "1px solid #e2e8f0",
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-  },
-  matchHeader: {
+  dayText: { fontSize: 8.5, fontWeight: "bold", color: BRAND },
+
+  row: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
+    paddingHorizontal: PAGE_X,
+    paddingVertical: 9,
+    borderBottomWidth: 0.75,
+    borderBottomColor: RULE,
   },
-  matchNumber: {
-    backgroundColor: "#004aad",
-    color: "#ffffff",
-    padding: "4px 8px",
-    borderRadius: 12,
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  statusBadge: {
-    padding: "2px 8px",
-    borderRadius: 12,
-    fontSize: 10,
-    fontWeight: "bold",
-    textTransform: "uppercase",
-  },
-  statusCompleted: {
-    backgroundColor: "#d1fae5",
-    color: "#065f46",
-  },
-  statusInProgress: {
-    backgroundColor: "#fef3c7",
-    color: "#92400e",
-  },
-  statusUpcoming: {
-    backgroundColor: "#dbeafe",
-    color: "#1e40af",
-  },
-  matchInfo: {
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  infoValue: {
-    fontSize: 14,
-    color: "#1a202c",
-    fontWeight: "normal",
-  },
-  teamsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginVertical: 12,
-    paddingVertical: 8,
-    borderTop: "1px solid #e2e8f0",
-    borderBottom: "1px solid #e2e8f0",
-    paddingHorizontal: 20,
-  },
-  teamContainer: {
-    flex: 1,
+  rowAlt: { backgroundColor: WASH },
+  rowLive: { borderLeftWidth: 3, borderLeftColor: LIVE, paddingLeft: PAGE_X - 3 },
+
+  rail: { width: RAIL_WIDTH },
+  matchNumber: { fontSize: 8.5, fontWeight: "bold", color: FAINT },
+  time: { fontSize: 11.5, fontWeight: "bold", color: INK, marginTop: 2 },
+  round: { fontSize: 7.5, color: MUTED, marginTop: 2 },
+  category: { fontSize: 7.5, color: FAINT, marginTop: 2 },
+
+  fixture: { flex: 1, paddingRight: 12 },
+  teamName: { fontSize: 10.5, fontWeight: "bold", color: INK },
+  teamMembers: { fontSize: 7.5, color: INK_SOFT, marginTop: 1.5 },
+  versus: { fontSize: 7.5, color: FAINT, marginVertical: 3 },
+  refereeLine: { flexDirection: "row", marginTop: 6 },
+  refereeLabel: { fontSize: 7.5, color: FAINT, marginRight: 6 },
+  refereeNames: { fontSize: 8, color: INK_SOFT, flex: 1 },
+
+  scoreColumn: { width: SCORE_WIDTH, alignItems: "flex-end" },
+  grid: { borderWidth: SCORE_GRID_BORDER, borderColor: RULE_STRONG, backgroundColor: "#ffffff" },
+  gridRow: { flexDirection: "row", borderBottomWidth: SCORE_GRID_BORDER, borderBottomColor: RULE_STRONG },
+  gridRowLast: { borderBottomWidth: 0 },
+  cell: {
+    height: SCORE_CELL_HEIGHT,
+    borderRightWidth: SCORE_GRID_BORDER,
+    borderRightColor: RULE_STRONG,
     alignItems: "center",
     justifyContent: "center",
   },
-  teamName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#1a202c",
-    textAlign: "center",
-  },
-  teamMemberInline: {
-    fontSize: 9,
-    color: "#4a5568",
-    textAlign: "center",
-    marginTop: 2,
-  },
-  scoreDisplay: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#004aad",
-    padding: "6px 12px",
-    border: "2px solid #004aad",
-    borderRadius: 4,
-    minWidth: 80,
-    textAlign: "center",
-    alignSelf: "center",
-  },
-  refereesSection: {
-    backgroundColor: "#f3f4f6",
-    padding: 8,
-    borderRadius: 4,
-    borderLeft: "4px solid #6b7280",
-    marginBottom: 12,
-  },
-  refereesText: {
-    fontSize: 12,
-    color: "#4a5568",
-    fontWeight: "normal",
-  },
-  teamMembersSection: {
-    backgroundColor: "#f3f4f6",
-    padding: 8,
-    borderRadius: 4,
-    borderLeft: "4px solid #6b7280",
-    marginBottom: 12,
-  },
-  teamMembersHeader: {
-    fontSize: 12,
-    color: "#2d3748",
-    fontWeight: "bold",
-    marginBottom: 8,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  teamMembersGrid: {
-    flexDirection: "row",
-    gap: 16,
-  },
-  teamMembersGroup: {
-    flex: 1,
-  },
-  teamMembersGroupHeader: {
-    fontSize: 10,
-    color: "#004aad",
-    fontWeight: "bold",
-    marginBottom: 6,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  membersList: {
-    flexDirection: "column",
-    gap: 4,
-  },
-  memberItem: {
-    backgroundColor: "#ffffff",
-    padding: 6,
-    borderRadius: 4,
-    border: "1px solid #e2e8f0",
-  },
-  memberName: {
-    fontSize: 10,
-    color: "#1a202c",
-    fontWeight: "bold",
-    marginBottom: 2,
-  },
-  memberDetails: {
-    fontSize: 8,
-    color: "#6b7280",
-  },
-  moreMembers: {
-    fontSize: 8,
-    color: "#6b7280",
-    fontStyle: "italic",
-    textAlign: "center",
-    padding: 4,
-    backgroundColor: "#f7fafc",
-    borderRadius: 3,
-  },
-  gameScoresSection: {
-    borderTop: "1px solid #e2e8f0",
-    paddingTop: 8,
-  },
-  gameScoresHeader: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#2d3748",
-    marginBottom: 8,
-  },
-  gameScoresGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  gameScoreCard: {
-    backgroundColor: "#f7fafc",
-    border: "1px solid #e2e8f0",
-    borderRadius: 4,
-    padding: 6,
-    minWidth: 120,
-    textAlign: "center",
-  },
-  gameNumber: {
-    fontSize: 10,
-    color: "#718096",
-    fontWeight: "bold",
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  gameScore: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#2d3748",
-  },
-  noMatches: {
-    textAlign: "center",
-    padding: 40,
-    color: "#6c757d",
-  },
-  noMatchesTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#495057",
-    marginBottom: 8,
-  },
-  noMatchesText: {
-    fontSize: 14,
-  },
+  cellLast: { borderRightWidth: 0 },
+  cellText: { fontSize: 9, color: INK },
+  cellTextWinner: { fontSize: 9, color: INK, fontWeight: "bold" },
+  result: { fontSize: 11, fontWeight: "bold", color: BRAND, marginTop: 4 },
+  scoreCaption: { fontSize: 7.5, color: FAINT, marginTop: 4 },
+
+  empty: { paddingHorizontal: PAGE_X, paddingTop: 40 },
+  emptyTitle: { fontSize: 12, fontWeight: "bold", color: INK_SOFT },
+  emptyText: { fontSize: 9, color: MUTED, marginTop: 4 },
+
   footer: {
-    backgroundColor: "#f8f9fa",
-    padding: 16,
-    borderTop: "1px solid #dee2e6",
-    textAlign: "center",
-    marginTop: "auto",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: PAGE_X,
+    paddingTop: 8,
+    paddingBottom: 12,
+    borderTopWidth: 0.75,
+    borderTopColor: RULE,
   },
-  footerText: {
-    fontSize: 12,
-    color: "#6c757d",
-  },
+  footerText: { fontSize: 7.5, color: FAINT },
 });
+
+const ScoreBlock: React.FC<{ match: Match; draft?: ScoreCell[] }> = ({ match, draft }) => {
+  const cells = scoreCellsFor(match, draft);
+  const bestOf = Math.max(match.bestOf || 1, 1);
+  const hasResult = match.homeScore !== undefined && match.awayScore !== undefined;
+  const width = scoreCellWidth(cells.length);
+
+  const cellStyle = (index: number) =>
+    index === cells.length - 1 ? [styles.cell, styles.cellLast, { width }] : [styles.cell, { width }];
+  const textStyle = (value: number | null, other: number | null) =>
+    isCellWinner(value, other) ? styles.cellTextWinner : styles.cellText;
+
+  return (
+    <View style={styles.scoreColumn}>
+      <View style={styles.grid}>
+        <View style={styles.gridRow}>
+          {cells.map((cell, index) => (
+            <View key={`home-${cell.gameNumber}`} style={cellStyle(index)}>
+              <Text style={textStyle(cell.home, cell.away)}>{cell.home ?? " "}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={[styles.gridRow, styles.gridRowLast]}>
+          {cells.map((cell, index) => (
+            <View key={`away-${cell.gameNumber}`} style={cellStyle(index)}>
+              <Text style={textStyle(cell.away, cell.home)}>{cell.away ?? " "}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+      {match.isCompleted && hasResult ? (
+        <Text style={styles.result}>
+          {match.homeScore} – {match.awayScore}
+        </Text>
+      ) : (
+        <Text style={styles.scoreCaption}>Best of {bestOf}</Text>
+      )}
+    </View>
+  );
+};
+
+const MatchRow: React.FC<{
+  match: Match;
+  position: number;
+  shade: boolean;
+  draft?: ScoreCell[];
+  showCategory?: boolean;
+}> = ({ match, position, shade, draft, showCategory }) => {
+  const homeMembers = formatMembers(match.homeTeamMembers);
+  const awayMembers = formatMembers(match.awayTeamMembers);
+
+  const rowStyle = [
+    styles.row,
+    ...(shade ? [styles.rowAlt] : []),
+    ...(matchIsLive(match) ? [styles.rowLive] : []),
+  ];
+
+  return (
+    <View style={rowStyle} wrap={false}>
+      <View style={styles.rail}>
+        <Text style={styles.matchNumber}>{position}</Text>
+        <Text style={styles.time}>{formatClock(match.startTime)}</Text>
+        {match.round ? <Text style={styles.round}>{match.round}</Text> : null}
+        {showCategory && match.categoryName ? (
+          <Text style={styles.category}>{match.categoryName}</Text>
+        ) : null}
+      </View>
+
+      <View style={styles.fixture}>
+        <Text style={styles.teamName}>{sideDisplayName(match.homeTeamName, match.homeTeam2Name)}</Text>
+        {homeMembers ? <Text style={styles.teamMembers}>{homeMembers}</Text> : null}
+        <Text style={styles.versus}>v</Text>
+        <Text style={styles.teamName}>{sideDisplayName(match.awayTeamName, match.awayTeam2Name)}</Text>
+        {awayMembers ? <Text style={styles.teamMembers}>{awayMembers}</Text> : null}
+        <View style={styles.refereeLine}>
+          <Text style={styles.refereeLabel}>Referees</Text>
+          <Text style={styles.refereeNames}>{formatReferees(match.referees)}</Text>
+        </View>
+      </View>
+
+      <ScoreBlock match={match} draft={draft} />
+    </View>
+  );
+};
+
+const MatchSchedule: React.FC<{
+  matches: Match[];
+  scoreDrafts?: ScoreDrafts;
+  showCategory?: boolean;
+}> = ({ matches, scoreDrafts, showCategory }) => {
+  let lastDay = "";
+
+  return (
+    <View>
+      {matches.map((match, index) => {
+        const key = dayKey(match);
+        const startsNewDay = key !== lastDay;
+        lastDay = key;
+
+        return (
+          <View key={match.id}>
+            {startsNewDay ? (
+              <View style={styles.dayRow}>
+                <Text style={styles.dayText}>{formatDayLabel(match.startTime)}</Text>
+              </View>
+            ) : null}
+            <MatchRow
+              match={match}
+              position={index + 1}
+              shade={index % 2 === 1}
+              draft={scoreDrafts?.[match.id]}
+              showCategory={showCategory}
+            />
+          </View>
+        );
+      })}
+    </View>
+  );
+};
+
+interface ReportPageProps {
+  title: string;
+  meta: string[];
+  matches: Match[];
+  footerLabel: string;
+  scoreDrafts?: ScoreDrafts;
+  showCategory?: boolean;
+}
+
+const ReportPage: React.FC<ReportPageProps> = ({
+  title,
+  meta,
+  matches,
+  footerLabel,
+  scoreDrafts,
+  showCategory,
+}) => (
+  <Page size="A4" style={styles.page}>
+    <View style={styles.header} fixed>
+      <View style={styles.band}>
+        <Text style={styles.bandTitle}>{title}</Text>
+        <View style={styles.bandMeta}>
+          {meta.map((item) => (
+            <Text key={item} style={styles.bandMetaItem}>
+              {item}
+            </Text>
+          ))}
+        </View>
+      </View>
+      <View style={styles.columnHeader}>
+        <Text style={[styles.columnLabel, { width: RAIL_WIDTH }]}>Time</Text>
+        <Text style={[styles.columnLabel, { flex: 1 }]}>Match</Text>
+        <Text style={[styles.columnLabel, { width: SCORE_WIDTH, textAlign: "right" }]}>Score</Text>
+      </View>
+    </View>
+
+    {matches.length === 0 ? (
+      <View style={styles.empty}>
+        <Text style={styles.emptyTitle}>Nothing scheduled</Text>
+        <Text style={styles.emptyText}>No matches match the selected filters.</Text>
+      </View>
+    ) : (
+      <MatchSchedule matches={matches} scoreDrafts={scoreDrafts} showCategory={showCategory} />
+    )}
+
+    <View style={styles.footer} fixed>
+      <Text style={styles.footerText}>{footerLabel}</Text>
+      <Text style={styles.footerText}>{printedOnLabel()}</Text>
+      <Text
+        style={styles.footerText}
+        render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+      />
+    </View>
+  </Page>
+);
 
 interface MatchesPDFDocumentProps {
   matches: Match[];
@@ -307,6 +327,8 @@ interface MatchesPDFDocumentProps {
   teamName?: string;
   formatName?: string;
   viewType: "venue" | "referee" | "team" | "general";
+  /** Scores typed into the preview but not yet saved. */
+  scoreDrafts?: ScoreDrafts;
 }
 
 const MatchesPDFDocument: React.FC<MatchesPDFDocumentProps> = ({
@@ -318,189 +340,58 @@ const MatchesPDFDocument: React.FC<MatchesPDFDocumentProps> = ({
   teamName,
   formatName,
   viewType,
+  scoreDrafts,
 }) => {
-  const formatTime = (timeString?: string) => {
-    if (!timeString) return "TBD";
-    const date = new Date(timeString);
-    return ensureTextEncoding(
-      date.toLocaleString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      })
+  // Decided once for the whole report so every sheet agrees: the category goes
+  // either in each header or on each row, never both and never neither.
+  const showCategory = shouldLabelCategories(matches);
+  const sheetCategory = headerCategory(categoryName, matches);
+
+  // Venue and general reports read as a court sheet: one venue per page.
+  if (shouldGroupByVenue(viewType)) {
+    const groups = groupMatchesByVenue(matches);
+
+    return (
+      <Document title={`${tournamentName} matches`} author="The Clash Referee Portal">
+        {groups.length === 0 ? (
+          <ReportPage
+            title={venueName || "All venues"}
+            meta={sheetMeta(tournamentName, sheetCategory, formatName, 0)}
+            matches={[]}
+            footerLabel={tournamentName}
+            scoreDrafts={scoreDrafts}
+            showCategory={showCategory}
+          />
+        ) : (
+          groups.map((group) => (
+            <ReportPage
+              key={group.venue}
+              title={group.venue === UNASSIGNED_VENUE_LABEL ? UNASSIGNED_VENUE_LABEL : group.venue}
+              meta={sheetMeta(tournamentName, sheetCategory, formatName, group.matches.length)}
+              matches={group.matches}
+              footerLabel={tournamentName}
+              scoreDrafts={scoreDrafts}
+              showCategory={showCategory}
+            />
+          ))
+        )}
+      </Document>
     );
-  };
+  }
 
-  const formatScore = (match: Match) => {
-    return match.homeScore !== undefined && match.awayScore !== undefined
-      ? `${match.homeScore}-${match.awayScore}`
-      : "TBD";
-  };
-
-  const getRefereesList = (referees?: any[]) => {
-    if (!referees || referees.length === 0) return "Unassigned";
-    const refereeNames = referees.map((ref) => ref.fullName || ref.name || "Unknown").join(", ");
-    console.log("Original referee names:", refereeNames);
-    const encoded = ensureTextEncoding(refereeNames);
-    console.log("Encoded referee names:", encoded);
-    return encoded;
-  };
-
-  const getTeamName = (teamName?: string, fallback: string = "TBD") => {
-    const name = teamName || fallback;
-    console.log("Original team name:", name);
-    const encoded = ensureTextEncoding(name);
-    console.log("Encoded team name:", encoded);
-    return encoded;
-  };
-
-  const getBestOfValue = (match: Match): number => {
-    return match.bestOf || 1;
-  };
-
-  const getViewTitle = () => {
-    const filters = [];
-
-    // Add primary filter based on view type
-    switch (viewType) {
-      case "venue":
-        if (venueName) filters.push(`${venueName}`);
-        break;
-      case "referee":
-        if (refereeName) filters.push(`Referee: ${refereeName}`);
-        break;
-      case "team":
-        if (teamName) filters.push(`Team: ${getTeamName(teamName)}`);
-        break;
-      default:
-        // For general view, show all active filters
-        if (venueName) filters.push(`${venueName}`);
-        if (refereeName) filters.push(`Referee: ${refereeName}`);
-        if (teamName) filters.push(`Team: ${getTeamName(teamName)}`);
-        break;
-    }
-
-    // Add additional filters
-    if (formatName) filters.push(`${formatName}`);
-
-    // If no filters, return default title
-    if (filters.length === 0) {
-      return "Matches Report";
-    }
-
-    // Join all filters with ' - '
-    return filters.join(" - ");
-  };
-
-  const getStatusStyle = (match: Match) => {
-    if (match.isCompleted) return styles.statusCompleted;
-    if (match.startTime && new Date(match.startTime) <= new Date()) return styles.statusInProgress;
-    return styles.statusUpcoming;
-  };
-
-  const getStatusText = (match: Match) => {
-    if (match.isCompleted) return "Completed";
-    if (match.startTime && new Date(match.startTime) <= new Date()) return "In Progress";
-    return "Upcoming";
-  };
+  // Referee and team reports stay a single chronological run across courts.
+  const subject = viewType === "referee" ? refereeName : teamName;
 
   return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.tournamentTitle}>{ensureTextEncoding(tournamentName)}</Text>
-          <Text style={styles.viewTitle}>{ensureTextEncoding(getViewTitle())}</Text>
-          {categoryName && <Text style={styles.categoryTitle}>{ensureTextEncoding(categoryName)}</Text>}
-        </View>
-
-        {/* Matches List */}
-        <View style={styles.matchesContainer}>
-          {matches.length === 0 ? (
-            <View style={styles.noMatches}>
-              <Text style={styles.noMatchesTitle}>No Matches Found</Text>
-              <Text style={styles.noMatchesText}>No matches found for the selected criteria.</Text>
-            </View>
-          ) : (
-            matches.map((match, index) => (
-              <View key={match.id} style={styles.matchCard}>
-                {/* Match Header */}
-                <View style={styles.matchHeader}>
-                  <Text style={styles.matchNumber}>#{index + 1}</Text>
-                  <Text style={[styles.statusBadge, getStatusStyle(match)]}>{getStatusText(match)}</Text>
-                </View>
-
-                {/* Match Information */}
-                <View style={styles.matchInfo}>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoValue}>{ensureTextEncoding(match.round || "TBD")}</Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoValue}>{formatTime(match.startTime)}</Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoValue}>{ensureTextEncoding(match.venue || "TBD")}</Text>
-                  </View>
-                  <View style={styles.teamsRow}>
-                    <View style={styles.teamContainer}>
-                      <Text style={styles.teamName}>{getTeamName(match.homeTeamName)}</Text>
-                      {match.homeTeamMembers && match.homeTeamMembers.length > 0 &&
-                        match.homeTeamMembers.map((member) => (
-                          <Text key={member.id} style={styles.teamMemberInline}>
-                            {ensureTextEncoding(`${member.firstName} ${member.lastName}`)}
-                            {member.isCaptain ? " (C)" : ""}
-                          </Text>
-                        ))}
-                    </View>
-                    <Text style={styles.scoreDisplay}>{formatScore(match)}</Text>
-                    <View style={styles.teamContainer}>
-                      <Text style={styles.teamName}>{getTeamName(match.awayTeamName)}</Text>
-                      {match.awayTeamMembers && match.awayTeamMembers.length > 0 &&
-                        match.awayTeamMembers.map((member) => (
-                          <Text key={member.id} style={styles.teamMemberInline}>
-                            {ensureTextEncoding(`${member.firstName} ${member.lastName}`)}
-                            {member.isCaptain ? " (C)" : ""}
-                          </Text>
-                        ))}
-                    </View>
-                  </View>
-                </View>
-
-                {/* Referees */}
-                <View style={styles.refereesSection}>
-                  <Text style={styles.refereesText}>Referees: {getRefereesList(match.referees)}</Text>
-                </View>
-
-
-                {/* Game Scores */}
-                {match.gameScores && match.gameScores.length > 0 && (
-                  <View style={styles.gameScoresSection}>
-                    <Text style={styles.gameScoresHeader}>Game Scores (Best of {getBestOfValue(match)})</Text>
-                    <View style={styles.gameScoresGrid}>
-                      {match.gameScores.map((gameScore, gameIndex) => (
-                        <View key={gameIndex} style={styles.gameScoreCard}>
-                          <Text style={styles.gameNumber}>Game {gameScore.gameNumber}</Text>
-                          <Text style={styles.gameScore}>
-                            {gameScore.homeScore} - {gameScore.awayScore}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-              </View>
-            ))
-          )}
-        </View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>The Clash Referee Portal - {new Date().getFullYear()}</Text>
-        </View>
-      </Page>
+    <Document title={`${tournamentName} matches`} author="The Clash Referee Portal">
+      <ReportPage
+        title={subject || "Matches"}
+        meta={sheetMeta(tournamentName, sheetCategory, formatName, matches.length)}
+        matches={matches}
+        footerLabel={tournamentName}
+        scoreDrafts={scoreDrafts}
+        showCategory={showCategory}
+      />
     </Document>
   );
 };

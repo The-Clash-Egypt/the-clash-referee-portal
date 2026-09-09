@@ -21,6 +21,7 @@ import PrintableView from "../components/PrintableView";
 import SearchableDropdown from "../components/SearchableDropdown";
 import VolleyballLoading from "../../../components/VolleyballLoading";
 import { VenueManagement } from "../../venue/pages";
+import MultiSelectDropdown from "../components/MultiSelectDropdown";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../store";
@@ -58,7 +59,7 @@ const MatchesManagement: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterFormat, setFilterFormat] = useState<string>("all");
   const [filterRound, setFilterRound] = useState<string>("all");
-  const [filterVenue, setFilterVenue] = useState<string>("all");
+  const [filterVenues, setFilterVenues] = useState<string[]>([]);
   const [filterTeam, setFilterTeam] = useState<string>("all");
   const [filterReferee, setFilterReferee] = useState<string>("all");
   const [filterDate, setFilterDate] = useState<string>("all");
@@ -161,7 +162,7 @@ const MatchesManagement: React.FC = () => {
     category: "all",
     format: "all",
     round: "all",
-    venue: "all",
+    venues: [] as string[],
     team: "all",
     referee: "all",
     date: "all",
@@ -183,7 +184,12 @@ const MatchesManagement: React.FC = () => {
     const urlCategory = urlParams.get("category") || "all";
     const urlFormat = urlParams.get("format") || "all";
     const urlRound = urlParams.get("round") || "all";
-    const urlVenue = urlParams.get("venue") || "all";
+    // `venues` repeats once per venue; `venue` is kept for older shared links.
+    const urlVenues = urlParams.getAll("venues").filter(Boolean);
+    const legacyVenue = urlParams.get("venue");
+    if (urlVenues.length === 0 && legacyVenue && legacyVenue !== "all") {
+      urlVenues.push(legacyVenue);
+    }
     const urlTeam = urlParams.get("team") || "all";
     const urlReferee = urlParams.get("referee") || "all";
     const urlDate = urlParams.get("date") || "all";
@@ -196,7 +202,10 @@ const MatchesManagement: React.FC = () => {
     setFilterCategory(urlCategory);
     setFilterFormat(urlFormat);
     setFilterRound(urlRound);
-    setFilterVenue(urlVenue);
+    // Only write when there is something to restore. Assigning a fresh [] over the
+    // identical initial state would still change the array's identity, re-running
+    // the filter effect and firing a second, duplicate matches fetch on every mount.
+    if (urlVenues.length > 0) setFilterVenues(urlVenues);
     setFilterTeam(urlTeam);
     setFilterReferee(urlReferee);
     setFilterDate(urlDate);
@@ -208,7 +217,7 @@ const MatchesManagement: React.FC = () => {
       category: urlCategory,
       format: urlFormat,
       round: urlRound,
-      venue: urlVenue,
+      venues: urlVenues,
       team: urlTeam,
       referee: urlReferee,
       date: urlDate,
@@ -244,7 +253,7 @@ const MatchesManagement: React.FC = () => {
     if (filterCategory !== "all") urlParams.set("category", filterCategory);
     if (filterFormat !== "all") urlParams.set("format", filterFormat);
     if (filterRound !== "all") urlParams.set("round", filterRound);
-    if (filterVenue !== "all") urlParams.set("venue", filterVenue);
+    filterVenues.forEach((venue) => urlParams.append("venues", venue));
     if (filterTeam !== "all") urlParams.set("team", filterTeam);
     if (filterReferee !== "all") urlParams.set("referee", filterReferee);
     if (filterDate !== "all") urlParams.set("date", filterDate);
@@ -263,7 +272,7 @@ const MatchesManagement: React.FC = () => {
     filterCategory,
     filterFormat,
     filterRound,
-    filterVenue,
+    filterVenues,
     filterTeam,
     filterReferee,
     filterDate,
@@ -284,7 +293,7 @@ const MatchesManagement: React.FC = () => {
       category: filterCategory !== "all" ? filterCategory : undefined,
       format: filterFormat !== "all" ? filterFormat : undefined,
       round: filterRound !== "all" ? filterRound : undefined,
-      venue: filterVenue !== "all" ? filterVenue : undefined,
+      venues: filterVenues.length > 0 ? filterVenues : undefined,
       team: filterTeam !== "all" ? filterTeam : undefined,
       referee: filterReferee !== "all" ? filterReferee : undefined,
       date: filterDate !== "all" ? filterDate : undefined,
@@ -308,7 +317,7 @@ const MatchesManagement: React.FC = () => {
       category: filterCategory !== "all" ? filterCategory : undefined,
       format: filterFormat !== "all" ? filterFormat : undefined,
       round: filterRound !== "all" ? filterRound : undefined,
-      venue: filterVenue !== "all" ? filterVenue : undefined,
+      venues: filterVenues.length > 0 ? filterVenues : undefined,
       team: filterTeam !== "all" ? filterTeam : undefined,
       referee: filterReferee !== "all" ? filterReferee : undefined,
       date: filterDate !== "all" ? filterDate : undefined,
@@ -325,7 +334,7 @@ const MatchesManagement: React.FC = () => {
     filterCategory,
     filterFormat,
     filterRound,
-    filterVenue,
+    filterVenues,
     filterTeam,
     filterReferee,
     filterDate,
@@ -343,7 +352,7 @@ const MatchesManagement: React.FC = () => {
     filterCategory,
     filterFormat,
     filterRound,
-    filterVenue,
+    filterVenues,
     filterTeam,
     filterReferee,
     filterDate,
@@ -360,7 +369,7 @@ const MatchesManagement: React.FC = () => {
     filterCategory,
     filterFormat,
     filterRound,
-    filterVenue,
+    filterVenues,
     filterTeam,
     filterReferee,
     filterDate,
@@ -394,7 +403,7 @@ const MatchesManagement: React.FC = () => {
 
     // Only reset if tournament or category actually changed (not when restoring from URL)
     if (previousFilters.current.category !== filterCategory) {
-      setFilterVenue("all");
+      setFilterVenues([]);
       previousFilters.current.category = filterCategory;
     }
   }, [isInitialized, filterCategory]);
@@ -528,7 +537,7 @@ const MatchesManagement: React.FC = () => {
         category: filterCategory !== "all" ? filterCategory : undefined,
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
-        venue: filterVenue !== "all" ? filterVenue : undefined,
+        venues: filterVenues.length > 0 ? filterVenues : undefined,
         team: filterTeam !== "all" ? filterTeam : undefined,
         referee: filterReferee !== "all" ? filterReferee : undefined,
         date: filterDate !== "all" ? filterDate : undefined,
@@ -565,7 +574,7 @@ const MatchesManagement: React.FC = () => {
         category: filterCategory !== "all" ? filterCategory : undefined,
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
-        venue: filterVenue !== "all" ? filterVenue : undefined,
+        venues: filterVenues.length > 0 ? filterVenues : undefined,
         team: filterTeam !== "all" ? filterTeam : undefined,
         referee: filterReferee !== "all" ? filterReferee : undefined,
         date: filterDate !== "all" ? filterDate : undefined,
@@ -619,7 +628,7 @@ const MatchesManagement: React.FC = () => {
         category: filterCategory !== "all" ? filterCategory : undefined,
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
-        venue: filterVenue !== "all" ? filterVenue : undefined,
+        venues: filterVenues.length > 0 ? filterVenues : undefined,
         team: filterTeam !== "all" ? filterTeam : undefined,
         referee: filterReferee !== "all" ? filterReferee : undefined,
         date: filterDate !== "all" ? filterDate : undefined,
@@ -649,7 +658,7 @@ const MatchesManagement: React.FC = () => {
         category: filterCategory !== "all" ? filterCategory : undefined,
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
-        venue: filterVenue !== "all" ? filterVenue : undefined,
+        venues: filterVenues.length > 0 ? filterVenues : undefined,
         team: filterTeam !== "all" ? filterTeam : undefined,
         referee: filterReferee !== "all" ? filterReferee : undefined,
         date: filterDate !== "all" ? filterDate : undefined,
@@ -699,7 +708,7 @@ const MatchesManagement: React.FC = () => {
         category: filterCategory !== "all" ? filterCategory : undefined,
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
-        venue: filterVenue !== "all" ? filterVenue : undefined,
+        venues: filterVenues.length > 0 ? filterVenues : undefined,
         team: filterTeam !== "all" ? filterTeam : undefined,
         referee: filterReferee !== "all" ? filterReferee : undefined,
         date: filterDate !== "all" ? filterDate : undefined,
@@ -753,7 +762,7 @@ const MatchesManagement: React.FC = () => {
         category: filterCategory !== "all" ? filterCategory : undefined,
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
-        venue: filterVenue !== "all" ? filterVenue : undefined,
+        venues: filterVenues.length > 0 ? filterVenues : undefined,
         team: filterTeam !== "all" ? filterTeam : undefined,
         referee: filterReferee !== "all" ? filterReferee : undefined,
         date: filterDate !== "all" ? filterDate : undefined,
@@ -793,7 +802,7 @@ const MatchesManagement: React.FC = () => {
       category: filterCategory !== "all" ? filterCategory : undefined,
       format: filterFormat !== "all" ? filterFormat : undefined,
       round: filterRound !== "all" ? filterRound : undefined,
-      venue: filterVenue !== "all" ? filterVenue : undefined,
+      venues: filterVenues.length > 0 ? filterVenues : undefined,
       team: filterTeam !== "all" ? filterTeam : undefined,
       referee: filterReferee !== "all" ? filterReferee : undefined,
       date: filterDate !== "all" ? filterDate : undefined,
@@ -834,7 +843,7 @@ const MatchesManagement: React.FC = () => {
         category: filterCategory !== "all" ? filterCategory : undefined,
         format: filterFormat !== "all" ? filterFormat : undefined,
         round: filterRound !== "all" ? filterRound : undefined,
-        venue: filterVenue !== "all" ? filterVenue : undefined,
+        venues: filterVenues.length > 0 ? filterVenues : undefined,
         team: filterTeam !== "all" ? filterTeam : undefined,
         referee: filterReferee !== "all" ? filterReferee : undefined,
         date: filterDate !== "all" ? filterDate : undefined,
@@ -858,7 +867,7 @@ const MatchesManagement: React.FC = () => {
     setFilterCategory("all");
     setFilterFormat("all");
     setFilterRound("all");
-    setFilterVenue("all");
+    setFilterVenues([]);
     setFilterTeam("all");
     setFilterReferee("all");
     setFilterDate("all");
@@ -868,7 +877,7 @@ const MatchesManagement: React.FC = () => {
       category: "all",
       format: "all",
       round: "all",
-      venue: "all",
+      venues: [],
       team: "all",
       referee: "all",
       date: "all",
@@ -908,9 +917,9 @@ const MatchesManagement: React.FC = () => {
     previousFilters.current.round = value;
   };
 
-  const handleFilterVenueChange = (value: string) => {
-    setFilterVenue(value);
-    previousFilters.current.venue = value;
+  const handleFilterVenuesChange = (value: string[]) => {
+    setFilterVenues(value);
+    previousFilters.current.venues = value;
   };
 
   const handleFilterStatusChange = (value: string) => {
@@ -945,7 +954,7 @@ const MatchesManagement: React.FC = () => {
     if (filterCategory !== "all") params.set("category", filterCategory);
     if (filterFormat !== "all") params.set("format", filterFormat);
     if (filterRound !== "all") params.set("round", filterRound);
-    if (filterVenue !== "all") params.set("venue", filterVenue);
+    filterVenues.forEach((venue) => params.append("venues", venue));
     if (filterTeam !== "all") params.set("team", filterTeam);
     if (filterReferee !== "all") params.set("referee", filterReferee);
     if (filterDate !== "all") params.set("date", filterDate);
@@ -953,7 +962,7 @@ const MatchesManagement: React.FC = () => {
 
     // Add display names for filters
     if (filterCategory !== "all") params.set("categoryName", filterCategory);
-    if (filterVenue !== "all") params.set("venueName", filterVenue);
+    filterVenues.forEach((venue) => params.append("venueNames", venue));
     if (filterReferee !== "all") params.set("refereeName", getRefereeName(filterReferee));
     if (filterTeam !== "all") params.set("teamName", getTeamName(filterTeam));
     if (filterFormat !== "all") params.set("formatName", filterFormat);
@@ -1097,7 +1106,7 @@ const MatchesManagement: React.FC = () => {
   };
 
   const getExportType = (): "venue" | "referee" | "team" | "general" => {
-    if (filterVenue !== "all") return "venue";
+    if (filterVenues.length > 0) return "venue";
     if (filterTeam !== "all") return "team";
     if (filterReferee !== "all") return "referee";
     return "general";
@@ -1149,8 +1158,8 @@ const MatchesManagement: React.FC = () => {
     }
 
     // Add venue filter
-    if (filterVenue !== "all") {
-      activeFilters.push(`Venue: ${filterVenue}`);
+    if (filterVenues.length > 0) {
+      activeFilters.push(filterVenues.length === 1 ? `Venue: ${filterVenues[0]}` : `Venues: ${filterVenues.join(", ")}`);
     }
 
     // Add team filter
@@ -1379,18 +1388,13 @@ const MatchesManagement: React.FC = () => {
                 </div>
 
                 <div className="filter-group">
-                  <select
-                    value={filterVenue}
-                    onChange={(e) => handleFilterVenueChange(e.target.value)}
-                    className="filter-select"
-                  >
-                    <option value="all">All Venues</option>
-                    {filterOptions.venues?.map((venue) => (
-                      <option key={venue} value={venue}>
-                        {venue}
-                      </option>
-                    ))}
-                  </select>
+                  <MultiSelectDropdown
+                    options={filterOptions.venues || []}
+                    value={filterVenues}
+                    onChange={handleFilterVenuesChange}
+                    allLabel="All Venues"
+                    itemNoun="venues"
+                  />
                 </div>
 
                 <div className="filter-group">
@@ -1560,7 +1564,7 @@ const MatchesManagement: React.FC = () => {
                   filterCategory !== "all" ||
                   filterFormat !== "all" ||
                   filterRound !== "all" ||
-                  filterVenue !== "all" ||
+                  filterVenues.length > 0 ||
                   filterTeam !== "all" ||
                   filterReferee !== "all" ||
                   filterDate !== "all"
@@ -1572,7 +1576,7 @@ const MatchesManagement: React.FC = () => {
                   filterCategory !== "all" ||
                   filterFormat !== "all" ||
                   filterRound !== "all" ||
-                  filterVenue !== "all" ||
+                  filterVenues.length > 0 ||
                   filterTeam !== "all" ||
                   filterReferee !== "all" ||
                   filterDate !== "all") && (
@@ -1864,7 +1868,7 @@ const MatchesManagement: React.FC = () => {
               tournamentName={tournamentName || "Tournament"}
               categoryName={filterCategory !== "all" ? filterCategory : undefined}
               viewType={"general"}
-              venueName={filterVenue !== "all" ? filterVenue : undefined}
+              venueName={filterVenues.length === 1 ? filterVenues[0] : undefined}
               refereeName={filterReferee !== "all" ? getRefereeName(filterReferee) : undefined}
               teamName={filterTeam !== "all" ? getTeamName(filterTeam) : undefined}
               formatName={filterFormat !== "all" ? filterFormat : undefined}

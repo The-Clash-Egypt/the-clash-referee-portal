@@ -1,0 +1,182 @@
+.multi-select-dropdown {
+  position: relative;
+  width: 100%;
+  min-width: 150px;
+
+  .multi-select-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 12px 12px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    font-size: 14px;
+    font-family: inherit;
+    color: #2d3748;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover:not(:disabled) {
+      border-color: #cbd5e0;
+    }
+
+    &:focus-visible {
+      outline: none;
+      border-color: #3182ce;
+      box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+    }
+
+    &.open {
+      border-color: #3182ce;
+      box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+    }
+
+    &.active {
+      border-color: var(--primary-color, #004aad);
+      color: var(--primary-color, #004aad);
+      font-weight: 500;
+    }
+
+    &:disabled {
+      background: #f7fafc;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .multi-select-summary {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .multi-select-arrow {
+      display: flex;
+      color: #6b7280;
+      transition: transform 0.2s ease;
+    }
+
+    &.open .multi-select-arrow {
+      transform: rotate(180deg);
+    }
+  }
+
+  .multi-select-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 30;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+
+  .multi-select-search {
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    outline: none;
+    font-size: 14px;
+    font-family: inherit;
+    color: #2d3748;
+
+    &::placeholder {
+      color: #a0aec0;
+    }
+  }
+
+  .multi-select-options {
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  .multi-select-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: #2d3748;
+    cursor: pointer;
+
+    &:hover {
+      background: #f7fafc;
+    }
+
+    &.checked {
+      color: var(--primary-color, #004aad);
+      font-weight: 500;
+    }
+
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary-color, #004aad);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .multi-select-empty {
+    padding: 14px;
+    font-size: 14px;
+    color: #a0aec0;
+    text-align: center;
+  }
+
+  .multi-select-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 8px 10px;
+    border-top: 1px solid #e2e8f0;
+    background: white;
+  }
+
+  .multi-select-clear,
+  .multi-select-done {
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .multi-select-clear {
+    border: 1px solid transparent;
+    background: transparent;
+    color: #6b7280;
+
+    &:hover {
+      background: #f7fafc;
+      color: #2d3748;
+    }
+  }
+
+  // Closing the menu is what applies the selection, so it gets a real button.
+  .multi-select-done {
+    border: 1px solid var(--primary-color, #004aad);
+    background: var(--primary-color, #004aad);
+    color: #ffffff;
+
+    &:hover {
+      background: var(--primary-color-hover, #003d8a);
+      border-color: var(--primary-color-hover, #003d8a);
+    }
+  }
+}

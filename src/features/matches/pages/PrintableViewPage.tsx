@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Match, MatchFilters } from "../types/match";
 import { getRefereeMatches } from "../api/matches";
@@ -19,7 +19,11 @@ const PrintableViewPage: React.FC = () => {
   const tournamentName = searchParams.get("tournamentName") || "Tournament";
   const viewType = (searchParams.get("viewType") || "general") as "venue" | "referee" | "team" | "general";
   const categoryName = searchParams.get("categoryName") || undefined;
-  const venueName = searchParams.get("venueName") || undefined;
+  // `venueNames` repeats once per venue; `venueName` is kept for older links.
+  const venueNamesParam = searchParams.getAll("venueNames").filter(Boolean);
+  const venueNames =
+    venueNamesParam.length > 0 ? venueNamesParam : [searchParams.get("venueName") || ""].filter(Boolean);
+  const venueName = venueNames.length === 1 ? venueNames[0] : undefined;
   const refereeName = searchParams.get("refereeName") || undefined;
   const teamName = searchParams.get("teamName") || undefined;
   const formatName = searchParams.get("formatName") || undefined;
@@ -36,7 +40,13 @@ const PrintableViewPage: React.FC = () => {
   const filterCategory = searchParams.get("category") || "all";
   const filterFormat = searchParams.get("format") || "all";
   const filterRound = searchParams.get("round") || "all";
-  const filterVenue = searchParams.get("venue") || "all";
+  const venuesFromUrl = searchParams.getAll("venues").filter((venue) => venue && venue !== "all");
+  const legacyVenue = searchParams.get("venue");
+  const filterVenuesKey = JSON.stringify(
+    venuesFromUrl.length > 0 ? venuesFromUrl : legacyVenue && legacyVenue !== "all" ? [legacyVenue] : []
+  );
+  // Memoised so the fetch effect compares venues by value, not array identity.
+  const filterVenues: string[] = useMemo(() => JSON.parse(filterVenuesKey), [filterVenuesKey]);
   const filterTeam = searchParams.get("team") || "all";
   const filterReferee = searchParams.get("referee") || "all";
   const filterDate = searchParams.get("date") || "all";
@@ -60,7 +70,7 @@ const PrintableViewPage: React.FC = () => {
           category: filterCategory !== "all" ? filterCategory : undefined,
           format: filterFormat !== "all" ? filterFormat : undefined,
           round: filterRound !== "all" ? filterRound : undefined,
-          venue: filterVenue !== "all" ? filterVenue : undefined,
+          venues: filterVenues.length > 0 ? filterVenues : undefined,
           team: filterTeam !== "all" ? filterTeam : undefined,
           referee: filterReferee !== "all" ? filterReferee : undefined,
           date: filterDate !== "all" ? filterDate : undefined,
@@ -92,7 +102,7 @@ const PrintableViewPage: React.FC = () => {
     filterCategory,
     filterFormat,
     filterRound,
-    filterVenue,
+    filterVenues,
     filterTeam,
     filterReferee,
     filterDate,
@@ -145,6 +155,7 @@ const PrintableViewPage: React.FC = () => {
         tournamentName={tournamentName}
         categoryName={categoryName}
         venueName={venueName}
+        venueNames={venueNames}
         refereeName={refereeName}
         teamName={teamName}
         formatName={formatName}

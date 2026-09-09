@@ -185,6 +185,8 @@ export interface MatchFilters {
   format?: string;
   round?: string;
   venue?: string;
+  /** Multi-select venue filter. Takes precedence over `venue` when non-empty. */
+  venues?: string[];
   team?: string;
   referee?: string;
   date?: string;

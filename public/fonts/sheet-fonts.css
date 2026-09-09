@@ -1,0 +1,33 @@
+/*
+ * The match sheet's typeface. These are the same four files @react-pdf embeds in
+ * the generated PDF (see src/utils/pdfFonts.ts), so the on-screen preview and the
+ * printed document break lines in the same places.
+ *
+ * They live here rather than in a component stylesheet because CRA's
+ * resolve-url-loader rewrites root-relative url() against src/, which cannot
+ * reach public/. @font-face is lazy: nothing downloads until a page uses it.
+ */
+@font-face {
+  font-family: "Sheet Sans Arabic";
+  src: url("IBMPlexSansArabic-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sheet Sans Arabic";
+  src: url("IBMPlexSansArabic-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sheet Sans";
+  src: url("IBMPlexSans-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sheet Sans";
+  src: url("IBMPlexSans-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}

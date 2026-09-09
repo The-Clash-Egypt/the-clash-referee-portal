@@ -1,83 +1,85 @@
-// PrintableView Styles
+// Export preview: an on-screen rendering of the printed court sheet.
+//
+// The document below is authored in `pt`, the same unit MatchesPDFDocument.tsx
+// uses, so its numbers transfer across 1:1 — 34pt inset, 70pt rail, 150pt score
+// column, 25x16pt score cells, 0.75pt rules, 22/11.5/10.5/9/8.5/7.5pt type. Keep
+// them in sync with that file; the score-cell geometry is shared in code via
+// src/utils/matchScoreCells.ts.
+
+$sheet-width: 595.28pt; // A4, matching <Page size="A4"> in the PDF
+$page-x: 34pt; // PAGE_X
+$rail: 70pt; // RAIL_WIDTH
+$score-col: 150pt; // SCORE_WIDTH
+$live-edge: 3pt;
+
+$brand: #004aad;
+$brand-muted: #a9c4e8;
+$live: #fcc353;
+$ink: #111827;
+$ink-soft: #374151;
+$muted: #6b7280;
+$faint: #9ca3af;
+$rule: #e5e7eb;
+$rule-strong: #cbd5e1;
+$wash: #f9fafb;
+$day-wash: #eef2f7;
+
 .printable-view {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  z-index: 1000;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  box-sizing: border-box;
+  min-height: 100vh;
+  background: var(--gray-100);
 
-  // When used as a standalone page (not in modal)
-  .printable-view-page & {
-    position: static;
-    background: white;
-    min-height: 100vh;
-    overflow: visible;
-  }
-
-  @media (max-width: 768px) {
-    background: rgba(0, 0, 0, 0.9);
-  }
-
-  @media (max-width: 480px) {
-    background: rgba(0, 0, 0, 0.95);
-  }
-
+  // ---------------------------------------------------------------- chrome --
   .print-controls {
-    background: white;
-    padding: 20px;
-    border-bottom: 1px solid #ddd;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 24px;
+    background: var(--white);
+    border-bottom: 1px solid var(--border-primary);
+    box-shadow: var(--shadow-sm);
 
     @media (max-width: 768px) {
-      padding: 16px;
-    }
-
-    @media (max-width: 480px) {
-      padding: 12px;
+      flex-direction: column;
+      align-items: stretch;
+      padding: 12px 16px;
     }
 
     .print-header {
-      margin-bottom: 20px;
-
-      @media (max-width: 768px) {
-        margin-bottom: 16px;
-      }
+      min-width: 0;
 
       h2 {
-        margin: 0 0 10px 0;
-        color: #333;
-        font-size: 24px;
-
-        @media (max-width: 768px) {
-          font-size: 20px;
-        }
-
-        @media (max-width: 480px) {
-          font-size: 18px;
-        }
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
       }
 
       p {
-        margin: 0;
-        color: #666;
+        margin: 2px 0 0;
         font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary);
+      }
 
-        @media (max-width: 480px) {
-          font-size: 12px;
-        }
+      .print-header__count {
+        margin-left: 12px;
+        color: var(--text-tertiary);
+      }
+
+      .entry-status {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--primary-color);
       }
     }
 
     .print-actions {
       display: flex;
+      flex-shrink: 0;
       gap: 12px;
-      justify-content: center;
 
       @media (max-width: 768px) {
         gap: 8px;
@@ -89,853 +91,467 @@
         gap: 8px;
       }
 
-      .pdf-btn {
-        background: var(--primary-color);
-        color: white;
-        border: none;
-        padding: 12px 24px;
+      button {
+        padding: 12px 16px;
         border-radius: 6px;
-        font-size: 16px;
+        font-family: inherit;
+        font-size: 14px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        box-shadow: 0 4px 8px rgba(0, 74, 173, 0.2);
-
-        @media (max-width: 768px) {
-          padding: 10px 20px;
-          font-size: 14px;
-        }
 
         @media (max-width: 480px) {
-          padding: 8px 16px;
-          font-size: 14px;
           width: 100%;
-          justify-content: center;
-        }
-
-        &:hover:not(:disabled) {
-          background: var(--primary-color-hover);
-          transform: translateY(-1px);
-          box-shadow: 0 6px 12px rgba(0, 74, 173, 0.3);
-        }
-
-        &:active:not(:disabled) {
-          transform: translateY(0);
-          box-shadow: 0 4px 8px rgba(0, 74, 173, 0.2);
         }
 
         &:disabled {
-          background: var(--gray-400);
-          cursor: not-allowed;
           opacity: 0.6;
-          transform: none;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          cursor: not-allowed;
         }
-
       }
 
-      .print-btn {
-        background: #28a745;
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 6px;
-        font-size: 16px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2);
+      .pdf-btn {
+        background: var(--primary-color);
+        border: 1px solid var(--primary-color);
+        color: var(--white);
 
-        @media (max-width: 768px) {
-          padding: 10px 20px;
-          font-size: 14px;
+        &:hover:not(:disabled) {
+          background: var(--primary-color-hover);
+          border-color: var(--primary-color-hover);
         }
-
-        @media (max-width: 480px) {
-          padding: 8px 16px;
-          font-size: 14px;
-          width: 100%;
-          justify-content: center;
-        }
-
-        &:hover {
-          background: #218838;
-          transform: translateY(-1px);
-          box-shadow: 0 6px 12px rgba(40, 167, 69, 0.3);
-        }
-
-        &:active {
-          transform: translateY(0);
-          box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2);
-        }
-
       }
 
       .close-btn {
-        background: var(--gray-500);
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 6px;
-        font-size: 16px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
+        background: var(--white);
+        border: 1px solid var(--border-primary);
+        color: var(--text-secondary);
 
-        @media (max-width: 768px) {
-          padding: 10px 20px;
-          font-size: 14px;
-        }
-
-        @media (max-width: 480px) {
-          padding: 8px 16px;
-          font-size: 14px;
-          width: 100%;
-        }
-
-        &:hover {
-          background: var(--gray-600);
-          transform: translateY(-1px);
-        }
-
-        &:active {
-          transform: translateY(0);
+        &:hover:not(:disabled) {
+          background: var(--gray-50);
+          color: var(--text-primary);
         }
       }
     }
   }
 
+  // ------------------------------------------------------------------ desk --
   .printable-content {
-    background: white;
-    margin: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    overflow-y: auto;
-    overflow-x: hidden;
-    flex: 1;
-    min-height: 0;
-    max-height: none; // Ensure content can expand fully
-    width: calc(100% - 40px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 24px 16px 48px;
+    overflow-x: auto;
+  }
+
+  .matches-print-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+  }
+
+  // ----------------------------------------------------------------- sheet --
+  // The sheet keeps its A4 width rather than shrinking: `table-layout: fixed` with
+  // a 104pt rail and a 184pt score column would drive the match column to zero
+  // width on a phone and overprint the other two. The desk scrolls instead.
+  .venue-section {
+    width: $sheet-width;
+    flex-shrink: 0;
+    background: var(--white);
+    box-shadow: var(--shadow-md);
+  }
+
+  // Typeface declared in public/fonts/sheet-fonts.css, linked from index.html.
+  .sheet {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    // Arabic first so a mixed line stays in one typeface, as in the PDF.
+    font-family: "Sheet Sans Arabic", "Sheet Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.3;
+    color: $ink;
+  }
+
+  .col-rail {
+    width: $rail + $page-x;
+  }
+  .col-score {
+    width: $score-col + $page-x;
+  }
+
+  // Running header. Repeats on every printed page via table-header-group.
+  .sheet-band th {
+    padding: 15pt $page-x 13pt;
+    background: $brand;
+    text-align: left;
+    font-weight: 400;
+  }
+
+  .venue-section-title {
+    display: block;
+    font-size: 22pt;
+    font-weight: 700;
+    color: var(--white);
+  }
+
+  .sheet-meta {
+    display: block;
+    margin-top: 5pt;
+  }
+
+  .sheet-meta__item {
+    margin-right: 14pt;
+    font-size: 8.5pt;
+    color: $brand-muted;
+  }
+
+  .sheet-colhead th {
+    padding: 6pt 0 5pt;
+    border-bottom: 1pt solid $rule-strong;
+    background: var(--white);
+    font-size: 7.5pt;
+    font-weight: 400;
+    color: $muted;
+    text-align: left;
+
+    &:first-child {
+      padding-left: $page-x;
+    }
+
+    &.col-score {
+      padding-right: $page-x;
+      text-align: right;
+    }
+  }
+
+  .day-row td {
+    padding: 4pt $page-x;
+    border-bottom: 0.75pt solid $rule-strong;
+    background: $day-wash;
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: $brand;
+  }
+
+  // ------------------------------------------------------------ match rows --
+  .match-row {
+    > td {
+      padding: 9pt 0;
+      border-bottom: 0.75pt solid $rule;
+      vertical-align: top;
+    }
+
+    // The page inset has to be set at this specificity or the shorthand above
+    // wins and the sheet loses its left and right margins.
+    > td.rail {
+      padding-left: $page-x;
+    }
+
+    > td.fixture {
+      padding-right: 12pt;
+    }
+
+    > td.score {
+      padding-right: $page-x;
+    }
+
+    &--alt > td {
+      background: $wash;
+    }
+
+    // Gold edge for a match already under way. Padding compensates so the
+    // text never shifts, exactly as rowLive does in the PDF.
+    &--live > td.rail {
+      border-left: $live-edge solid $live;
+      padding-left: $page-x - $live-edge;
+    }
+  }
+
+  .rail {
+    .match-number {
+      display: block;
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: $faint;
+    }
+
+    .time {
+      display: block;
+      margin-top: 2pt;
+      font-size: 11.5pt;
+      font-weight: 700;
+      color: $ink;
+    }
+
+    .round {
+      display: block;
+      margin-top: 2pt;
+      font-size: 7.5pt;
+      color: $muted;
+    }
+
+    // Shown only when the report spans several categories.
+    .category {
+      display: block;
+      margin-top: 2pt;
+      font-size: 7.5pt;
+      color: $faint;
+    }
+  }
+
+  .fixture {
+    .team-name {
+      display: block;
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: $ink;
+    }
+
+    .team-members {
+      display: block;
+      margin-top: 1.5pt;
+      font-size: 7.5pt;
+      color: $ink-soft;
+    }
+
+    .versus {
+      display: block;
+      margin: 3pt 0;
+      font-size: 7.5pt;
+      color: $faint;
+    }
+
+    .referee-line {
+      display: block;
+      margin-top: 6pt;
+    }
+
+    .referee-label {
+      margin-right: 6pt;
+      font-size: 7.5pt;
+      color: $faint;
+    }
+
+    .referee-names {
+      font-size: 8pt;
+      color: $ink-soft;
+    }
+  }
+
+  // ------------------------------------------------------------ score grid --
+  .score {
+    text-align: right;
+  }
+
+  .score-grid {
+    display: inline-block;
+    border: 0.75pt solid $rule-strong;
+    background: var(--white);
+    text-align: left;
+  }
+
+  .score-grid__row {
+    display: flex;
+
+    &:first-child {
+      border-bottom: 0.75pt solid $rule-strong;
+    }
+  }
+
+  .score-grid__cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 16pt;
     box-sizing: border-box;
+    border-right: 0.75pt solid $rule-strong;
 
-    @media (max-width: 768px) {
-      margin: 16px;
-      border-radius: 6px;
-      width: calc(100% - 32px);
+    &:last-child {
+      border-right: 0;
+    }
+  }
+
+  .score-cell-text {
+    font-size: 9pt;
+    color: $ink;
+
+    &.is-winner {
+      font-weight: 700;
+    }
+  }
+
+  // The input IS the box: no border, no background, no radius of its own.
+  .score-input {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    font-family: inherit;
+    font-size: 9pt;
+    color: $ink;
+    text-align: center;
+    appearance: none;
+    -webkit-appearance: none;
+
+    &:focus {
+      outline: none;
+      background: var(--primary-color-light);
+    }
+  }
+
+  .score-display {
+    display: block;
+    margin-top: 4pt;
+    font-size: 11pt;
+    font-weight: 700;
+    color: $brand;
+  }
+
+  .score-caption {
+    display: block;
+    margin-top: 4pt;
+    font-size: 7.5pt;
+    color: $faint;
+  }
+
+  // ----------------------------------------------------------- empty/foot --
+  .no-matches-print {
+    padding: 40pt $page-x;
+
+    h3 {
+      margin: 0;
+      font-size: 12pt;
+      font-weight: 700;
+      color: $ink-soft;
     }
 
-    @media (max-width: 480px) {
-      margin: 12px;
-      border-radius: 4px;
-      width: calc(100% - 24px);
+    p {
+      margin: 4pt 0 0;
+      font-size: 9pt;
+      color: $muted;
     }
-
-    .print-header-section {
-      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-      padding: 40px 30px;
-      border-bottom: 3px solid var(--primary-color);
-      text-align: center;
-
-      @media (max-width: 768px) {
-        padding: 30px 20px;
-      }
-
-      @media (max-width: 480px) {
-        padding: 20px 16px;
-      }
-
-      .tournament-title {
-        margin: 0 0 12px 0;
-        color: #1a202c;
-        font-size: 36px;
-        font-weight: 800;
-        letter-spacing: -0.5px;
-
-        @media (max-width: 768px) {
-          font-size: 28px;
-        }
-
-        @media (max-width: 480px) {
-          font-size: 24px;
-        }
-      }
-
-      .view-title {
-        margin: 0 0 8px 0;
-        color: var(--primary-color);
-        font-size: 24px;
-        font-weight: 600;
-
-        @media (max-width: 768px) {
-          font-size: 20px;
-        }
-
-        @media (max-width: 480px) {
-          font-size: 18px;
-        }
-      }
-
-      .category-title {
-        margin: 0 0 24px 0;
-        color: #4a5568;
-        font-size: 18px;
-        font-weight: 500;
-        background: white;
-        padding: 8px 16px;
-        border-radius: 20px;
-        display: inline-block;
-        border: 1px solid #e2e8f0;
-
-        @media (max-width: 768px) {
-          font-size: 16px;
-          padding: 6px 12px;
-        }
-
-        @media (max-width: 480px) {
-          font-size: 14px;
-          padding: 4px 8px;
-        }
-      }
-
-      .print-meta {
-        display: flex;
-        justify-content: center;
-        gap: 32px;
-        margin-top: 24px;
-        padding-top: 24px;
-        border-top: 1px solid #cbd5e0;
-
-        p {
-          margin: 0;
-          color: #718096;
-          font-size: 14px;
-          font-weight: 500;
-          background: white;
-          padding: 6px 12px;
-          border-radius: 16px;
-          border: 1px solid #e2e8f0;
-        }
-      }
-    }
-
-    .matches-print-section {
-      padding: 30px;
-      width: 100%;
-      box-sizing: border-box;
-
-      @media (max-width: 768px) {
-        padding: 20px;
-      }
-
-      @media (max-width: 480px) {
-        padding: 16px;
-      }
-
-      .no-matches-print {
-        text-align: center;
-        padding: 60px 40px;
-        color: #6c757d;
-
-        .empty-state-icon {
-          margin-bottom: 16px;
-          display: flex;
-          justify-content: center;
-
-          svg {
-            width: 48px;
-            height: 48px;
-            color: var(--primary-color);
-          }
-        }
-
-        h3 {
-          margin: 0 0 8px 0;
-          color: #495057;
-          font-size: 24px;
-          font-weight: 600;
-        }
-
-        p {
-          margin: 0;
-          font-size: 16px;
-        }
-      }
-
-      .matches-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 24px;
-        margin-bottom: 20px;
-        width: 100%;
-        box-sizing: border-box;
-
-        @media (max-width: 768px) {
-          grid-template-columns: 1fr;
-          gap: 16px;
-        }
-
-        @media (max-width: 480px) {
-          gap: 12px;
-        }
-
-        .match-card {
-          background: white;
-          border: 1px solid #e2e8f0;
-          border-radius: 12px;
-          padding: 24px;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-          transition: all 0.2s ease;
-          width: 100%;
-          box-sizing: border-box;
-          min-width: 0;
-
-          @media (max-width: 768px) {
-            padding: 20px;
-          }
-
-          @media (max-width: 480px) {
-            padding: 16px;
-            border-radius: 8px;
-          }
-
-          &:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            transform: translateY(-2px);
-
-            @media (max-width: 768px) {
-              transform: none;
-            }
-          }
-
-          .match-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-
-            .match-number {
-              background: var(--primary-color);
-              color: white;
-              padding: 6px 12px;
-              border-radius: 20px;
-              font-size: 14px;
-              font-weight: 600;
-            }
-
-            .match-status {
-              .status-badge {
-                padding: 4px 12px;
-                border-radius: 20px;
-                font-size: 12px;
-                font-weight: 600;
-                text-transform: uppercase;
-
-                &.completed {
-                  background: #d1fae5;
-                  color: #065f46;
-                }
-
-                &.in-progress {
-                  background: #fef3c7;
-                  color: #92400e;
-                }
-
-                &.upcoming {
-                  background: #dbeafe;
-                  color: #1e40af;
-                }
-              }
-            }
-          }
-
-          .match-info-simple {
-            text-align: center;
-            margin-bottom: 20px;
-
-            .info-item {
-              margin-bottom: 12px;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              gap: 8px;
-
-              .info-label {
-                font-weight: 600;
-                color: #4a5568;
-                font-size: 14px;
-              }
-
-              .info-value {
-                font-weight: 500;
-                color: #1a202c;
-                font-size: 16px;
-              }
-
-              &.teams-scores {
-                margin: 20px 0;
-                padding: 16px 0;
-                border-top: 1px solid #e2e8f0;
-                border-bottom: 1px solid #e2e8f0;
-
-                .teams-row {
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  gap: 24px;
-
-                  @media (max-width: 768px) {
-                    gap: 16px;
-                    flex-wrap: wrap;
-                  }
-
-                  @media (max-width: 480px) {
-                    gap: 8px;
-                    flex-direction: row;
-                    justify-content: space-between;
-                    align-items: center;
-                    text-align: center;
-                  }
-
-                  .team-column {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    flex: 1;
-                    min-width: 120px;
-
-                    @media (max-width: 768px) {
-                      min-width: 100px;
-                    }
-
-                    @media (max-width: 480px) {
-                      min-width: auto;
-                      flex: 1;
-                    }
-
-                    .team-name {
-                      font-size: 18px;
-                      font-weight: 600;
-                      color: #1a202c;
-
-                      @media (max-width: 768px) {
-                        font-size: 16px;
-                      }
-
-                      @media (max-width: 480px) {
-                        font-size: 14px;
-                      }
-                    }
-
-                    .team-members-list {
-                      display: flex;
-                      flex-direction: column;
-                      align-items: center;
-                      gap: 2px;
-                      margin-top: 6px;
-
-                      .team-member {
-                        font-size: 12px;
-                        font-weight: 400;
-                        color: #4a5568;
-
-                        @media (max-width: 480px) {
-                          font-size: 11px;
-                        }
-                      }
-                    }
-                  }
-
-                  .score-display {
-                    font-size: 24px;
-                    font-weight: 700;
-                    color: var(--primary-color);
-                    padding: 8px 16px;
-                    border: 2px solid var(--primary-color);
-                    border-radius: 6px;
-                    min-width: 80px;
-
-                    @media (max-width: 768px) {
-                      font-size: 20px;
-                      padding: 6px 12px;
-                      min-width: 70px;
-                    }
-
-                    @media (max-width: 480px) {
-                      font-size: 18px;
-                      padding: 4px 8px;
-                      min-width: 60px;
-                      order: 0;
-                      flex: 0;
-                    }
-                  }
-                }
-              }
-            }
-          }
-
-          .match-referees {
-            margin-bottom: 20px;
-            padding: 12px 16px;
-            background: #f3f4f6;
-            border-radius: 8px;
-            border-left: 4px solid #6b7280;
-
-            .referees-display {
-              display: flex;
-              align-items: center;
-              gap: 10px;
-
-              .referees-icon {
-                color: #6b7280;
-                flex-shrink: 0;
-              }
-
-              .referees-text {
-                font-size: 14px;
-                color: #4a5568;
-                font-weight: 500;
-              }
-            }
-          }
-
-          .game-scores-section {
-            border-top: 1px solid #e2e8f0;
-            padding-top: 16px;
-
-            .game-scores-header {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin-bottom: 12px;
-
-              h4 {
-                margin: 0;
-                color: #2d3748;
-                font-size: 16px;
-                font-weight: 600;
-              }
-
-              .add-game-btn {
-                background: var(--primary-color);
-                color: white;
-                border: none;
-                padding: 6px 12px;
-                border-radius: 4px;
-                font-size: 12px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: background-color 0.2s ease;
-
-                &:hover {
-                  background: var(--primary-color-dark, #0056b3);
-                }
-              }
-            }
-
-            .game-scores-grid {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-              gap: 8px;
-
-              @media (max-width: 768px) {
-                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-                gap: 6px;
-              }
-
-              @media (max-width: 480px) {
-                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-                gap: 4px;
-              }
-
-              .game-score-card {
-                background: #f7fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 6px;
-                padding: 8px 12px;
-                text-align: center;
-
-                .game-number {
-                  display: block;
-                  font-size: 11px;
-                  color: #718096;
-                  font-weight: 600;
-                  text-transform: uppercase;
-                  margin-bottom: 4px;
-                }
-
-                .game-score {
-                  font-size: 14px;
-                  font-weight: 600;
-                  color: #2d3748;
-                }
-
-                .game-score-inputs {
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  gap: 6px;
-
-                  .score-input {
-                    width: 40px;
-                    padding: 4px 6px;
-                    border: 1px solid #cbd5e0;
-                    border-radius: 4px;
-                    text-align: center;
-                    font-size: 12px;
-                    font-weight: 600;
-
-                    &:focus {
-                      outline: none;
-                      border-color: var(--primary-color);
-                      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-                    }
-
-                    &.home-score {
-                      color: #28a745;
-                    }
-
-                    &.away-score {
-                      color: #dc3545;
-                    }
-                  }
-
-                  .score-separator {
-                    font-size: 12px;
-                    font-weight: 600;
-                    color: #718096;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    .print-footer {
-      background: #f8f9fa;
-      padding: 20px 30px;
-      border-top: 1px solid #dee2e6;
-      text-align: center;
-
-      p {
-        margin: 0;
-        color: #6c757d;
-        font-size: 14px;
-      }
-    }
+  }
+
+  // `display: flex` on a <td> drops its colspan and collapses the cell to the
+  // first column, so the flex row lives on an inner element.
+  .print-footer td {
+    padding: 8pt $page-x 12pt;
+    border-top: 0.75pt solid $rule;
+    font-size: 7.5pt;
+    color: $faint;
+  }
+
+  .print-footer__inner {
+    display: flex;
+    justify-content: space-between;
   }
 }
 
-// Print-specific styles
+// A screen-only cue for boxes still waiting to be filled in. It disappears in
+// print, so it costs nothing in parity with the PDF.
+@media screen {
+  .printable-view .score-grid__cell--empty {
+    background: var(--gray-50);
+  }
+}
+
 @media print {
-  .printable-view {
-    position: static;
-    background: white;
-    width: 100%;
-    height: auto;
-    margin: 0;
-    padding: 0;
-
-    .print-controls {
-      display: none !important;
-    }
-
-    .printable-content {
-      margin: 0;
-      border-radius: 0;
-      box-shadow: none;
-      background: white;
-
-      .print-header-section {
-        background: white !important;
-        border-bottom: 2px solid #000 !important;
-        page-break-after: avoid;
-
-        .tournament-title {
-          color: #000 !important;
-        }
-
-        .view-title {
-          color: #000 !important;
-        }
-
-        .category-title {
-          color: #000 !important;
-        }
-
-        .print-meta {
-          border-top: 1px solid #000 !important;
-
-          p {
-            color: #000 !important;
-          }
-        }
-      }
-
-      .matches-print-section {
-        .matches-grid {
-          .match-card {
-            page-break-inside: avoid;
-            margin-bottom: 20px;
-            border: 1px solid #000 !important;
-            box-shadow: none !important;
-            transform: none !important;
-
-            .match-card-header {
-              .match-number {
-                background: #000 !important;
-                color: white !important;
-              }
-
-              .status-badge {
-                &.completed {
-                  background: #d1fae5 !important;
-                  color: #065f46 !important;
-                }
-
-                &.in-progress {
-                  background: #fef3c7 !important;
-                  color: #92400e !important;
-                }
-
-                &.upcoming {
-                  background: #dbeafe !important;
-                  color: #1e40af !important;
-                }
-              }
-            }
-
-            .match-info-simple {
-              .info-item {
-                .info-label {
-                  color: #000 !important;
-                }
-
-                .info-value {
-                  color: #000 !important;
-                }
-
-                &.teams-scores {
-                  border-top: 1px solid #000 !important;
-                  border-bottom: 1px solid #000 !important;
-
-                  .teams-row {
-                    .team-column {
-                      .team-name {
-                        color: #000 !important;
-                      }
-
-                      .team-members-list {
-                        .team-member {
-                          color: #000 !important;
-                        }
-                      }
-                    }
-
-                    .score-display {
-                      color: #000 !important;
-                      border: 2px solid #000 !important;
-                    }
-                  }
-                }
-              }
-            }
-
-            .match-referees {
-              background: #f8f8f8 !important;
-              border-left: 4px solid #000 !important;
-
-              .referees-display {
-                .referees-icon {
-                  color: #000 !important;
-                }
-
-                .referees-text {
-                  color: #000 !important;
-                }
-              }
-            }
-
-            .game-scores-section {
-              border-top: 1px solid #000 !important;
-
-              .game-scores-header {
-                h4 {
-                  color: #000 !important;
-                }
-
-                .add-game-btn {
-                  display: none !important;
-                }
-              }
-
-              .game-score-card {
-                background: white !important;
-                border: 1px solid #000 !important;
-
-                .game-number {
-                  color: #000 !important;
-                }
-
-                .game-score {
-                  color: #000 !important;
-                }
-
-                .game-score-inputs {
-                  .score-input {
-                    border: 1px solid #000 !important;
-                    color: #000 !important;
-                    background: white !important;
-
-                    &.home-score {
-                      color: #000 !important;
-                    }
-
-                    &.away-score {
-                      color: #000 !important;
-                    }
-                  }
-
-                  .score-separator {
-                    color: #000 !important;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      .print-footer {
-        background: #f0f0f0 !important;
-        border-top: 1px solid #000 !important;
-
-        p {
-          color: #000 !important;
-        }
-      }
-    }
+  // Backgrounds are the document here — the blue band, the zebra, the day bands.
+  // Without this the sheet prints as bare text.
+  .printable-view,
+  .printable-view * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  // Hide elements that shouldn't be printed
+  // The preview route renders inside the app shell; hide the rest of it.
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: var(--white) !important;
+  }
+
+  .navbar {
+    display: none !important;
+  }
+
+  .app-main {
+    flex: none !important;
+    background: var(--white) !important;
+  }
+
+  .printable-view-page {
+    min-height: 0 !important;
+    background: var(--white) !important;
+  }
+
   .no-print {
     display: none !important;
   }
 
-  // Ensure proper page breaks
-  .match-print-item {
-    page-break-inside: avoid;
+  .printable-view {
+    display: block;
+    min-height: 0;
+    background: var(--white);
+
+    .printable-content {
+      display: block;
+      padding: 0;
+    }
+
+    .matches-print-section {
+      display: block;
+    }
+
+    // The sheet becomes the page box: full bleed, no desk, no shadow.
+    .venue-section {
+      width: 100%;
+      box-shadow: none;
+    }
+
+    // Repeat the venue band and the column strip on every physical page, the
+    // job `fixed` does for the PDF's running header.
+    .sheet > thead {
+      display: table-header-group;
+    }
+
+    .sheet > tfoot {
+      display: table-footer-group;
+    }
+
+    .venue-section--new-page {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    .match-row {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    // A day band at the foot of a page with its first match overleaf reads wrong.
+    .day-row {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+
+    // Typed scores print as the numbers themselves; empty boxes stay fillable.
+    .score-input {
+      background: transparent !important;
+    }
   }
 
-  // Print margins
+  // Full bleed: the band, zebra and day bands run to the paper edge, and the
+  // 34pt inset lives on the cells — as it does on the PDF page.
   @page {
-    margin: 0.5in;
+    size: A4;
+    margin: 0;
   }
 }

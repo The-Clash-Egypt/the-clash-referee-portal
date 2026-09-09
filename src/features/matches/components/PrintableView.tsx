@@ -1,12 +1,37 @@
 import React, { useState } from "react";
-import { Match, MatchGameScore } from "../types/match";
+import { Match, sideDisplayName } from "../types/match";
 import { previewMatchesPDFWithFilename } from "../../../utils/reactPdfExport";
+import {
+  UNASSIGNED_VENUE_LABEL,
+  groupMatchesByVenue,
+  shouldGroupByVenue,
+} from "../../../utils/venueGrouping";
+import {
+  ScoreCell,
+  isCellWinner,
+  scoreCellWidth,
+  scoreCellsFor,
+} from "../../../utils/matchScoreCells";
+import {
+  dayKey,
+  formatClock,
+  formatDayLabel,
+  formatMembers,
+  formatReferees,
+  headerCategory,
+  shouldLabelCategories,
+  matchIsLive,
+  matchCountLabel,
+  printedOnLabel,
+  sheetMeta,
+} from "../../../utils/matchSheetFormat";
 
 interface PrintableViewProps {
   matches: Match[];
   tournamentName: string;
   categoryName?: string;
   venueName?: string;
+  venueNames?: string[];
   refereeName?: string;
   teamName?: string;
   formatName?: string;
@@ -14,11 +39,15 @@ interface PrintableViewProps {
   onClose: () => void;
 }
 
+/** Scores typed into the sheet before printing, keyed by match id. */
+type ScoreDrafts = Record<string, ScoreCell[]>;
+
 const PrintableView: React.FC<PrintableViewProps> = ({
   matches,
   tournamentName,
   categoryName,
   venueName,
+  venueNames,
   refereeName,
   teamName,
   formatName,
@@ -26,99 +55,37 @@ const PrintableView: React.FC<PrintableViewProps> = ({
   onClose,
 }) => {
   const [isExportingPDF, setIsExportingPDF] = useState(false);
-  const [matchGameScores, setMatchGameScores] = useState<{ [matchId: string]: MatchGameScore[] }>({});
-  const formatTime = (timeString?: string) => {
-    if (!timeString) return "TBD";
-    const date = new Date(timeString);
-    return date.toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
+  const [scoreDrafts, setScoreDrafts] = useState<ScoreDrafts>({});
+
+  /**
+   * Seeds from the match itself rather than an empty array. Seeding from `[]`
+   * stored an empty grid, which then won the lookup in cellsForMatch and
+   * unmounted the inputs on the first keystroke.
+   */
+  const cellsForMatch = (match: Match): ScoreCell[] => scoreDrafts[match.id] ?? scoreCellsFor(match);
+
+  const updateScoreCell = (match: Match, gameNumber: number, side: "home" | "away", raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, "").slice(0, 3);
+    const value = digits === "" ? null : parseInt(digits, 10);
+
+    setScoreDrafts((previous) => {
+      const base = previous[match.id] ?? scoreCellsFor(match);
+      return {
+        ...previous,
+        [match.id]: base.map((cell) =>
+          cell.gameNumber === gameNumber ? { ...cell, [side]: value } : cell
+        ),
+      };
     });
-  };
-
-  const formatScore = (match: Match) => {
-    return match.homeScore !== undefined && match.awayScore !== undefined
-      ? `${match.homeScore}-${match.awayScore}`
-      : "TBD";
-  };
-
-  const getRefereesList = (referees?: any[]) => {
-    if (!referees || referees.length === 0) return "Unassigned";
-    return referees.map((ref) => ref.fullName || ref.name || "Unknown").join(", ");
-  };
-
-  const getBestOfValue = (match: Match): number => {
-    return match.bestOf || 1;
-  };
-
-  const getGameScoresForMatch = (match: Match): MatchGameScore[] => {
-    if (matchGameScores[match.id]) {
-      return matchGameScores[match.id];
-    }
-    if (match.gameScores && match.gameScores.length > 0) {
-      return match.gameScores;
-    }
-    // Initialize with empty game scores based on best of
-    const bestOf = getBestOfValue(match);
-    return Array.from({ length: bestOf }, (_, index) => ({
-      gameNumber: index + 1,
-      homeScore: 0,
-      awayScore: 0,
-    }));
-  };
-
-  const updateGameScore = (matchId: string, gameNumber: number, field: "homeScore" | "awayScore", value: string) => {
-    const numericValue = value === "" ? 0 : Math.max(0, parseInt(value) || 0);
-    setMatchGameScores((prev) => {
-      const currentScores = prev[matchId] || [];
-      const updatedScores = currentScores.map((score) =>
-        score.gameNumber === gameNumber ? { ...score, [field]: numericValue } : score
-      );
-      return { ...prev, [matchId]: updatedScores };
-    });
-  };
-
-  const canAddMoreGames = (match: Match): boolean => {
-    const bestOf = getBestOfValue(match);
-    const currentScores = getGameScoresForMatch(match);
-
-    // Check if match is already decided
-    const homeWins = currentScores.filter((score) => score.homeScore > score.awayScore).length;
-    const awayWins = currentScores.filter((score) => score.homeScore < score.awayScore).length;
-    const setsNeededToWin = Math.ceil(bestOf / 2);
-
-    if (homeWins >= setsNeededToWin || awayWins >= setsNeededToWin) {
-      return false;
-    }
-    return currentScores.length < bestOf;
-  };
-
-  const addGame = (match: Match) => {
-    const currentScores = getGameScoresForMatch(match);
-    const nextGameNumber = currentScores.length + 1;
-    const newScore: MatchGameScore = {
-      gameNumber: nextGameNumber,
-      homeScore: 0,
-      awayScore: 0,
-    };
-
-    setMatchGameScores((prev) => ({
-      ...prev,
-      [match.id]: [...currentScores, newScore],
-    }));
   };
 
   const getViewTitle = () => {
-    const filters = [];
+    const filters: string[] = [];
 
-    // Add primary filter based on view type
     switch (viewType) {
       case "venue":
-        if (venueName) filters.push(`${venueName}`);
+        if (venueNames && venueNames.length > 1) filters.push(venueNames.join(", "));
+        else if (venueName) filters.push(`${venueName}`);
         break;
       case "referee":
         if (refereeName) filters.push(`Referee: ${refereeName}`);
@@ -127,40 +94,32 @@ const PrintableView: React.FC<PrintableViewProps> = ({
         if (teamName) filters.push(`Team: ${teamName}`);
         break;
       default:
-        // For general view, show all active filters
-        if (venueName) filters.push(`${venueName}`);
+        if (venueNames && venueNames.length > 1) filters.push(venueNames.join(", "));
+        else if (venueName) filters.push(`${venueName}`);
         if (refereeName) filters.push(`Referee: ${refereeName}`);
         if (teamName) filters.push(`Team: ${teamName}`);
         break;
     }
 
-    // Add additional filters
     if (formatName) filters.push(`${formatName}`);
 
-    // If no filters, return default title
-    if (filters.length === 0) {
-      return "Matches Report";
-    }
-
-    // Join all filters with " - "
-    return filters.join(" - ");
-  };
-
-  const handleClose = () => {
-    onClose();
+    return filters.length === 0 ? "All matches" : filters.join(" - ");
   };
 
   const handlePreviewPDF = async () => {
     try {
       setIsExportingPDF(true);
-
-      // Open PDF in new window for preview
+      // The drafts go across as cells rather than merged into gameScores: merging
+      // would drop the blank boxes and renumber the rest, so the PDF would stop
+      // matching the sheet on screen.
       await previewMatchesPDFWithFilename(matches, viewType, tournamentName, {
         categoryName,
         venueName,
+        venueNames,
         refereeName,
         teamName,
         formatName,
+        scoreDrafts,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to preview PDF. Please try again.";
@@ -170,193 +129,236 @@ const PrintableView: React.FC<PrintableViewProps> = ({
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const draftedCount = matches.filter((match) => {
+    const draft = scoreDrafts[match.id];
+    return draft?.some((cell) => cell.home !== null || cell.away !== null);
+  }).length;
+
+  const renderScoreGrid = (match: Match) => {
+    const cells = cellsForMatch(match);
+    const width = `${scoreCellWidth(cells.length)}pt`;
+    const hasResult = match.homeScore !== undefined && match.awayScore !== undefined;
+
+    const renderCell = (cell: ScoreCell, side: "home" | "away") => {
+      const value = cell[side];
+      const other = side === "home" ? cell.away : cell.home;
+      const isEmpty = value === null;
+
+      return (
+        <div
+          key={`${side}-${cell.gameNumber}`}
+          className={`score-grid__cell${isEmpty ? " score-grid__cell--empty" : ""}`}
+          style={{ width }}
+        >
+          {match.isCompleted ? (
+            <span className={`score-cell-text${isCellWinner(value, other) ? " is-winner" : ""}`}>
+              {isEmpty ? " " : value}
+            </span>
+          ) : (
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={3}
+              className={`score-input ${side}-score`}
+              value={isEmpty ? "" : String(value)}
+              onFocus={(event) => event.currentTarget.select()}
+              onChange={(event) => updateScoreCell(match, cell.gameNumber, side, event.target.value)}
+              aria-label={`Game ${cell.gameNumber} ${side} score`}
+            />
+          )}
+        </div>
+      );
+    };
+
+    return (
+      <>
+        <div className="score-grid">
+          <div className="score-grid__row">{cells.map((cell) => renderCell(cell, "home"))}</div>
+          <div className="score-grid__row">{cells.map((cell) => renderCell(cell, "away"))}</div>
+        </div>
+        {match.isCompleted && hasResult ? (
+          <span className="score-display">
+            {match.homeScore} &ndash; {match.awayScore}
+          </span>
+        ) : (
+          <span className="score-caption">Best of {Math.max(match.bestOf || 1, 1)}</span>
+        )}
+      </>
+    );
+  };
+
+  // Decided once for the whole report so every sheet agrees: the category goes
+  // either in each header or on each row, never both and never neither.
+  const showCategory = shouldLabelCategories(matches);
+  const sheetCategory = headerCategory(categoryName, matches);
+
+  const renderMatchRow = (match: Match, position: number, shade: boolean) => {
+    const homeMembers = formatMembers(match.homeTeamMembers);
+    const awayMembers = formatMembers(match.awayTeamMembers);
+
+    return (
+      <tr
+        key={match.id}
+        className={`match-row${shade ? " match-row--alt" : ""}${matchIsLive(match) ? " match-row--live" : ""}`}
+      >
+        <td className="rail">
+          <span className="match-number">{position}</span>
+          <span className="time">{formatClock(match.startTime)}</span>
+          {match.round ? <span className="round">{match.round}</span> : null}
+          {showCategory && match.categoryName ? (
+            <span className="category">{match.categoryName}</span>
+          ) : null}
+        </td>
+
+        <td className="fixture">
+          <span className="team-name">{sideDisplayName(match.homeTeamName, match.homeTeam2Name)}</span>
+          {homeMembers ? <span className="team-members">{homeMembers}</span> : null}
+          <span className="versus">v</span>
+          <span className="team-name">{sideDisplayName(match.awayTeamName, match.awayTeam2Name)}</span>
+          {awayMembers ? <span className="team-members">{awayMembers}</span> : null}
+          <span className="referee-line">
+            <span className="referee-label">Referees</span>
+            <span className="referee-names">{formatReferees(match.referees)}</span>
+          </span>
+        </td>
+
+        <td className="score">{renderScoreGrid(match)}</td>
+      </tr>
+    );
+  };
+
+  const renderSchedule = (sheetMatches: Match[]) => {
+    let lastDay = "";
+
+    return sheetMatches.map((match, index) => {
+      const key = dayKey(match);
+      const startsNewDay = key !== lastDay;
+      lastDay = key;
+
+      return (
+        <React.Fragment key={match.id}>
+          {startsNewDay && (
+            <tr className="day-row">
+              <td colSpan={3}>{formatDayLabel(match.startTime)}</td>
+            </tr>
+          )}
+          {renderMatchRow(match, index + 1, index % 2 === 1)}
+        </React.Fragment>
+      );
+    });
+  };
+
+  /**
+   * One sheet per venue. A real table, because `thead { display: table-header-group }`
+   * is the only way a browser repeats the venue band on every printed page — the
+   * same job `fixed` does for the PDF's running header.
+   */
+  const renderSheet = (key: string, title: string, sheetMatches: Match[], newPage: boolean) => (
+    <section key={key} className={`venue-section${newPage ? " venue-section--new-page" : ""}`}>
+      <table className="sheet">
+        <colgroup>
+          <col className="col-rail" />
+          <col className="col-fixture" />
+          <col className="col-score" />
+        </colgroup>
+
+        <thead className="sheet-head">
+          <tr className="sheet-band">
+            <th colSpan={3}>
+              <span className="venue-section-title">{title}</span>
+              <span className="sheet-meta">
+                {sheetMeta(tournamentName, sheetCategory, formatName, sheetMatches.length).map((item, index) => (
+                  <span key={`${index}-${item}`} className="sheet-meta__item">
+                    {item}
+                  </span>
+                ))}
+              </span>
+            </th>
+          </tr>
+          <tr className="sheet-colhead">
+            <th className="col-time">Time</th>
+            <th className="col-match">Match</th>
+            <th className="col-score">Score</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {sheetMatches.length === 0 ? (
+            <tr>
+              <td colSpan={3} className="no-matches-print">
+                <h3>Nothing scheduled</h3>
+                <p>No matches match the selected filters.</p>
+              </td>
+            </tr>
+          ) : (
+            renderSchedule(sheetMatches)
+          )}
+        </tbody>
+
+        <tfoot className="print-footer">
+          <tr>
+            <td colSpan={3}>
+              <div className="print-footer__inner">
+                <span>{tournamentName}</span>
+                <span>{printedOnLabel()}</span>
+              </div>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </section>
+  );
+
+  const renderSheets = () => {
+    if (shouldGroupByVenue(viewType)) {
+      const groups = groupMatchesByVenue(matches);
+
+      if (groups.length === 0) {
+        return renderSheet("empty", venueName || "All venues", [], false);
+      }
+
+      return groups.map((group, index) =>
+        renderSheet(
+          group.venue,
+          group.venue === UNASSIGNED_VENUE_LABEL ? UNASSIGNED_VENUE_LABEL : group.venue,
+          group.matches,
+          index > 0
+        )
+      );
+    }
+
+    const subject = viewType === "referee" ? refereeName : teamName;
+    return renderSheet("single", subject || "Matches", matches, false);
   };
 
   return (
     <div className="printable-view">
-      {/* Print Controls - Hidden when printing */}
       <div className="print-controls no-print">
         <div className="print-header">
-          <h2>Export Preview</h2>
-          <p>Review the document before previewing PDF or printing.</p>
+          <h2>Export preview</h2>
+          <p>
+            {getViewTitle()}
+            <span className="print-header__count">{matchCountLabel(matches.length)}</span>
+          </p>
+          {draftedCount > 0 && (
+            <p className="entry-status" aria-live="polite">
+              {draftedCount} of {matches.length} scored
+            </p>
+          )}
         </div>
+
         <div className="print-actions">
           <button onClick={handlePreviewPDF} className="pdf-btn" disabled={isExportingPDF}>
             {isExportingPDF ? "Opening..." : "Preview PDF"}
           </button>
-          <button onClick={handlePrint} className="print-btn">
-            Print
-          </button>
-          <button onClick={handleClose} className="close-btn">
-            Close Preview
+          <button onClick={onClose} className="close-btn">
+            Close preview
           </button>
         </div>
       </div>
 
-      {/* Printable Content */}
       <div id="printable-content" className="printable-content">
-        {/* Header */}
-        <div className="print-header-section">
-          <h1 className="tournament-title">{tournamentName}</h1>
-          <h2 className="view-title">{getViewTitle()}</h2>
-          {categoryName && <h3 className="category-title">{categoryName}</h3>}
-        </div>
-
-        {/* Matches List */}
-        <div className="matches-print-section">
-          {matches.length === 0 ? (
-            <div className="no-matches-print">
-              <div className="empty-state-icon">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                </svg>
-              </div>
-              <h3>No Matches Found</h3>
-              <p>No matches found for the selected criteria.</p>
-            </div>
-          ) : (
-            <div className="matches-grid">
-              {matches.map((match, index) => (
-                <div key={match.id} className="match-card">
-                  <div className="match-card-header">
-                    <div className="match-number">#{index + 1}</div>
-                    <div className="match-status">
-                      {match.isCompleted ? (
-                        <span className="status-badge completed">Completed</span>
-                      ) : match.startTime && new Date(match.startTime) <= new Date() ? (
-                        <span className="status-badge in-progress">In Progress</span>
-                      ) : (
-                        <span className="status-badge upcoming">Upcoming</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Match Information - Center Aligned */}
-                  <div className="match-info-simple">
-                    {match.categoryName && (
-                      <div className="info-item">
-                        <span className="info-value">{match.categoryName}</span>
-                      </div>
-                    )}
-
-                    <div className="info-item">
-                      <span className="info-value">{match.round || "TBD"}</span>
-                    </div>
-
-                    <div className="info-item">
-                      <span className="info-value">{formatTime(match.startTime)}</span>
-                    </div>
-
-                    <div className="info-item">
-                      <span className="info-value">{match.venue || "TBD"}</span>
-                    </div>
-
-                    <div className="info-item teams-scores">
-                      <div className="teams-row">
-                        <div className="team-column">
-                          <span className="team-name">{match.homeTeamName || "TBD"}</span>
-                          {match.homeTeamMembers && match.homeTeamMembers.length > 0 && (
-                            <div className="team-members-list">
-                              {match.homeTeamMembers.map((member) => (
-                                <span key={member.id} className="team-member">
-                                  {member.firstName} {member.lastName}
-                                  {member.isCaptain && " (C)"}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <span className="score-display">{formatScore(match)}</span>
-                        <div className="team-column">
-                          <span className="team-name">{match.awayTeamName || "TBD"}</span>
-                          {match.awayTeamMembers && match.awayTeamMembers.length > 0 && (
-                            <div className="team-members-list">
-                              {match.awayTeamMembers.map((member) => (
-                                <span key={member.id} className="team-member">
-                                  {member.firstName} {member.lastName}
-                                  {member.isCaptain && " (C)"}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Referees - Original Design */}
-                  <div className="match-referees">
-                    <div className="referees-display">
-                      <svg className="referees-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" />
-                      </svg>
-                      <span className="referees-text">{getRefereesList(match.referees)}</span>
-                    </div>
-                  </div>
-
-                  {/* Game Scores */}
-                  {!match.isCompleted ? (
-                    <div className="game-scores-section">
-                      <div className="game-scores-header">
-                        <h4>Game Scores (Best of {getBestOfValue(match)})</h4>
-                        {canAddMoreGames(match) && (
-                          <button className="add-game-btn" onClick={() => addGame(match)} type="button">
-                            + Add Game
-                          </button>
-                        )}
-                      </div>
-                      <div className="game-scores-grid">
-                        {getGameScoresForMatch(match).map((gameScore, gameIndex) => (
-                          <div key={gameIndex} className="game-score-card">
-                            <span className="game-number">Game {gameScore.gameNumber}</span>
-                            <div className="game-score-inputs">
-                              <input
-                                type="text"
-                                onChange={(e) =>
-                                  updateGameScore(match.id, gameScore.gameNumber, "homeScore", e.target.value)
-                                }
-                                className="score-input home-score"
-                              />
-                              <span className="score-separator">-</span>
-                              <input
-                                type="text"
-                                onChange={(e) =>
-                                  updateGameScore(match.id, gameScore.gameNumber, "awayScore", e.target.value)
-                                }
-                                className="score-input away-score"
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : match.gameScores && match.gameScores.length > 0 ? (
-                    <div className="game-scores-section">
-                      <h4>Game Scores</h4>
-                      <div className="game-scores-grid">
-                        {match.gameScores.map((gameScore, gameIndex) => (
-                          <div key={gameIndex} className="game-score-card">
-                            <span className="game-number">Game {gameScore.gameNumber}</span>
-                            <span className="game-score">
-                              {gameScore.homeScore} - {gameScore.awayScore}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="print-footer">
-          <p>The Clash Referee Portal - {new Date().getFullYear()}</p>
-        </div>
+        <div className="matches-print-section">{renderSheets()}</div>
       </div>
     </div>
   );
