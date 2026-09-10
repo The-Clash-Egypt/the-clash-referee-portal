@@ -21,13 +21,16 @@ jest.mock("../components/UpdateScoreDialog", () => ({
   __esModule: true,
   default: (props: { isOpen: boolean; onSubmit: (s: unknown[]) => Promise<void>; onClose: () => void }) =>
     props.isOpen ? (
-      <button
-        onClick={() =>
-          props.onSubmit([{ gameNumber: 1, homeScore: 21, awayScore: 17 }]).then(props.onClose, () => undefined)
-        }
-      >
-        Submit stub
-      </button>
+      <>
+        <button
+          onClick={() =>
+            props.onSubmit([{ gameNumber: 1, homeScore: 21, awayScore: 17 }]).then(props.onClose, () => undefined)
+          }
+        >
+          Submit stub
+        </button>
+        <button onClick={props.onClose}>Close stub</button>
+      </>
     ) : null,
 }));
 
@@ -113,6 +116,32 @@ it("waits until both teams are decided before offering score entry", async () =>
 
   expect(await screen.findByText(/teams haven't been decided yet/)).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Enter score" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Submit stub" })).not.toBeInTheDocument();
+});
+
+it("opens straight into score entry when a QR is scanned for an open match", async () => {
+  load.mockResolvedValue(guest());
+
+  renderView();
+
+  expect(await screen.findByRole("button", { name: "Submit stub" })).toBeInTheDocument();
+});
+
+it("shows the match card, with Enter score, once the scoreboard is closed — and doesn't reopen it by itself", async () => {
+  load.mockResolvedValue(guest());
+
+  renderView();
+  fireEvent.click(await screen.findByRole("button", { name: "Close stub" }));
+
+  expect(await screen.findByRole("button", { name: "Enter score" })).toBeInTheDocument();
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Submit stub" })).not.toBeInTheDocument());
+});
+
+it("does not open the scoreboard for a completed match or undecided teams", async () => {
+  load.mockResolvedValueOnce(guest({ isCompleted: true, homeTeamSets: 2, awayTeamSets: 0 }));
+  renderView();
+  await screen.findByText(/Scores for this match are final/);
+  expect(screen.queryByRole("button", { name: "Submit stub" })).not.toBeInTheDocument();
 });
 
 it("explains an expired QR", async () => {

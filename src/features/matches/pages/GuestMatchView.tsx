@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import MatchCard from "../../shared/components/MatchCard";
 import UpdateScoreDialog from "../components/UpdateScoreDialog";
@@ -78,6 +78,16 @@ export const GuestMatchView: React.FC<{ matchId: string; token: string }> = ({ m
 
   // Memoised: UpdateScoreDialog re-initialises its scores whenever `match` changes identity.
   const match = useMemo(() => (guestMatch ? guestMatchToMatch(guestMatch) : null), [guestMatch]);
+
+  // A scan should land on the scoreboard, not on a card (user request). Once per visit, so closing
+  // the scoreboard shows the card and "Enter score" instead of snapping back open.
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    if (autoOpened.current || !guestMatch) return;
+    if (guestMatch.isCompleted || !guestMatch.homeTeamName || !guestMatch.awayTeamName) return;
+    autoOpened.current = true;
+    setIsScoring(true);
+  }, [guestMatch]);
 
   const handleSubmit = async (gameScores: MatchGameScore[]) => {
     setSaving(true);
