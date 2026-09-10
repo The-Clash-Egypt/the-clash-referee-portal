@@ -37,12 +37,19 @@ const UNREACHABLE: Blocked = {
   tone: "neutral",
   canRetry: true,
 };
+const SERVER_ERROR: Blocked = {
+  title: "Couldn't load this match",
+  message: "Something went wrong on our side. Please try again in a moment.",
+  tone: "neutral",
+  canRetry: true,
+};
 
 const blockedFor = (error: unknown): Blocked => {
   const reason = guestAccessErrorReason(error);
   if (reason === "expired") return EXPIRED;
   if (reason === "invalid" || reason === "not-found") return INVALID;
-  return UNREACHABLE;
+  if (reason === "network") return UNREACHABLE;
+  return SERVER_ERROR;
 };
 
 /** One match reached through its QR code (spec §4.4). Final, then locked: completed matches are read-only. */
@@ -60,6 +67,11 @@ export const GuestMatchView: React.FC<{ matchId: string; token: string }> = ({ m
     queryFn: () => getGuestMatch(matchId, token),
     enabled: hasParams,
     retry: false,
+    // No background refetch while the score dialog is open, so an unlock/reconnect mid-entry
+    // can't swap `guestMatch`'s identity out from under UpdateScoreDialog and reset its state.
+    // Freshness returns as soon as it closes.
+    refetchOnWindowFocus: !isScoring,
+    refetchOnReconnect: !isScoring,
   });
 
   // Memoised: UpdateScoreDialog re-initialises its scores whenever `match` changes identity.
@@ -74,9 +86,8 @@ export const GuestMatchView: React.FC<{ matchId: string; token: string }> = ({ m
     } catch (submitError) {
       const reason = guestAccessErrorReason(submitError);
       if (reason === "completed" || reason === "expired" || reason === "invalid" || reason === "not-found") {
-        // Nothing to retry: let the dialog close and the page say why.
+        // Nothing to retry: let the dialog close (onSubmit resolves) and handleDialogClose refetch.
         setNotice(reason === "completed" ? "This match was already completed." : null);
-        await refetch();
         return;
       }
       alert(guestAccessErrorMessage(submitError) ?? "Couldn't save the score. Please try again.");
