@@ -2,6 +2,7 @@ import { pdf } from "@react-pdf/renderer";
 import { Match } from "../features/matches/types/match";
 import MatchesPDFDocument from "../components/MatchesPDFDocument";
 import { ScoreDrafts } from "./matchScoreCells";
+import { QrLinks } from "./matchSheetLayout";
 
 export type ReportViewType = "venue" | "referee" | "team" | "general";
 
@@ -15,6 +16,8 @@ export interface PDFExportFilters {
   formatName?: string;
   /** Scores typed into the preview but not yet saved. */
   scoreDrafts?: ScoreDrafts;
+  /** Guest links for the match QRs, keyed by match id. */
+  qrLinks?: QrLinks;
 }
 
 interface PDFExportOptions extends PDFExportFilters {
@@ -24,7 +27,7 @@ interface PDFExportOptions extends PDFExportFilters {
 }
 
 const renderBlob = (matches: Match[], options: PDFExportOptions): Promise<Blob> => {
-  const { viewType, tournamentName, categoryName, venueName, refereeName, teamName, formatName, scoreDrafts } =
+  const { viewType, tournamentName, categoryName, venueName, refereeName, teamName, formatName, scoreDrafts, qrLinks } =
     options;
 
   return pdf(
@@ -38,6 +41,7 @@ const renderBlob = (matches: Match[], options: PDFExportOptions): Promise<Blob> 
       formatName={formatName}
       viewType={viewType}
       scoreDrafts={scoreDrafts}
+      qrLinks={qrLinks}
     />
   ).toBlob();
 };

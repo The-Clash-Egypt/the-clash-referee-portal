@@ -18,8 +18,6 @@ export const SCORE_BOX_AREA_WIDTH = 170;
 export const SCORE_CELL_MAX_WIDTH = 30;
 export const SCORE_CELL_HEIGHT = 24;
 export const SCORE_BOX_GAP = 4;
-/** Border of the legacy joined grid; removed when the PDF moves to separate boxes. */
-export const SCORE_GRID_BORDER = 0.75;
 
 /**
  * Boxes stay full size up to five games (5 × 30 + 4 × 4 = 166pt) and shrink beyond that so a

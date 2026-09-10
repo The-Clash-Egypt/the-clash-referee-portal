@@ -1,29 +1,34 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
-import { Match, sideDisplayName } from "../features/matches/types/match";
+import { Document, Page, Path, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
+import { Match, isFixedPointsFormat, sideDisplayName } from "../features/matches/types/match";
 import { PDF_FONT_FAMILY, registerPdfFonts } from "../utils/pdfFonts";
-import { UNASSIGNED_VENUE_LABEL, groupMatchesByVenue, shouldGroupByVenue } from "../utils/venueGrouping";
+import { shouldGroupByVenue } from "../utils/venueGrouping";
 import {
+  SCORE_BOX_GAP,
   SCORE_CELL_HEIGHT,
-  SCORE_GRID_BORDER,
   ScoreCell,
   ScoreDrafts,
   isCellWinner,
   scoreCellWidth,
   scoreCellsFor,
 } from "../utils/matchScoreCells";
+import { QrLink, QrLinks, SHEET, SheetPage, paginateSheets, sheetSubjectTitle } from "../utils/matchSheetLayout";
 import {
-  dayKey,
-  formatClock,
-  headerCategory,
-  shouldLabelCategories,
-  formatDayLabel,
+  CardMetaOptions,
+  cardMetaItems,
+  cardRuleLabel,
   formatMembers,
   formatReferees,
+  formatValidUntil,
+  headerCategory,
   matchIsLive,
   printedOnLabel,
+  qrCaption,
+  reportSpansMultipleDays,
   sheetMeta,
+  shouldLabelCategories,
 } from "../utils/matchSheetFormat";
+import { qrModules, qrPathData } from "../utils/qrMatrix";
 
 registerPdfFonts();
 
@@ -37,283 +42,258 @@ const MUTED = "#6b7280";
 const FAINT = "#9ca3af";
 const RULE = "#e5e7eb";
 const RULE_STRONG = "#cbd5e1";
-const WASH = "#f9fafb";
-const DAY_WASH = "#eef2f7";
-
-const PAGE_X = 34;
-const HEADER_HEIGHT = 96;
-const RAIL_WIDTH = 70;
-const SCORE_WIDTH = 150;
+const CARD_BORDER = 0.75;
 
 const styles = StyleSheet.create({
   page: {
     fontFamily: PDF_FONT_FAMILY,
     backgroundColor: "#ffffff",
     color: INK,
-    paddingTop: HEADER_HEIGHT,
-    paddingBottom: 38,
+    paddingTop: SHEET.headerHeight + SHEET.bodyPaddingTop,
+    paddingBottom: SHEET.footerHeight,
+    paddingHorizontal: SHEET.marginX,
   },
 
-  // Running header: repeats on every page so a sheet torn off mid-section
-  // still names its court.
-  header: { position: "absolute", top: 0, left: 0, right: 0 },
-  band: { backgroundColor: BRAND, paddingHorizontal: PAGE_X, paddingTop: 15, paddingBottom: 13 },
-  bandTitle: { fontSize: 22, fontWeight: "bold", color: "#ffffff" },
-  bandMeta: { flexDirection: "row", marginTop: 5 },
+  // Header band: repeats on every page so a sheet taken off the clipboard still names its court.
+  header: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: SHEET.headerHeight,
+    justifyContent: "center",
+    paddingHorizontal: SHEET.marginX,
+    backgroundColor: BRAND,
+  },
+  bandTitle: { fontSize: 18, fontWeight: "bold", color: "#ffffff" },
+  bandMeta: { flexDirection: "row", flexWrap: "wrap", marginTop: 4 },
   bandMetaItem: { fontSize: 8.5, color: BRAND_MUTED, marginRight: 14 },
 
-  columnHeader: {
+  card: {
     flexDirection: "row",
-    paddingHorizontal: PAGE_X,
-    paddingTop: 6,
-    paddingBottom: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: RULE_STRONG,
-    backgroundColor: "#ffffff",
+    height: SHEET.cardHeight,
+    marginBottom: SHEET.cardGap,
+    padding: SHEET.cardPadding,
+    borderWidth: CARD_BORDER,
+    borderColor: RULE_STRONG,
+    borderRadius: 4,
   },
-  columnLabel: { fontSize: 7.5, color: MUTED },
-
-  dayRow: {
-    paddingHorizontal: PAGE_X,
-    paddingVertical: 4,
-    backgroundColor: DAY_WASH,
-    borderBottomWidth: 0.75,
-    borderBottomColor: RULE_STRONG,
+  // Gold edge for a match already under way; padding compensates so nothing shifts.
+  cardLive: {
+    borderLeftWidth: SHEET.liveEdge,
+    borderLeftColor: LIVE,
+    paddingLeft: SHEET.cardPadding - SHEET.liveEdge + CARD_BORDER,
   },
-  dayText: { fontSize: 8.5, fontWeight: "bold", color: BRAND },
 
-  row: {
-    flexDirection: "row",
-    paddingHorizontal: PAGE_X,
-    paddingVertical: 9,
-    borderBottomWidth: 0.75,
-    borderBottomColor: RULE,
-  },
-  rowAlt: { backgroundColor: WASH },
-  rowLive: { borderLeftWidth: 3, borderLeftColor: LIVE, paddingLeft: PAGE_X - 3 },
+  main: { flex: 1, flexDirection: "column", paddingRight: 12 },
+  topLine: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  meta: { flex: 1, paddingRight: 8, fontSize: 8.5, color: MUTED },
+  rule: { fontSize: 8.5, color: MUTED },
+  ruleFinal: { fontSize: 9, fontWeight: "bold", color: BRAND },
 
-  rail: { width: RAIL_WIDTH },
-  matchNumber: { fontSize: 8.5, fontWeight: "bold", color: FAINT },
-  time: { fontSize: 11.5, fontWeight: "bold", color: INK, marginTop: 2 },
-  round: { fontSize: 7.5, color: MUTED, marginTop: 2 },
-  category: { fontSize: 7.5, color: FAINT, marginTop: 2 },
+  labels: { flexDirection: "row", paddingLeft: SHEET.nameWidth, marginBottom: 3 },
+  label: { fontSize: 7, color: FAINT, textAlign: "center" },
 
-  fixture: { flex: 1, paddingRight: 12 },
-  teamName: { fontSize: 10.5, fontWeight: "bold", color: INK },
-  teamMembers: { fontSize: 7.5, color: INK_SOFT, marginTop: 1.5 },
-  versus: { fontSize: 7.5, color: FAINT, marginVertical: 3 },
-  refereeLine: { flexDirection: "row", marginTop: 6 },
-  refereeLabel: { fontSize: 7.5, color: FAINT, marginRight: 6 },
-  refereeNames: { fontSize: 8, color: INK_SOFT, flex: 1 },
-
-  scoreColumn: { width: SCORE_WIDTH, alignItems: "flex-end" },
-  grid: { borderWidth: SCORE_GRID_BORDER, borderColor: RULE_STRONG, backgroundColor: "#ffffff" },
-  gridRow: { flexDirection: "row", borderBottomWidth: SCORE_GRID_BORDER, borderBottomColor: RULE_STRONG },
-  gridRowLast: { borderBottomWidth: 0 },
-  cell: {
+  team: { flexDirection: "row", alignItems: "center", minHeight: 36 },
+  name: { width: SHEET.nameWidth, paddingRight: 10, justifyContent: "center" },
+  teamName: { fontSize: 11, fontWeight: "bold", color: INK, maxLines: 1, textOverflow: "ellipsis" },
+  members: { marginTop: 1.5, fontSize: 7.5, color: INK_SOFT, maxLines: 2, textOverflow: "ellipsis" },
+  boxes: { flexDirection: "row" },
+  box: {
     height: SCORE_CELL_HEIGHT,
-    borderRightWidth: SCORE_GRID_BORDER,
-    borderRightColor: RULE_STRONG,
+    borderWidth: 0.75,
+    borderColor: RULE_STRONG,
+    borderRadius: 2,
     alignItems: "center",
     justifyContent: "center",
   },
-  cellLast: { borderRightWidth: 0 },
-  cellText: { fontSize: 9, color: INK },
-  cellTextWinner: { fontSize: 9, color: INK, fontWeight: "bold" },
-  result: { fontSize: 11, fontWeight: "bold", color: BRAND, marginTop: 4 },
-  scoreCaption: { fontSize: 7.5, color: FAINT, marginTop: 4 },
+  boxText: { fontSize: 11, color: INK },
+  boxTextWinner: { fontSize: 11, color: INK, fontWeight: "bold" },
+  divider: { height: 0.75, marginVertical: 4, backgroundColor: RULE },
 
-  empty: { paddingHorizontal: PAGE_X, paddingTop: 40 },
+  spacer: { flexGrow: 1 },
+  referee: { flexDirection: "row" },
+  refereeLabel: { marginRight: 6, fontSize: 7.5, color: FAINT },
+  refereeNames: { flex: 1, fontSize: 8, color: INK_SOFT, maxLines: 1, textOverflow: "ellipsis" },
+
+  qrColumn: { width: SHEET.qrColumnWidth, alignItems: "center", justifyContent: "center" },
+  qrSlot: { width: SHEET.qrSize, height: SHEET.qrSize },
+  qrCaption: { marginTop: 6, fontSize: 8, fontWeight: "bold", color: INK_SOFT },
+  qrExpiry: { marginTop: 2, fontSize: 7, color: FAINT },
+
+  empty: { paddingTop: 28 },
   emptyTitle: { fontSize: 12, fontWeight: "bold", color: INK_SOFT },
-  emptyText: { fontSize: 9, color: MUTED, marginTop: 4 },
+  emptyText: { marginTop: 4, fontSize: 9, color: MUTED },
 
   footer: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
+    height: SHEET.footerHeight,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: PAGE_X,
-    paddingTop: 8,
-    paddingBottom: 12,
+    alignItems: "center",
+    paddingHorizontal: SHEET.marginX,
     borderTopWidth: 0.75,
     borderTopColor: RULE,
   },
   footerText: { fontSize: 7.5, color: FAINT },
 });
 
-const ScoreBlock: React.FC<{ match: Match; draft?: ScoreCell[] }> = ({ match, draft }) => {
-  const cells = scoreCellsFor(match, draft);
-  const bestOf = Math.max(match.bestOf || 1, 1);
-  const hasResult = match.homeScore !== undefined && match.awayScore !== undefined;
-  const width = scoreCellWidth(cells.length);
-
-  const cellStyle = (index: number) =>
-    index === cells.length - 1 ? [styles.cell, styles.cellLast, { width }] : [styles.cell, { width }];
-  const textStyle = (value: number | null, other: number | null) =>
-    isCellWinner(value, other) ? styles.cellTextWinner : styles.cellText;
-
+/** A vector QR: one path of module-unit rectangles, crisp at any print size. */
+const QrCode: React.FC<{ url: string }> = ({ url }) => {
+  const modules = qrModules(url, "M");
+  const size = modules.length;
   return (
-    <View style={styles.scoreColumn}>
-      <View style={styles.grid}>
-        <View style={styles.gridRow}>
-          {cells.map((cell, index) => (
-            <View key={`home-${cell.gameNumber}`} style={cellStyle(index)}>
-              <Text style={textStyle(cell.home, cell.away)}>{cell.home ?? " "}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={[styles.gridRow, styles.gridRowLast]}>
-          {cells.map((cell, index) => (
-            <View key={`away-${cell.gameNumber}`} style={cellStyle(index)}>
-              <Text style={textStyle(cell.away, cell.home)}>{cell.away ?? " "}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-      {match.isCompleted && hasResult ? (
-        <Text style={styles.result}>
-          {match.homeScore} – {match.awayScore}
-        </Text>
-      ) : (
-        <Text style={styles.scoreCaption}>Best of {bestOf}</Text>
-      )}
-    </View>
+    <Svg width={SHEET.qrSize} height={SHEET.qrSize} viewBox={`0 0 ${size} ${size}`}>
+      <Path d={qrPathData(modules)} fill={INK} />
+    </Svg>
   );
 };
 
-const MatchRow: React.FC<{
+const boxSpacing = (index: number, count: number) => (index === count - 1 ? 0 : SCORE_BOX_GAP);
+
+/** One team: its name column, then its own score boxes on the same line. */
+const TeamLine: React.FC<{
+  name: string;
+  members: string;
+  cells: ScoreCell[];
+  side: "home" | "away";
+  boxWidth: number;
+}> = ({ name, members, cells, side, boxWidth }) => (
+  <View style={styles.team}>
+    <View style={styles.name}>
+      <Text style={styles.teamName}>{name}</Text>
+      {members ? <Text style={styles.members}>{members}</Text> : null}
+    </View>
+    <View style={styles.boxes}>
+      {cells.map((cell, index) => {
+        const value = cell[side];
+        const other = side === "home" ? cell.away : cell.home;
+        return (
+          <View
+            key={`${side}-${cell.gameNumber}`}
+            style={[styles.box, { width: boxWidth, marginRight: boxSpacing(index, cells.length) }]}
+          >
+            <Text style={isCellWinner(value, other) ? styles.boxTextWinner : styles.boxText}>{value ?? " "}</Text>
+          </View>
+        );
+      })}
+    </View>
+  </View>
+);
+
+const MatchSheetCard: React.FC<{
   match: Match;
   position: number;
-  shade: boolean;
   draft?: ScoreCell[];
-  showCategory?: boolean;
-}> = ({ match, position, shade, draft, showCategory }) => {
-  const homeMembers = formatMembers(match.homeTeamMembers);
-  const awayMembers = formatMembers(match.awayTeamMembers);
-
-  const rowStyle = [
-    styles.row,
-    ...(shade ? [styles.rowAlt] : []),
-    ...(matchIsLive(match) ? [styles.rowLive] : []),
-  ];
+  qr?: QrLink;
+  meta: CardMetaOptions;
+}> = ({ match, position, draft, qr, meta }) => {
+  const cells = scoreCellsFor(match, draft);
+  const boxWidth = scoreCellWidth(cells.length);
+  const fixedPoints = isFixedPointsFormat(match.formatType);
 
   return (
-    <View style={rowStyle} wrap={false}>
-      <View style={styles.rail}>
-        <Text style={styles.matchNumber}>{position}</Text>
-        <Text style={styles.time}>{formatClock(match.startTime)}</Text>
-        {match.round ? <Text style={styles.round}>{match.round}</Text> : null}
-        {showCategory && match.categoryName ? (
-          <Text style={styles.category}>{match.categoryName}</Text>
-        ) : null}
-      </View>
+    <View style={matchIsLive(match) ? [styles.card, styles.cardLive] : styles.card} wrap={false}>
+      <View style={styles.main}>
+        <View style={styles.topLine}>
+          <Text style={styles.meta}>{cardMetaItems(match, position, meta).join("  ·  ")}</Text>
+          <Text style={match.isCompleted ? styles.ruleFinal : styles.rule}>{cardRuleLabel(match)}</Text>
+        </View>
 
-      <View style={styles.fixture}>
-        <Text style={styles.teamName}>{sideDisplayName(match.homeTeamName, match.homeTeam2Name)}</Text>
-        {homeMembers ? <Text style={styles.teamMembers}>{homeMembers}</Text> : null}
-        <Text style={styles.versus}>v</Text>
-        <Text style={styles.teamName}>{sideDisplayName(match.awayTeamName, match.awayTeam2Name)}</Text>
-        {awayMembers ? <Text style={styles.teamMembers}>{awayMembers}</Text> : null}
-        <View style={styles.refereeLine}>
+        <View style={styles.labels}>
+          {cells.map((cell, index) => (
+            <Text
+              key={cell.gameNumber}
+              style={[styles.label, { width: boxWidth, marginRight: boxSpacing(index, cells.length) }]}
+            >
+              {fixedPoints ? "Pts" : `G${cell.gameNumber}`}
+            </Text>
+          ))}
+        </View>
+
+        <TeamLine
+          name={sideDisplayName(match.homeTeamName, match.homeTeam2Name)}
+          members={formatMembers(match.homeTeamMembers)}
+          cells={cells}
+          side="home"
+          boxWidth={boxWidth}
+        />
+        <View style={styles.divider} />
+        <TeamLine
+          name={sideDisplayName(match.awayTeamName, match.awayTeam2Name)}
+          members={formatMembers(match.awayTeamMembers)}
+          cells={cells}
+          side="away"
+          boxWidth={boxWidth}
+        />
+
+        <View style={styles.spacer} />
+        <View style={styles.referee}>
           <Text style={styles.refereeLabel}>Referees</Text>
           <Text style={styles.refereeNames}>{formatReferees(match.referees)}</Text>
         </View>
       </View>
 
-      <ScoreBlock match={match} draft={draft} />
+      <View style={styles.qrColumn}>
+        {qr ? (
+          <>
+            <QrCode url={qr.url} />
+            <Text style={styles.qrCaption}>{qrCaption(match)}</Text>
+            <Text style={styles.qrExpiry}>Valid until {formatValidUntil(qr.expiresAt)}</Text>
+          </>
+        ) : (
+          <View style={styles.qrSlot} />
+        )}
+      </View>
     </View>
   );
 };
 
-const MatchSchedule: React.FC<{
-  matches: Match[];
-  scoreDrafts?: ScoreDrafts;
-  showCategory?: boolean;
-}> = ({ matches, scoreDrafts, showCategory }) => {
-  let lastDay = "";
-
-  return (
-    <View>
-      {matches.map((match, index) => {
-        const key = dayKey(match);
-        const startsNewDay = key !== lastDay;
-        lastDay = key;
-
-        return (
-          <View key={match.id}>
-            {startsNewDay ? (
-              <View style={styles.dayRow}>
-                <Text style={styles.dayText}>{formatDayLabel(match.startTime)}</Text>
-              </View>
-            ) : null}
-            <MatchRow
-              match={match}
-              position={index + 1}
-              shade={index % 2 === 1}
-              draft={scoreDrafts?.[match.id]}
-              showCategory={showCategory}
-            />
-          </View>
-        );
-      })}
-    </View>
-  );
-};
-
-interface ReportPageProps {
-  title: string;
+const SheetPageView: React.FC<{
+  page: SheetPage;
   meta: string[];
-  matches: Match[];
   footerLabel: string;
   scoreDrafts?: ScoreDrafts;
-  showCategory?: boolean;
-}
-
-const ReportPage: React.FC<ReportPageProps> = ({
-  title,
-  meta,
-  matches,
-  footerLabel,
-  scoreDrafts,
-  showCategory,
-}) => (
+  qrLinks?: QrLinks;
+  cardMeta: CardMetaOptions;
+}> = ({ page, meta, footerLabel, scoreDrafts, qrLinks, cardMeta }) => (
   <Page size="A4" style={styles.page}>
     <View style={styles.header} fixed>
-      <View style={styles.band}>
-        <Text style={styles.bandTitle}>{title}</Text>
-        <View style={styles.bandMeta}>
-          {meta.map((item) => (
-            <Text key={item} style={styles.bandMetaItem}>
-              {item}
-            </Text>
-          ))}
-        </View>
-      </View>
-      <View style={styles.columnHeader}>
-        <Text style={[styles.columnLabel, { width: RAIL_WIDTH }]}>Time</Text>
-        <Text style={[styles.columnLabel, { flex: 1 }]}>Match</Text>
-        <Text style={[styles.columnLabel, { width: SCORE_WIDTH, textAlign: "right" }]}>Score</Text>
+      <Text style={styles.bandTitle}>{page.title}</Text>
+      <View style={styles.bandMeta}>
+        {meta.map((item, index) => (
+          <Text key={`${index}-${item}`} style={styles.bandMetaItem}>
+            {item}
+          </Text>
+        ))}
       </View>
     </View>
 
-    {matches.length === 0 ? (
+    {page.matches.length === 0 ? (
       <View style={styles.empty}>
         <Text style={styles.emptyTitle}>Nothing scheduled</Text>
         <Text style={styles.emptyText}>No matches match the selected filters.</Text>
       </View>
     ) : (
-      <MatchSchedule matches={matches} scoreDrafts={scoreDrafts} showCategory={showCategory} />
+      page.matches.map((match, index) => (
+        <MatchSheetCard
+          key={match.id}
+          match={match}
+          position={page.firstPosition + index}
+          draft={scoreDrafts?.[match.id]}
+          qr={qrLinks?.[match.id]}
+          meta={cardMeta}
+        />
+      ))
     )}
 
     <View style={styles.footer} fixed>
       <Text style={styles.footerText}>{footerLabel}</Text>
       <Text style={styles.footerText}>{printedOnLabel()}</Text>
-      <Text
-        style={styles.footerText}
-        render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
-      />
+      <Text style={styles.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
     </View>
   </Page>
 );
@@ -329,6 +309,8 @@ interface MatchesPDFDocumentProps {
   viewType: "venue" | "referee" | "team" | "general";
   /** Scores typed into the preview but not yet saved. */
   scoreDrafts?: ScoreDrafts;
+  /** Guest links for the match QRs, keyed by match id. Matches without one print an empty slot. */
+  qrLinks?: QrLinks;
 }
 
 const MatchesPDFDocument: React.FC<MatchesPDFDocumentProps> = ({
@@ -341,57 +323,30 @@ const MatchesPDFDocument: React.FC<MatchesPDFDocumentProps> = ({
   formatName,
   viewType,
   scoreDrafts,
+  qrLinks,
 }) => {
-  // Decided once for the whole report so every sheet agrees: the category goes
-  // either in each header or on each row, never both and never neither.
-  const showCategory = shouldLabelCategories(matches);
+  // Decided once per report so every card agrees.
   const sheetCategory = headerCategory(categoryName, matches);
-
-  // Venue and general reports read as a court sheet: one venue per page.
-  if (shouldGroupByVenue(viewType)) {
-    const groups = groupMatchesByVenue(matches);
-
-    return (
-      <Document title={`${tournamentName} matches`} author="The Clash Referee Portal">
-        {groups.length === 0 ? (
-          <ReportPage
-            title={venueName || "All venues"}
-            meta={sheetMeta(tournamentName, sheetCategory, formatName, 0)}
-            matches={[]}
-            footerLabel={tournamentName}
-            scoreDrafts={scoreDrafts}
-            showCategory={showCategory}
-          />
-        ) : (
-          groups.map((group) => (
-            <ReportPage
-              key={group.venue}
-              title={group.venue === UNASSIGNED_VENUE_LABEL ? UNASSIGNED_VENUE_LABEL : group.venue}
-              meta={sheetMeta(tournamentName, sheetCategory, formatName, group.matches.length)}
-              matches={group.matches}
-              footerLabel={tournamentName}
-              scoreDrafts={scoreDrafts}
-              showCategory={showCategory}
-            />
-          ))
-        )}
-      </Document>
-    );
-  }
-
-  // Referee and team reports stay a single chronological run across courts.
-  const subject = viewType === "referee" ? refereeName : teamName;
+  const cardMeta: CardMetaOptions = {
+    showCategory: shouldLabelCategories(matches),
+    showDate: reportSpansMultipleDays(matches),
+    showCourt: !shouldGroupByVenue(viewType),
+  };
+  const pages = paginateSheets(matches, viewType, sheetSubjectTitle(viewType, { venueName, refereeName, teamName }));
 
   return (
     <Document title={`${tournamentName} matches`} author="The Clash Referee Portal">
-      <ReportPage
-        title={subject || "Matches"}
-        meta={sheetMeta(tournamentName, sheetCategory, formatName, matches.length)}
-        matches={matches}
-        footerLabel={tournamentName}
-        scoreDrafts={scoreDrafts}
-        showCategory={showCategory}
-      />
+      {pages.map((page) => (
+        <SheetPageView
+          key={page.key}
+          page={page}
+          meta={sheetMeta(tournamentName, sheetCategory, formatName, page.groupSize)}
+          footerLabel={tournamentName}
+          scoreDrafts={scoreDrafts}
+          qrLinks={qrLinks}
+          cardMeta={cardMeta}
+        />
+      ))}
     </Document>
   );
 };
