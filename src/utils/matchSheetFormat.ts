@@ -135,15 +135,10 @@ export const cardMetaItems = (match: Match, position: number, options: CardMetaO
   return items;
 };
 
-/** Top-right of a card: the final result once complete, otherwise the scoring rule. */
+/** Top-right of a card: the scoring rule. Results are read from the boxes, never summarised here. */
 export const cardRuleLabel = (match: Match): string => {
   if (isFixedPointsFormat(match.formatType)) {
-    const game = match.gameScores?.[0];
-    if (match.isCompleted && game) return `Final · ${game.homeScore}–${game.awayScore}`;
     return match.pointsPerMatch ? `${match.formatType} · to ${match.pointsPerMatch} pts` : `${match.formatType}`;
-  }
-  if (match.isCompleted && match.homeScore !== undefined && match.awayScore !== undefined) {
-    return `Final · ${match.homeScore}–${match.awayScore}`;
   }
   return `Best of ${Math.max(match.bestOf || 1, 1)}`;
 };

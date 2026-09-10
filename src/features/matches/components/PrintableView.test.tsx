@@ -77,7 +77,7 @@ it("draws a QR on every card, completed matches included", () => {
 
   expect(container.querySelectorAll(".sheet-card__qr svg")).toHaveLength(2);
   expect(screen.getByText("Scan to view result")).toBeInTheDocument();
-  expect(screen.getByText("Final · 2–0")).toBeInTheDocument();
+  expect(screen.queryByText(/Final/)).not.toBeInTheDocument();
   expect(screen.getAllByText("Valid until Fri 11 Sep, 2:32 PM")).toHaveLength(2);
 });
 

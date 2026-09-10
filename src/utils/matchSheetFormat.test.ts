@@ -100,15 +100,15 @@ describe("card text", () => {
     ).toEqual(["#1", "Sat 12 Sep", "10:30 AM", "Round 1", "Women", "Court 2"]);
   });
 
-  it("labels the rule, or the final result", () => {
+  it("labels the scoring rule, never a final score", () => {
     expect(cardRuleLabel(card())).toBe("Best of 3");
-    expect(cardRuleLabel(card({ isCompleted: true, homeScore: 2, awayScore: 1 }))).toBe("Final · 2–1");
+    expect(cardRuleLabel(card({ isCompleted: true, homeScore: 2, awayScore: 1 }))).toBe("Best of 3");
     expect(cardRuleLabel(card({ formatType: "Americano", pointsPerMatch: 21 }))).toBe("Americano · to 21 pts");
     expect(
       cardRuleLabel(
-        card({ formatType: "Mexicano", isCompleted: true, gameScores: [{ gameNumber: 1, homeScore: 13, awayScore: 11 }] })
+        card({ formatType: "Mexicano", pointsPerMatch: 24, isCompleted: true, gameScores: [{ gameNumber: 1, homeScore: 13, awayScore: 11 }] })
       )
-    ).toBe("Final · 13–11");
+    ).toBe("Mexicano · to 24 pts");
   });
 
   it("captions the QR for what a scan will do", () => {

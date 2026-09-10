@@ -210,9 +210,7 @@ const PrintableView: React.FC<PrintableViewProps> = ({
         <div className="sheet-card__main">
           <div className="sheet-card__top">
             <span className="sheet-card__meta">{cardMetaItems(match, position, cardMeta).join("  ·  ")}</span>
-            <span className={`sheet-card__rule${match.isCompleted ? " sheet-card__rule--final" : ""}`}>
-              {cardRuleLabel(match)}
-            </span>
+            <span className="sheet-card__rule">{cardRuleLabel(match)}</span>
           </div>
 
           <div className="sheet-card__labels">

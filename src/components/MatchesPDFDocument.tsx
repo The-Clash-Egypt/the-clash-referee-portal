@@ -89,7 +89,6 @@ const styles = StyleSheet.create({
   topLine: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
   meta: { flex: 1, paddingRight: 8, fontSize: 8.5, color: MUTED },
   rule: { fontSize: 8.5, color: MUTED },
-  ruleFinal: { fontSize: 9, fontWeight: "bold", color: BRAND },
 
   labels: { flexDirection: "row", paddingLeft: SHEET.nameWidth, marginBottom: 4 },
   label: { fontSize: 7, color: FAINT, textAlign: "center" },
@@ -200,7 +199,7 @@ const MatchSheetCard: React.FC<{
       <View style={styles.main}>
         <View style={styles.topLine}>
           <Text style={styles.meta}>{cardMetaItems(match, position, meta).join("  ·  ")}</Text>
-          <Text style={match.isCompleted ? styles.ruleFinal : styles.rule}>{cardRuleLabel(match)}</Text>
+          <Text style={styles.rule}>{cardRuleLabel(match)}</Text>
         </View>
 
         <View style={styles.labels}>
