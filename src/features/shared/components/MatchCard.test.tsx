@@ -8,15 +8,17 @@ const match = { id: "m1", homeTeamName: "Falcons", awayTeamName: "Sharks", isCom
 
 it("offers admins a QR code, completed matches included", () => {
   const onShowQR = jest.fn();
-  render(<MatchCard match={match} showAdminActions onShowQR={onShowQR} showAssignReferee={false} />);
+  const { container } = render(<MatchCard match={match} showAdminActions onShowQR={onShowQR} showAssignReferee={false} />);
 
-  fireEvent.click(screen.getByRole("button", { name: "QR Code" }));
+  fireEvent.click(screen.getByRole("button", { name: "QR code" }));
 
   expect(onShowQR).toHaveBeenCalledWith(match);
+  expect(container.querySelector(".match-actions .qr-icon-button")).toBeNull();
+  expect(container.querySelector(".tournament-meta .qr-icon-button")).not.toBeNull();
 });
 
 it("hides the QR button from everyone else", () => {
   render(<MatchCard match={match} onShowQR={jest.fn()} showAssignReferee={false} />);
 
-  expect(screen.queryByRole("button", { name: "QR Code" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "QR code" })).not.toBeInTheDocument();
 });

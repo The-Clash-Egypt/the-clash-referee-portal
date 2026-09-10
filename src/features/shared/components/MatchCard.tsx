@@ -127,6 +127,19 @@ const MatchCard: React.FC<MatchCardProps> = ({
         <div className="tournament-meta">
           {match.categoryName && <span className="category-badge">{match.categoryName}</span>}
           {match.format && <span className="format-badge">{match.format}</span>}
+          {showAdminActions && onShowQR && (
+            <button
+              type="button"
+              className="qr-icon-button"
+              onClick={() => onShowQR(match)}
+              aria-label="QR code"
+              title="Show QR code"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M3,11H5V13H3V11M11,5H13V9H11V5M9,11H13V15H11V13H9V11M15,11H17V13H19V11H21V13H19V15H21V19H19V21H17V19H13V21H11V17H15V15H17V13H15V11M19,19V15H17V19H19M15,3H21V9H15V3M17,5V7H19V5H17M3,3H9V9H3V3M5,5V7H7V5H5M3,15H9V21H3V15M5,17V19H7V17H5Z" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -294,11 +307,6 @@ const MatchCard: React.FC<MatchCardProps> = ({
         {showAdminActions && onEditMatch && (
           <button className="btn btn-secondary" onClick={() => onEditMatch(match)}>
             Edit Match
-          </button>
-        )}
-        {showAdminActions && onShowQR && (
-          <button className="btn btn-secondary" onClick={() => onShowQR(match)}>
-            QR Code
           </button>
         )}
         {onUpdateScore && showUpdateScore && (

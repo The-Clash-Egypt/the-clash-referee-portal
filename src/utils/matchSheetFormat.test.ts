@@ -53,4 +53,11 @@ describe("formatClock", () => {
   it("uses a plain space before AM/PM, never U+202F", () => {
     expect(formatClock(new Date(2026, 8, 12, 10, 30).toISOString())).toBe("10:30 AM");
   });
+
+  it("replaces the narrow no-break space newer ICU puts before AM/PM", () => {
+    const spy = jest.spyOn(Date.prototype, "toLocaleTimeString").mockReturnValue("2:32 PM");
+    expect(formatValidUntil(new Date(2026, 8, 11, 14, 32).toISOString())).toBe("Fri 11 Sep, 2:32 PM");
+    expect(formatClock(new Date(2026, 8, 12, 10, 30).toISOString())).toBe("2:32 PM");
+    spy.mockRestore();
+  });
 });

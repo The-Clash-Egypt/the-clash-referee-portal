@@ -18,7 +18,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
  * which the PDF fonts may not carry and which breaks text comparisons.
  */
 const clockTime = (date: Date): string =>
-  date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).replace(/ /g, " ");
+  date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).replace(/\u202f/g, " ");
 
 /** "Fri 11 Sep". Built by hand so it reads the same under every ICU/locale build. */
 const shortDay = (date: Date): string => `${WEEKDAYS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}`;
