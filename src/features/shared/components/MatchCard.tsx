@@ -10,6 +10,7 @@ interface MatchCardProps {
   onUnassignReferee?: (refereeId: string, matchId: string) => Promise<void>;
   onUpdateScore?: (match: Match) => void;
   onEditMatch?: (match: Match) => void;
+  onShowQR?: (match: Match) => void;
   onShareRefereeWhatsApp?: (referee: any) => void;
   showAdminActions?: boolean;
   showUpdateScore?: boolean;
@@ -26,6 +27,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
   onUnassignReferee,
   onUpdateScore,
   onEditMatch,
+  onShowQR,
   onShareRefereeWhatsApp,
   showAdminActions = false,
   showUpdateScore = true,
@@ -292,6 +294,11 @@ const MatchCard: React.FC<MatchCardProps> = ({
         {showAdminActions && onEditMatch && (
           <button className="btn btn-secondary" onClick={() => onEditMatch(match)}>
             Edit Match
+          </button>
+        )}
+        {showAdminActions && onShowQR && (
+          <button className="btn btn-secondary" onClick={() => onShowQR(match)}>
+            QR Code
           </button>
         )}
         {onUpdateScore && showUpdateScore && (

@@ -18,6 +18,7 @@ import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
 import UpdateScoreDialog from "../components/UpdateScoreDialog";
 import BulkUpdateScoreModal from "../components/BulkUpdateScoreModal";
 import EditMatchModal from "../components/EditMatchModal";
+import MatchQRCodeModal from "../components/MatchQRCodeModal";
 import BulkEditMatchModal from "../components/BulkEditMatchModal";
 import PrintableView from "../components/PrintableView";
 import SearchableDropdown from "../components/SearchableDropdown";
@@ -55,6 +56,7 @@ const MatchesManagement: React.FC = () => {
   const [showUpdateScoreModal, setShowUpdateScoreModal] = useState(false);
   const [updatingScore, setUpdatingScore] = useState(false);
   const [selectedMatchForScore, setSelectedMatchForScore] = useState<Match | null>(null);
+  const [qrMatch, setQrMatch] = useState<Match | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -1650,6 +1652,7 @@ const MatchesManagement: React.FC = () => {
                     onUpdateScore={handleUpdateScore}
                     onAssignReferee={openAssignmentModal}
                     onUnassignReferee={handleUnassignReferee}
+                    onShowQR={hasFullAccess ? setQrMatch : undefined}
                     showAdminActions={hasFullAccess}
                     showUpdateScore={!match.isCompleted || hasFullAccess}
                     isSelectable={hasFullAccess}
@@ -1753,6 +1756,9 @@ const MatchesManagement: React.FC = () => {
             openInFullscreen={false}
             loading={updatingScore}
           />
+
+          {/* Match QR Modal */}
+          <MatchQRCodeModal match={qrMatch} onClose={() => setQrMatch(null)} />
 
           {/* Bulk Update Score Modal */}
           <BulkUpdateScoreModal

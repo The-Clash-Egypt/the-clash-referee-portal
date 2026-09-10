@@ -1,5 +1,5 @@
 import { Match } from "../features/matches/types/match";
-import { distinctCategories, headerCategory, shouldLabelCategories } from "./matchSheetFormat";
+import { distinctCategories, headerCategory, shouldLabelCategories, formatClock, formatValidUntil } from "./matchSheetFormat";
 
 const match = (categoryName?: string): Match => ({ id: "m", categoryName, isCompleted: false }) as Match;
 
@@ -35,5 +35,22 @@ describe("headerCategory", () => {
 
   it("stays empty when the report spans several categories", () => {
     expect(headerCategory(undefined, [match("2v2 Men"), match("2v2 Women")])).toBeUndefined();
+  });
+});
+
+describe("formatValidUntil", () => {
+  it("reads as a short day, date and clock time", () => {
+    // 11 Sep 2026 is a Friday; built in local time so the test is timezone-proof.
+    expect(formatValidUntil(new Date(2026, 8, 11, 14, 32).toISOString())).toBe("Fri 11 Sep, 2:32 PM");
+  });
+
+  it("is empty for an unreadable date", () => {
+    expect(formatValidUntil("not a date")).toBe("");
+  });
+});
+
+describe("formatClock", () => {
+  it("uses a plain space before AM/PM, never U+202F", () => {
+    expect(formatClock(new Date(2026, 8, 12, 10, 30).toISOString())).toBe("10:30 AM");
   });
 });
