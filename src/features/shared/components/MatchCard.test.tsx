@@ -81,4 +81,55 @@ describe("referee teams", () => {
 
     expect(screen.queryByText("Falcons")).not.toBeInTheDocument();
   });
+
+  describe("read-only, for the guest match page", () => {
+    const guestView = (card: Match) =>
+      render(
+        <MatchCard
+          match={card}
+          showAssignReferee={false}
+          showRefereeTeams
+          // Even with admin props present, the read-only list never offers a button.
+          showAdminActions
+          onUnassignReferee={jest.fn()}
+          onUnassignRefereeTeam={jest.fn()}
+        />
+      );
+
+    it("names the referee teams, without buttons or individual referees", () => {
+      const { container } = guestView(refereed);
+
+      const section = container.querySelector(".referees-section");
+      expect(section?.querySelector(".section-title")).toHaveTextContent("Referee teams");
+      const rows = Array.from(section?.querySelectorAll(".referee-item") ?? []);
+      expect(rows.map((row) => row.querySelector(".referee-name")?.textContent)).toEqual(["Falcons", "Sharks"]);
+      expect(rows.map((row) => row.querySelector(".referee-email")?.textContent)).toEqual(["Referee team", "Referee team"]);
+      expect(section?.querySelectorAll("button")).toHaveLength(0);
+      expect(screen.queryByText("Mona Salah")).not.toBeInTheDocument();
+      expect(screen.queryByText("No referees assigned for this match")).not.toBeInTheDocument();
+    });
+
+    it("says team, singular, for one", () => {
+      const { container } = guestView({ ...refereed, refereeTeams: [{ teamId: "t1", teamName: "Falcons" }] });
+
+      expect(container.querySelector(".referees-section .section-title")).toHaveTextContent(/^Referee team$/);
+    });
+
+    it("renders nothing without teams, or without the prop", () => {
+      const { container, rerender } = guestView({ ...refereed, refereeTeams: [] });
+      expect(container.querySelector(".referees-section")).toBeNull();
+
+      rerender(<MatchCard match={refereed} showAssignReferee={false} />);
+      expect(container.querySelector(".referees-section")).toBeNull();
+    });
+
+    it("leaves the admin section as it is", () => {
+      const { container } = render(<MatchCard match={refereed} showRefereeTeams />);
+
+      const sections = container.querySelectorAll(".referees-section");
+      expect(sections).toHaveLength(1);
+      expect(sections[0].querySelector(".section-title")).toHaveTextContent("Assigned Referees");
+      expect(screen.getByText("Mona Salah")).toBeInTheDocument();
+    });
+  });
 });

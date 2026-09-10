@@ -137,6 +137,15 @@ it("shows the match card, with Enter score, once the scoreboard is closed — an
   await waitFor(() => expect(screen.queryByRole("button", { name: "Submit stub" })).not.toBeInTheDocument());
 });
 
+it("names the match's referee teams on the card", async () => {
+  load.mockResolvedValue(guest({ isCompleted: true, homeTeamSets: 2, awayTeamSets: 0, refereeTeamNames: ["Eagles"] }));
+
+  renderView();
+
+  const name = await screen.findByText("Eagles");
+  expect(name.closest(".referees-section")?.querySelector(".section-title")).toHaveTextContent("Referee team");
+});
+
 it("does not open the scoreboard for a completed match or undecided teams", async () => {
   load.mockResolvedValueOnce(guest({ isCompleted: true, homeTeamSets: 2, awayTeamSets: 0 }));
   renderView();

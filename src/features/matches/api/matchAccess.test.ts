@@ -154,4 +154,15 @@ describe("guestMatchToMatch", () => {
     });
     expect(match.homeTeamMembers?.[0]).toMatchObject({ firstName: "Aly", lastName: "Hassan", isCaptain: true });
   });
+
+  it("carries the referee team names, in order, under ids of its own", () => {
+    expect(guestMatchToMatch(guest({ refereeTeamNames: ["Eagles", "Waves"] })).refereeTeams).toEqual([
+      { teamId: "guest-referee-team-0", teamName: "Eagles" },
+      { teamId: "guest-referee-team-1", teamName: "Waves" },
+    ]);
+  });
+
+  it("reads a backend that doesn't send referee teams as none", () => {
+    expect(guestMatchToMatch(guest()).refereeTeams).toEqual([]);
+  });
 });

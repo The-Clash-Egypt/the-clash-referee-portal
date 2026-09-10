@@ -16,6 +16,8 @@ interface MatchCardProps {
   showAdminActions?: boolean;
   showUpdateScore?: boolean;
   showAssignReferee?: boolean;
+  /** Guest page: the referee teams' names, read-only. Only applies when showAssignReferee is off. */
+  showRefereeTeams?: boolean;
   isSelectable?: boolean;
   isSelected?: boolean;
   onSelectionChange?: (matchId: string, selected: boolean) => void;
@@ -34,6 +36,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
   showAdminActions = false,
   showUpdateScore = true,
   showAssignReferee = true,
+  showRefereeTeams = false,
   isSelectable = false,
   isSelected = false,
   onSelectionChange,
@@ -315,6 +318,23 @@ const MatchCard: React.FC<MatchCardProps> = ({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Guest match page: who is refereeing, as team names only. No individuals, no actions. */}
+      {!showAssignReferee && showRefereeTeams && match.refereeTeams && match.refereeTeams.length > 0 && (
+        <div className="referees-section">
+          <div className="section-title">{match.refereeTeams.length === 1 ? "Referee team" : "Referee teams"}</div>
+          <div className="referees-list">
+            {match.refereeTeams.map((team) => (
+              <div key={`team-${team.teamId}`} className="referee-item">
+                <div className="referee-info">
+                  <span className="referee-name">{team.teamName}</span>
+                  <span className="referee-email">Referee team</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

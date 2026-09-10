@@ -42,6 +42,8 @@ export interface GuestMatch {
   gameScores: MatchGameScore[];
   homeTeamPlayers: GuestMatchPlayer[];
   awayTeamPlayers: GuestMatchPlayer[];
+  /** Names only, never a team playing the match. Older backends leave it out. */
+  refereeTeamNames?: string[];
   expiresAt?: string | null;
 }
 
@@ -158,6 +160,11 @@ export const guestMatchToMatch = (guest: GuestMatch): Match => ({
   awayScore: guest.awayTeamSets,
   gameScores: guest.gameScores,
   referees: [],
+  // The guest payload carries names only, so the ids are synthetic, like the members' below.
+  refereeTeams: (guest.refereeTeamNames ?? []).map((teamName, index) => ({
+    teamId: `guest-referee-team-${index}`,
+    teamName,
+  })),
   homeTeamMembers: guest.homeTeamPlayers.map((player, index) => toMember(player, `home-${index}`)),
   awayTeamMembers: guest.awayTeamPlayers.map((player, index) => toMember(player, `away-${index}`)),
   isCompleted: guest.isCompleted,

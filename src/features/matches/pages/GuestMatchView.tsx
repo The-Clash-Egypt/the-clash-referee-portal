@@ -168,7 +168,13 @@ export const GuestMatchView: React.FC<{ matchId: string; token: string }> = ({ m
           </p>
         ) : null}
 
-        <MatchCard match={match} showAdminActions={false} showUpdateScore={false} showAssignReferee={false} />
+        <MatchCard
+          match={match}
+          showAdminActions={false}
+          showUpdateScore={false}
+          showAssignReferee={false}
+          showRefereeTeams
+        />
 
         {match.isCompleted ? (
           <p className="guest-match-page__final">
