@@ -43,14 +43,24 @@ const view = (matches: Match[], extra: Partial<React.ComponentProps<typeof Print
     />
   );
 
-it("prints four matches per page, one court at a time", () => {
+it("prints three matches per page, one court at a time", () => {
   const { container } = view([1, 2, 3, 4, 5].map((n) => m(n)));
 
   const pages = container.querySelectorAll(".sheet-page");
   expect(pages).toHaveLength(2);
-  expect(pages[0].querySelectorAll(".sheet-card")).toHaveLength(4);
-  expect(pages[1].querySelectorAll(".sheet-card")).toHaveLength(1);
+  expect(pages[0].querySelectorAll(".sheet-card")).toHaveLength(3);
+  expect(pages[1].querySelectorAll(".sheet-card")).toHaveLength(2);
   expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+});
+
+it("waits for the QR codes before exporting, but never for a failure", () => {
+  const { rerender } = view([m(1)], { qrLinks: {}, qrStatus: "loading" });
+  expect(screen.getByRole("button", { name: "Preparing QR codes…" })).toBeDisabled();
+
+  rerender(
+    <PrintableView matches={[m(1)]} tournamentName="Summer Open" viewType="venue" onClose={jest.fn()} qrLinks={{}} qrStatus="failed" />
+  );
+  expect(screen.getByRole("button", { name: "Preview PDF" })).toBeEnabled();
 });
 
 it("draws a QR on every card, completed matches included", () => {

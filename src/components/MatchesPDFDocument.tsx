@@ -86,17 +86,17 @@ const styles = StyleSheet.create({
   },
 
   main: { flex: 1, flexDirection: "column", paddingRight: 12 },
-  topLine: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  topLine: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
   meta: { flex: 1, paddingRight: 8, fontSize: 8.5, color: MUTED },
   rule: { fontSize: 8.5, color: MUTED },
   ruleFinal: { fontSize: 9, fontWeight: "bold", color: BRAND },
 
-  labels: { flexDirection: "row", paddingLeft: SHEET.nameWidth, marginBottom: 3 },
+  labels: { flexDirection: "row", paddingLeft: SHEET.nameWidth, marginBottom: 4 },
   label: { fontSize: 7, color: FAINT, textAlign: "center" },
 
-  team: { flexDirection: "row", alignItems: "center", minHeight: 36 },
+  team: { flexDirection: "row", alignItems: "center", minHeight: 46 },
   name: { width: SHEET.nameWidth, paddingRight: 10, justifyContent: "center" },
-  teamName: { fontSize: 11, fontWeight: "bold", color: INK, maxLines: 1, textOverflow: "ellipsis" },
+  teamName: { fontSize: 12, fontWeight: "bold", color: INK, maxLines: 1, textOverflow: "ellipsis" },
   members: { marginTop: 1.5, fontSize: 7.5, color: INK_SOFT, maxLines: 2, textOverflow: "ellipsis" },
   boxes: { flexDirection: "row" },
   box: {
@@ -107,9 +107,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  boxText: { fontSize: 11, color: INK },
-  boxTextWinner: { fontSize: 11, color: INK, fontWeight: "bold" },
-  divider: { height: 0.75, marginVertical: 4, backgroundColor: RULE },
+  boxText: { fontSize: 12, color: INK },
+  boxTextWinner: { fontSize: 12, color: INK, fontWeight: "bold" },
+  divider: { height: 0.75, marginVertical: 6, backgroundColor: RULE },
 
   spacer: { flexGrow: 1 },
   referee: { flexDirection: "row" },
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
 
   qrColumn: { width: SHEET.qrColumnWidth, alignItems: "center", justifyContent: "center" },
   qrSlot: { width: SHEET.qrSize, height: SHEET.qrSize },
-  qrCaption: { marginTop: 6, fontSize: 8, fontWeight: "bold", color: INK_SOFT },
+  qrCaption: { marginTop: 8, fontSize: 8, fontWeight: "bold", color: INK_SOFT },
   qrExpiry: { marginTop: 2, fontSize: 7, color: FAINT },
 
   empty: { paddingTop: 28 },

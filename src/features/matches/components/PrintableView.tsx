@@ -314,8 +314,8 @@ const PrintableView: React.FC<PrintableViewProps> = ({
         </div>
 
         <div className="print-actions">
-          <button onClick={handlePreviewPDF} className="pdf-btn" disabled={isExportingPDF}>
-            {isExportingPDF ? "Opening..." : "Preview PDF"}
+          <button onClick={handlePreviewPDF} className="pdf-btn" disabled={isExportingPDF || qrStatus === "loading"}>
+            {isExportingPDF ? "Opening..." : qrStatus === "loading" ? "Preparing QR codes…" : "Preview PDF"}
           </button>
           <button onClick={onClose} className="close-btn">
             Close preview

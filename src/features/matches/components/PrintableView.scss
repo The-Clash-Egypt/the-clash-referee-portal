@@ -236,12 +236,13 @@ $rule-strong: #cbd5e1;
     display: flex;
     justify-content: space-between;
     gap: 8pt;
-    margin-bottom: 8pt;
+    margin-bottom: 12pt;
     font-size: 8.5pt;
   }
 
   .sheet-card__meta {
     color: $muted;
+    white-space: pre-wrap;
   }
 
   .sheet-card__rule {
@@ -258,7 +259,7 @@ $rule-strong: #cbd5e1;
   .sheet-card__labels {
     display: flex;
     gap: var(--sheet-box-gap);
-    margin-bottom: 3pt;
+    margin-bottom: 4pt;
     padding-left: var(--sheet-name-width);
   }
 
@@ -271,7 +272,7 @@ $rule-strong: #cbd5e1;
   .sheet-card__team {
     display: flex;
     align-items: center;
-    min-height: 36pt;
+    min-height: 46pt;
   }
 
   .sheet-card__name {
@@ -286,7 +287,7 @@ $rule-strong: #cbd5e1;
 
   .sheet-card__team-name {
     overflow: hidden;
-    font-size: 11pt;
+    font-size: 12pt;
     font-weight: 700;
     color: $ink;
     white-space: nowrap;
@@ -321,7 +322,7 @@ $rule-strong: #cbd5e1;
 
   .sheet-card__divider {
     height: 0.75pt;
-    margin: 4pt 0;
+    margin: 6pt 0;
     background: $rule;
   }
 
@@ -359,7 +360,7 @@ $rule-strong: #cbd5e1;
   }
 
   .sheet-card__qr-caption {
-    margin-top: 6pt;
+    margin-top: 8pt;
     font-size: 8pt;
     font-weight: 700;
     color: $ink-soft;
@@ -372,7 +373,7 @@ $rule-strong: #cbd5e1;
   }
 
   .score-cell-text {
-    font-size: 11pt;
+    font-size: 12pt;
     color: $ink;
 
     &.is-winner {
@@ -391,7 +392,7 @@ $rule-strong: #cbd5e1;
     border-radius: 0;
     background: transparent;
     font-family: inherit;
-    font-size: 11pt;
+    font-size: 12pt;
     color: $ink;
     text-align: center;
     appearance: none;

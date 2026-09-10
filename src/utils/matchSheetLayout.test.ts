@@ -6,16 +6,16 @@ const m = (id: string, venue?: string, startTime?: string): Match =>
   ({ id, venue, startTime, isCompleted: false }) as Match;
 
 describe("paginateSheets", () => {
-  it("puts at most four matches on a page and never mixes courts", () => {
+  it("puts at most three matches on a page and never mixes courts", () => {
     const court1 = Array.from({ length: 5 }, (_, i) => m(`a${i}`, "Court 1", `2026-09-12T0${i}:00:00Z`));
     const pages = paginateSheets([...court1, m("b0", "Court 2", "2026-09-12T01:00:00Z")], "general", "All venues");
 
     expect(pages.map((page) => [page.title, page.matches.map((match) => match.id)])).toEqual([
-      ["Court 1", ["a0", "a1", "a2", "a3"]],
-      ["Court 1", ["a4"]],
+      ["Court 1", ["a0", "a1", "a2"]],
+      ["Court 1", ["a3", "a4"]],
       ["Court 2", ["b0"]],
     ]);
-    expect(pages.map((page) => page.firstPosition)).toEqual([1, 5, 1]);
+    expect(pages.map((page) => page.firstPosition)).toEqual([1, 4, 1]);
     expect(pages.map((page) => page.groupSize)).toEqual([5, 5, 1]);
     expect(new Set(pages.map((page) => page.key)).size).toBe(3);
   });
@@ -49,7 +49,7 @@ describe("sheetSubjectTitle", () => {
 });
 
 describe("SHEET geometry", () => {
-  it("fits four cards between the header and the footer", () => {
+  it("fits three cards between the header and the footer", () => {
     const used = SHEET.headerHeight + SHEET.bodyPaddingTop + MATCHES_PER_PAGE * (SHEET.cardHeight + SHEET.cardGap);
     expect(used).toBeLessThanOrEqual(SHEET.pageHeight - SHEET.footerHeight);
   });

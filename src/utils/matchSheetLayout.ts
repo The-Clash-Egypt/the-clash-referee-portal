@@ -7,7 +7,7 @@ import { compareStartTimes, groupMatchesByVenue, shouldGroupByVenue } from "./ve
  * directly; the HTML preview gets them as CSS custom properties (sheetCssVariables) — one set of
  * numbers, so the preview and the PDF cannot drift apart.
  *
- * Vertical budget: 58 header + 12 padding + 4 × (176 card + 8 gap) = 806pt ≤ 841.89 − 30 footer.
+ * Vertical budget: 58 header + 12 padding + 3 × (230 card + 12 gap) = 796pt ≤ 841.89 − 30 footer.
  * Horizontal: 170 names + 170 boxes + 12 gutter + 140 QR = 492pt ≤ 501.78 inside a card.
  */
 export const SHEET = {
@@ -17,16 +17,16 @@ export const SHEET = {
   headerHeight: 58,
   footerHeight: 30,
   bodyPaddingTop: 12,
-  cardHeight: 176,
-  cardGap: 8,
+  cardHeight: 230,
+  cardGap: 12,
   cardPadding: 12,
   liveEdge: 3,
   nameWidth: 170,
   qrColumnWidth: 140,
-  qrSize: 120,
+  qrSize: 128,
 } as const;
 
-export const MATCHES_PER_PAGE = 4;
+export const MATCHES_PER_PAGE = 3;
 
 /** The guest link a match's QR encodes, and when it stops working. */
 export interface QrLink {
