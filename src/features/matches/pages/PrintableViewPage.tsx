@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Match, MatchFilters } from "../types/match";
 import { getRefereeMatches } from "../api/matches";
+import { buildMatchAccessUrl, issueMatchAccessTokens } from "../api/matchAccess";
+import { QrLinks, QrStatus } from "../../../utils/matchSheetLayout";
 import PrintableView from "../components/PrintableView";
 import VolleyballLoading from "../../../components/VolleyballLoading";
 import "./PrintableViewPage.scss";
@@ -14,6 +16,30 @@ const PrintableViewPage: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  const [qrLinks, setQrLinks] = useState<QrLinks>({});
+  const [qrStatus, setQrStatus] = useState<QrStatus>("idle");
+
+  // One token request for the whole report (spec §5.1). A failure never blocks printing.
+  const loadQrLinks = useCallback(async (forMatches: Match[]) => {
+    if (forMatches.length === 0) {
+      setQrLinks({});
+      setQrStatus("ready");
+      return;
+    }
+    setQrStatus("loading");
+    try {
+      const tokens = await issueMatchAccessTokens(forMatches.map((match) => match.id));
+      setQrLinks(
+        Object.fromEntries(
+          tokens.map((token) => [token.matchId, { url: buildMatchAccessUrl(token.matchId, token.token), expiresAt: token.expiresAt }])
+        )
+      );
+      setQrStatus("ready");
+    } catch (qrError) {
+      console.error("Failed to generate match QR codes:", qrError);
+      setQrStatus("failed");
+    }
+  }, []);
 
   // Get parameters from URL
   const tournamentName = searchParams.get("tournamentName") || "Tournament";
@@ -109,6 +135,10 @@ const PrintableViewPage: React.FC = () => {
     searchTerm,
   ]);
 
+  useEffect(() => {
+    if (!loading && !error) void loadQrLinks(matches);
+  }, [matches, loading, error, loadQrLinks]);
+
   const handleClose = () => {
     // Close the window since it was opened in a new tab/window via window.open()
     window.close();
@@ -161,6 +191,9 @@ const PrintableViewPage: React.FC = () => {
         formatName={formatName}
         viewType={viewType}
         onClose={handleClose}
+        qrLinks={qrLinks}
+        qrStatus={qrStatus}
+        onRetryQr={() => loadQrLinks(matches)}
       />
     </div>
   );

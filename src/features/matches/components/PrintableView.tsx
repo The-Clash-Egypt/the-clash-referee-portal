@@ -1,29 +1,32 @@
 import React, { useState } from "react";
-import { Match, sideDisplayName } from "../types/match";
+import QRCode from "react-qr-code";
+import { Match, isFixedPointsFormat, sideDisplayName } from "../types/match";
 import { previewMatchesPDFWithFilename } from "../../../utils/reactPdfExport";
+import { shouldGroupByVenue } from "../../../utils/venueGrouping";
+import { ScoreCell, ScoreDrafts, isCellWinner, scoreCellWidth, scoreCellsFor } from "../../../utils/matchScoreCells";
 import {
-  UNASSIGNED_VENUE_LABEL,
-  groupMatchesByVenue,
-  shouldGroupByVenue,
-} from "../../../utils/venueGrouping";
+  QrLinks,
+  QrStatus,
+  SheetPage,
+  paginateSheets,
+  sheetCssVariables,
+  sheetSubjectTitle,
+} from "../../../utils/matchSheetLayout";
 import {
-  ScoreCell,
-  isCellWinner,
-  scoreCellWidth,
-  scoreCellsFor,
-} from "../../../utils/matchScoreCells";
-import {
-  dayKey,
-  formatClock,
-  formatDayLabel,
+  CardMetaOptions,
+  cardMetaItems,
+  cardRuleLabel,
   formatMembers,
   formatReferees,
+  formatValidUntil,
   headerCategory,
-  shouldLabelCategories,
-  matchIsLive,
   matchCountLabel,
+  matchIsLive,
   printedOnLabel,
+  qrCaption,
+  reportSpansMultipleDays,
   sheetMeta,
+  shouldLabelCategories,
 } from "../../../utils/matchSheetFormat";
 
 interface PrintableViewProps {
@@ -37,11 +40,17 @@ interface PrintableViewProps {
   formatName?: string;
   viewType: "venue" | "referee" | "team" | "general";
   onClose: () => void;
+  /** Guest links for the match QRs, keyed by match id. */
+  qrLinks?: QrLinks;
+  qrStatus?: QrStatus;
+  onRetryQr?: () => void;
 }
 
-/** Scores typed into the sheet before printing, keyed by match id. */
-type ScoreDrafts = Record<string, ScoreCell[]>;
-
+/**
+ * The on-screen twin of MatchesPDFDocument: same pagination (paginateSheets), same geometry
+ * (SHEET via CSS custom properties), same card text. Scores typed into the boxes are drafts
+ * that flow into the PDF; nothing here saves to the server.
+ */
 const PrintableView: React.FC<PrintableViewProps> = ({
   matches,
   tournamentName,
@@ -53,14 +62,16 @@ const PrintableView: React.FC<PrintableViewProps> = ({
   formatName,
   viewType,
   onClose,
+  qrLinks = {},
+  qrStatus = "ready",
+  onRetryQr,
 }) => {
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [scoreDrafts, setScoreDrafts] = useState<ScoreDrafts>({});
 
   /**
-   * Seeds from the match itself rather than an empty array. Seeding from `[]`
-   * stored an empty grid, which then won the lookup in cellsForMatch and
-   * unmounted the inputs on the first keystroke.
+   * Seeds from the match itself rather than an empty array. Seeding from `[]` stored an empty
+   * grid, which then won the lookup and unmounted the inputs on the first keystroke.
    */
   const cellsForMatch = (match: Match): ScoreCell[] => scoreDrafts[match.id] ?? scoreCellsFor(match);
 
@@ -72,9 +83,7 @@ const PrintableView: React.FC<PrintableViewProps> = ({
       const base = previous[match.id] ?? scoreCellsFor(match);
       return {
         ...previous,
-        [match.id]: base.map((cell) =>
-          cell.gameNumber === gameNumber ? { ...cell, [side]: value } : cell
-        ),
+        [match.id]: base.map((cell) => (cell.gameNumber === gameNumber ? { ...cell, [side]: value } : cell)),
       };
     });
   };
@@ -109,9 +118,8 @@ const PrintableView: React.FC<PrintableViewProps> = ({
   const handlePreviewPDF = async () => {
     try {
       setIsExportingPDF(true);
-      // The drafts go across as cells rather than merged into gameScores: merging
-      // would drop the blank boxes and renumber the rest, so the PDF would stop
-      // matching the sheet on screen.
+      // Drafts go across as cells rather than merged into gameScores: merging would drop the
+      // blank boxes and renumber the rest, so the PDF would stop matching the sheet on screen.
       await previewMatchesPDFWithFilename(matches, viewType, tournamentName, {
         categoryName,
         venueName,
@@ -120,6 +128,7 @@ const PrintableView: React.FC<PrintableViewProps> = ({
         teamName,
         formatName,
         scoreDrafts,
+        qrLinks,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to preview PDF. Please try again.";
@@ -134,202 +143,144 @@ const PrintableView: React.FC<PrintableViewProps> = ({
     return draft?.some((cell) => cell.home !== null || cell.away !== null);
   }).length;
 
-  const renderScoreGrid = (match: Match) => {
+  // Decided once per report so every card agrees — the same rules the PDF uses.
+  const sheetCategory = headerCategory(categoryName, matches);
+  const cardMeta: CardMetaOptions = {
+    showCategory: shouldLabelCategories(matches),
+    showDate: reportSpansMultipleDays(matches),
+    showCourt: !shouldGroupByVenue(viewType),
+  };
+  const pages = paginateSheets(matches, viewType, sheetSubjectTitle(viewType, { venueName, refereeName, teamName }));
+
+  const renderBox = (match: Match, teamLabel: string, cell: ScoreCell, side: "home" | "away", width: string) => {
+    const value = cell[side];
+    const other = side === "home" ? cell.away : cell.home;
+    const isEmpty = value === null;
+
+    return (
+      <div
+        key={`${side}-${cell.gameNumber}`}
+        className={`sheet-card__box${isEmpty ? " sheet-card__box--empty" : ""}`}
+        style={{ width }}
+      >
+        {match.isCompleted ? (
+          <span className={`score-cell-text${isCellWinner(value, other) ? " is-winner" : ""}`}>{isEmpty ? " " : value}</span>
+        ) : (
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={3}
+            className="score-input"
+            value={isEmpty ? "" : String(value)}
+            onFocus={(event) => event.currentTarget.select()}
+            onChange={(event) => updateScoreCell(match, cell.gameNumber, side, event.target.value)}
+            aria-label={`${teamLabel} game ${cell.gameNumber}`}
+          />
+        )}
+      </div>
+    );
+  };
+
+  const renderTeamLine = (match: Match, side: "home" | "away", cells: ScoreCell[], width: string) => {
+    const name =
+      side === "home"
+        ? sideDisplayName(match.homeTeamName, match.homeTeam2Name)
+        : sideDisplayName(match.awayTeamName, match.awayTeam2Name);
+    const members = formatMembers(side === "home" ? match.homeTeamMembers : match.awayTeamMembers);
+
+    return (
+      <div className="sheet-card__team">
+        <div className="sheet-card__name">
+          <span className="sheet-card__team-name">{name}</span>
+          {members ? <span className="sheet-card__members">{members}</span> : null}
+        </div>
+        <div className="sheet-card__boxes">{cells.map((cell) => renderBox(match, name, cell, side, width))}</div>
+      </div>
+    );
+  };
+
+  const renderCard = (match: Match, position: number) => {
     const cells = cellsForMatch(match);
     const width = `${scoreCellWidth(cells.length)}pt`;
-    const hasResult = match.homeScore !== undefined && match.awayScore !== undefined;
+    const qr = qrLinks[match.id];
+    const fixedPoints = isFixedPointsFormat(match.formatType);
 
-    const renderCell = (cell: ScoreCell, side: "home" | "away") => {
-      const value = cell[side];
-      const other = side === "home" ? cell.away : cell.home;
-      const isEmpty = value === null;
-
-      return (
-        <div
-          key={`${side}-${cell.gameNumber}`}
-          className={`score-grid__cell${isEmpty ? " score-grid__cell--empty" : ""}`}
-          style={{ width }}
-        >
-          {match.isCompleted ? (
-            <span className={`score-cell-text${isCellWinner(value, other) ? " is-winner" : ""}`}>
-              {isEmpty ? " " : value}
+    return (
+      <article key={match.id} className={`sheet-card${matchIsLive(match) ? " sheet-card--live" : ""}`}>
+        <div className="sheet-card__main">
+          <div className="sheet-card__top">
+            <span className="sheet-card__meta">{cardMetaItems(match, position, cardMeta).join("  ·  ")}</span>
+            <span className={`sheet-card__rule${match.isCompleted ? " sheet-card__rule--final" : ""}`}>
+              {cardRuleLabel(match)}
             </span>
-          ) : (
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={3}
-              className={`score-input ${side}-score`}
-              value={isEmpty ? "" : String(value)}
-              onFocus={(event) => event.currentTarget.select()}
-              onChange={(event) => updateScoreCell(match, cell.gameNumber, side, event.target.value)}
-              aria-label={`Game ${cell.gameNumber} ${side} score`}
-            />
-          )}
-        </div>
-      );
-    };
+          </div>
 
-    return (
-      <>
-        <div className="score-grid">
-          <div className="score-grid__row">{cells.map((cell) => renderCell(cell, "home"))}</div>
-          <div className="score-grid__row">{cells.map((cell) => renderCell(cell, "away"))}</div>
-        </div>
-        {match.isCompleted && hasResult ? (
-          <span className="score-display">
-            {match.homeScore} &ndash; {match.awayScore}
-          </span>
-        ) : (
-          <span className="score-caption">Best of {Math.max(match.bestOf || 1, 1)}</span>
-        )}
-      </>
-    );
-  };
-
-  // Decided once for the whole report so every sheet agrees: the category goes
-  // either in each header or on each row, never both and never neither.
-  const showCategory = shouldLabelCategories(matches);
-  const sheetCategory = headerCategory(categoryName, matches);
-
-  const renderMatchRow = (match: Match, position: number, shade: boolean) => {
-    const homeMembers = formatMembers(match.homeTeamMembers);
-    const awayMembers = formatMembers(match.awayTeamMembers);
-
-    return (
-      <tr
-        key={match.id}
-        className={`match-row${shade ? " match-row--alt" : ""}${matchIsLive(match) ? " match-row--live" : ""}`}
-      >
-        <td className="rail">
-          <span className="match-number">{position}</span>
-          <span className="time">{formatClock(match.startTime)}</span>
-          {match.round ? <span className="round">{match.round}</span> : null}
-          {showCategory && match.categoryName ? (
-            <span className="category">{match.categoryName}</span>
-          ) : null}
-        </td>
-
-        <td className="fixture">
-          <span className="team-name">{sideDisplayName(match.homeTeamName, match.homeTeam2Name)}</span>
-          {homeMembers ? <span className="team-members">{homeMembers}</span> : null}
-          <span className="versus">v</span>
-          <span className="team-name">{sideDisplayName(match.awayTeamName, match.awayTeam2Name)}</span>
-          {awayMembers ? <span className="team-members">{awayMembers}</span> : null}
-          <span className="referee-line">
-            <span className="referee-label">Referees</span>
-            <span className="referee-names">{formatReferees(match.referees)}</span>
-          </span>
-        </td>
-
-        <td className="score">{renderScoreGrid(match)}</td>
-      </tr>
-    );
-  };
-
-  const renderSchedule = (sheetMatches: Match[]) => {
-    let lastDay = "";
-
-    return sheetMatches.map((match, index) => {
-      const key = dayKey(match);
-      const startsNewDay = key !== lastDay;
-      lastDay = key;
-
-      return (
-        <React.Fragment key={match.id}>
-          {startsNewDay && (
-            <tr className="day-row">
-              <td colSpan={3}>{formatDayLabel(match.startTime)}</td>
-            </tr>
-          )}
-          {renderMatchRow(match, index + 1, index % 2 === 1)}
-        </React.Fragment>
-      );
-    });
-  };
-
-  /**
-   * One sheet per venue. A real table, because `thead { display: table-header-group }`
-   * is the only way a browser repeats the venue band on every printed page — the
-   * same job `fixed` does for the PDF's running header.
-   */
-  const renderSheet = (key: string, title: string, sheetMatches: Match[], newPage: boolean) => (
-    <section key={key} className={`venue-section${newPage ? " venue-section--new-page" : ""}`}>
-      <table className="sheet">
-        <colgroup>
-          <col className="col-rail" />
-          <col className="col-fixture" />
-          <col className="col-score" />
-        </colgroup>
-
-        <thead className="sheet-head">
-          <tr className="sheet-band">
-            <th colSpan={3}>
-              <span className="venue-section-title">{title}</span>
-              <span className="sheet-meta">
-                {sheetMeta(tournamentName, sheetCategory, formatName, sheetMatches.length).map((item, index) => (
-                  <span key={`${index}-${item}`} className="sheet-meta__item">
-                    {item}
-                  </span>
-                ))}
+          <div className="sheet-card__labels">
+            {cells.map((cell) => (
+              <span key={cell.gameNumber} className="sheet-card__label" style={{ width }}>
+                {fixedPoints ? "Pts" : `G${cell.gameNumber}`}
               </span>
-            </th>
-          </tr>
-          <tr className="sheet-colhead">
-            <th className="col-time">Time</th>
-            <th className="col-match">Match</th>
-            <th className="col-score">Score</th>
-          </tr>
-        </thead>
+            ))}
+          </div>
 
-        <tbody>
-          {sheetMatches.length === 0 ? (
-            <tr>
-              <td colSpan={3} className="no-matches-print">
-                <h3>Nothing scheduled</h3>
-                <p>No matches match the selected filters.</p>
-              </td>
-            </tr>
+          {renderTeamLine(match, "home", cells, width)}
+          <div className="sheet-card__divider" />
+          {renderTeamLine(match, "away", cells, width)}
+
+          <div className="sheet-card__referee">
+            <span className="sheet-card__referee-label">Referees</span>
+            <span className="sheet-card__referee-names">{formatReferees(match.referees)}</span>
+          </div>
+        </div>
+
+        <div className="sheet-card__qr">
+          {qr ? (
+            <>
+              <QRCode value={qr.url} level="M" size={256} className="sheet-card__qr-code" />
+              <span className="sheet-card__qr-caption">{qrCaption(match)}</span>
+              <span className="sheet-card__qr-expiry">Valid until {formatValidUntil(qr.expiresAt)}</span>
+            </>
           ) : (
-            renderSchedule(sheetMatches)
+            <div className="sheet-card__qr-slot" aria-hidden="true" />
           )}
-        </tbody>
+        </div>
+      </article>
+    );
+  };
 
-        <tfoot className="print-footer">
-          <tr>
-            <td colSpan={3}>
-              <div className="print-footer__inner">
-                <span>{tournamentName}</span>
-                <span>{printedOnLabel()}</span>
-              </div>
-            </td>
-          </tr>
-        </tfoot>
-      </table>
+  const renderPage = (page: SheetPage, index: number) => (
+    <section key={page.key} className="sheet-page">
+      <header className="sheet-band">
+        <span className="sheet-band__title">{page.title}</span>
+        <span className="sheet-band__meta">
+          {sheetMeta(tournamentName, sheetCategory, formatName, page.groupSize).map((item, itemIndex) => (
+            <span key={`${itemIndex}-${item}`} className="sheet-band__meta-item">
+              {item}
+            </span>
+          ))}
+        </span>
+      </header>
+
+      <div className="sheet-body">
+        {page.matches.length === 0 ? (
+          <div className="sheet-empty">
+            <h3>Nothing scheduled</h3>
+            <p>No matches match the selected filters.</p>
+          </div>
+        ) : (
+          page.matches.map((match, matchIndex) => renderCard(match, page.firstPosition + matchIndex))
+        )}
+      </div>
+
+      <footer className="sheet-footer">
+        <span>{tournamentName}</span>
+        <span>{printedOnLabel()}</span>
+        <span>
+          Page {index + 1} of {pages.length}
+        </span>
+      </footer>
     </section>
   );
-
-  const renderSheets = () => {
-    if (shouldGroupByVenue(viewType)) {
-      const groups = groupMatchesByVenue(matches);
-
-      if (groups.length === 0) {
-        return renderSheet("empty", venueName || "All venues", [], false);
-      }
-
-      return groups.map((group, index) =>
-        renderSheet(
-          group.venue,
-          group.venue === UNASSIGNED_VENUE_LABEL ? UNASSIGNED_VENUE_LABEL : group.venue,
-          group.matches,
-          index > 0
-        )
-      );
-    }
-
-    const subject = viewType === "referee" ? refereeName : teamName;
-    return renderSheet("single", subject || "Matches", matches, false);
-  };
 
   return (
     <div className="printable-view">
@@ -345,6 +296,21 @@ const PrintableView: React.FC<PrintableViewProps> = ({
               {draftedCount} of {matches.length} scored
             </p>
           )}
+          {qrStatus === "loading" && (
+            <p className="qr-status" aria-live="polite">
+              Generating QR codes…
+            </p>
+          )}
+          {qrStatus === "failed" && (
+            <p className="qr-status qr-status--failed" role="alert">
+              QR codes couldn't be generated — sheets will print without them.
+              {onRetryQr ? (
+                <button type="button" className="qr-retry-btn" onClick={onRetryQr}>
+                  Retry
+                </button>
+              ) : null}
+            </p>
+          )}
         </div>
 
         <div className="print-actions">
@@ -357,8 +323,8 @@ const PrintableView: React.FC<PrintableViewProps> = ({
         </div>
       </div>
 
-      <div id="printable-content" className="printable-content">
-        <div className="matches-print-section">{renderSheets()}</div>
+      <div id="printable-content" className="printable-content" style={sheetCssVariables() as React.CSSProperties}>
+        {pages.map(renderPage)}
       </div>
     </div>
   );

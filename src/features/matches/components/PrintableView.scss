@@ -1,16 +1,7 @@
-// Export preview: an on-screen rendering of the printed court sheet.
-//
-// The document below is authored in `pt`, the same unit MatchesPDFDocument.tsx
-// uses, so its numbers transfer across 1:1 — 34pt inset, 70pt rail, 150pt score
-// column, 25x16pt score cells, 0.75pt rules, 22/11.5/10.5/9/8.5/7.5pt type. Keep
-// them in sync with that file; the score-cell geometry is shared in code via
-// src/utils/matchScoreCells.ts.
-
-$sheet-width: 595.28pt; // A4, matching <Page size="A4"> in the PDF
-$page-x: 34pt; // PAGE_X
-$rail: 70pt; // RAIL_WIDTH
-$score-col: 150pt; // SCORE_WIDTH
-$live-edge: 3pt;
+// Export preview: the on-screen twin of MatchesPDFDocument. Every size comes from SHEET in
+// src/utils/matchSheetLayout.ts through the --sheet-* custom properties set on
+// .printable-content (sheetCssVariables), so this page and the PDF cannot drift apart.
+// Colours mirror the PDF's brand tokens.
 
 $brand: #004aad;
 $brand-muted: #a9c4e8;
@@ -21,8 +12,6 @@ $muted: #6b7280;
 $faint: #9ca3af;
 $rule: #e5e7eb;
 $rule-strong: #cbd5e1;
-$wash: #f9fafb;
-$day-wash: #eef2f7;
 
 .printable-view {
   display: flex;
@@ -71,8 +60,36 @@ $day-wash: #eef2f7;
 
       .entry-status {
         font-size: 13px;
-        font-weight: 500;
         color: var(--primary-color);
+      }
+
+      .qr-status {
+        font-size: 13px;
+        color: var(--text-secondary);
+
+        &--failed {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px;
+          color: var(--error-color);
+        }
+      }
+
+      .qr-retry-btn {
+        padding: 4px 12px;
+        border: 1px solid var(--error-color);
+        border-radius: 6px;
+        background: var(--white);
+        color: var(--error-color);
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+
+        &:hover {
+          background: var(--error-color-light);
+        }
       }
     }
 
@@ -80,11 +97,6 @@ $day-wash: #eef2f7;
       display: flex;
       flex-shrink: 0;
       gap: 12px;
-
-      @media (max-width: 768px) {
-        gap: 8px;
-        flex-wrap: wrap;
-      }
 
       @media (max-width: 480px) {
         flex-direction: column;
@@ -99,10 +111,6 @@ $day-wash: #eef2f7;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
-
-        @media (max-width: 480px) {
-          width: 100%;
-        }
 
         &:disabled {
           opacity: 0.6;
@@ -135,6 +143,7 @@ $day-wash: #eef2f7;
   }
 
   // ------------------------------------------------------------------ desk --
+  // Pages keep their A4 size rather than shrinking; the desk scrolls on a phone instead.
   .printable-content {
     display: flex;
     flex-direction: column;
@@ -144,237 +153,226 @@ $day-wash: #eef2f7;
     overflow-x: auto;
   }
 
-  .matches-print-section {
+  // ------------------------------------------------------------------ page --
+  // Typeface declared in public/fonts/sheet-fonts.css; Arabic first, as in the PDF.
+  .sheet-page {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 24px;
-    width: 100%;
-  }
-
-  // ----------------------------------------------------------------- sheet --
-  // The sheet keeps its A4 width rather than shrinking: `table-layout: fixed` with
-  // a 104pt rail and a 184pt score column would drive the match column to zero
-  // width on a phone and overprint the other two. The desk scrolls instead.
-  .venue-section {
-    width: $sheet-width;
     flex-shrink: 0;
+    width: var(--sheet-page-width);
+    height: var(--sheet-page-height);
+    overflow: hidden;
     background: var(--white);
     box-shadow: var(--shadow-md);
-  }
-
-  // Typeface declared in public/fonts/sheet-fonts.css, linked from index.html.
-  .sheet {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-    // Arabic first so a mixed line stays in one typeface, as in the PDF.
     font-family: "Sheet Sans Arabic", "Sheet Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    line-height: 1.3;
+    line-height: 1.25;
     color: $ink;
   }
 
-  .col-rail {
-    width: $rail + $page-x;
-  }
-  .col-score {
-    width: $score-col + $page-x;
-  }
-
-  // Running header. Repeats on every printed page via table-header-group.
-  .sheet-band th {
-    padding: 15pt $page-x 13pt;
+  .sheet-band {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    height: var(--sheet-header-height);
+    padding: 0 var(--sheet-margin-x);
     background: $brand;
-    text-align: left;
-    font-weight: 400;
   }
 
-  .venue-section-title {
-    display: block;
-    font-size: 22pt;
+  .sheet-band__title {
+    overflow: hidden;
+    font-size: 18pt;
     font-weight: 700;
     color: var(--white);
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
-  .sheet-meta {
-    display: block;
-    margin-top: 5pt;
+  .sheet-band__meta {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 4pt;
   }
 
-  .sheet-meta__item {
+  .sheet-band__meta-item {
     margin-right: 14pt;
     font-size: 8.5pt;
     color: $brand-muted;
   }
 
-  .sheet-colhead th {
-    padding: 6pt 0 5pt;
-    border-bottom: 1pt solid $rule-strong;
-    background: var(--white);
-    font-size: 7.5pt;
-    font-weight: 400;
-    color: $muted;
-    text-align: left;
-
-    &:first-child {
-      padding-left: $page-x;
-    }
-
-    &.col-score {
-      padding-right: $page-x;
-      text-align: right;
-    }
+  .sheet-body {
+    flex: 1;
+    box-sizing: border-box;
+    padding: var(--sheet-body-padding-top) var(--sheet-margin-x) 0;
   }
 
-  .day-row td {
-    padding: 4pt $page-x;
-    border-bottom: 0.75pt solid $rule-strong;
-    background: $day-wash;
-    font-size: 8.5pt;
-    font-weight: 700;
-    color: $brand;
-  }
-
-  // ------------------------------------------------------------ match rows --
-  .match-row {
-    > td {
-      padding: 9pt 0;
-      border-bottom: 0.75pt solid $rule;
-      vertical-align: top;
-    }
-
-    // The page inset has to be set at this specificity or the shorthand above
-    // wins and the sheet loses its left and right margins.
-    > td.rail {
-      padding-left: $page-x;
-    }
-
-    > td.fixture {
-      padding-right: 12pt;
-    }
-
-    > td.score {
-      padding-right: $page-x;
-    }
-
-    &--alt > td {
-      background: $wash;
-    }
-
-    // Gold edge for a match already under way. Padding compensates so the
-    // text never shifts, exactly as rowLive does in the PDF.
-    &--live > td.rail {
-      border-left: $live-edge solid $live;
-      padding-left: $page-x - $live-edge;
-    }
-  }
-
-  .rail {
-    .match-number {
-      display: block;
-      font-size: 8.5pt;
-      font-weight: 700;
-      color: $faint;
-    }
-
-    .time {
-      display: block;
-      margin-top: 2pt;
-      font-size: 11.5pt;
-      font-weight: 700;
-      color: $ink;
-    }
-
-    .round {
-      display: block;
-      margin-top: 2pt;
-      font-size: 7.5pt;
-      color: $muted;
-    }
-
-    // Shown only when the report spans several categories.
-    .category {
-      display: block;
-      margin-top: 2pt;
-      font-size: 7.5pt;
-      color: $faint;
-    }
-  }
-
-  .fixture {
-    .team-name {
-      display: block;
-      font-size: 10.5pt;
-      font-weight: 700;
-      color: $ink;
-    }
-
-    .team-members {
-      display: block;
-      margin-top: 1.5pt;
-      font-size: 7.5pt;
-      color: $ink-soft;
-    }
-
-    .versus {
-      display: block;
-      margin: 3pt 0;
-      font-size: 7.5pt;
-      color: $faint;
-    }
-
-    .referee-line {
-      display: block;
-      margin-top: 6pt;
-    }
-
-    .referee-label {
-      margin-right: 6pt;
-      font-size: 7.5pt;
-      color: $faint;
-    }
-
-    .referee-names {
-      font-size: 8pt;
-      color: $ink-soft;
-    }
-  }
-
-  // ------------------------------------------------------------ score grid --
-  .score {
-    text-align: right;
-  }
-
-  .score-grid {
-    display: inline-block;
-    border: 0.75pt solid $rule-strong;
-    background: var(--white);
-    text-align: left;
-  }
-
-  .score-grid__row {
+  // ------------------------------------------------------------------ card --
+  .sheet-card {
     display: flex;
+    box-sizing: border-box;
+    height: var(--sheet-card-height);
+    margin-bottom: var(--sheet-card-gap);
+    padding: var(--sheet-card-padding);
+    border: 0.75pt solid $rule-strong;
+    border-radius: 4pt;
 
-    &:first-child {
-      border-bottom: 0.75pt solid $rule-strong;
+    // Gold edge for a match already under way; padding compensates so nothing shifts.
+    &--live {
+      border-left: var(--sheet-live-edge) solid $live;
+      padding-left: calc(var(--sheet-card-padding) - var(--sheet-live-edge) + 0.75pt);
     }
   }
 
-  .score-grid__cell {
+  .sheet-card__main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    padding-right: 12pt;
+  }
+
+  .sheet-card__top {
+    display: flex;
+    justify-content: space-between;
+    gap: 8pt;
+    margin-bottom: 8pt;
+    font-size: 8.5pt;
+  }
+
+  .sheet-card__meta {
+    color: $muted;
+  }
+
+  .sheet-card__rule {
+    flex-shrink: 0;
+    color: $muted;
+
+    &--final {
+      font-size: 9pt;
+      font-weight: 700;
+      color: $brand;
+    }
+  }
+
+  .sheet-card__labels {
+    display: flex;
+    gap: var(--sheet-box-gap);
+    margin-bottom: 3pt;
+    padding-left: var(--sheet-name-width);
+  }
+
+  .sheet-card__label {
+    font-size: 7pt;
+    color: $faint;
+    text-align: center;
+  }
+
+  .sheet-card__team {
+    display: flex;
+    align-items: center;
+    min-height: 36pt;
+  }
+
+  .sheet-card__name {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: var(--sheet-name-width);
+    padding-right: 10pt;
+  }
+
+  .sheet-card__team-name {
+    overflow: hidden;
+    font-size: 11pt;
+    font-weight: 700;
+    color: $ink;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .sheet-card__members {
+    display: -webkit-box;
+    overflow: hidden;
+    margin-top: 1.5pt;
+    font-size: 7.5pt;
+    color: $ink-soft;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .sheet-card__boxes {
+    display: flex;
+    gap: var(--sheet-box-gap);
+  }
+
+  .sheet-card__box {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 16pt;
     box-sizing: border-box;
-    border-right: 0.75pt solid $rule-strong;
+    height: var(--sheet-box-height);
+    border: 0.75pt solid $rule-strong;
+    border-radius: 2pt;
+    background: var(--white);
+  }
 
-    &:last-child {
-      border-right: 0;
-    }
+  .sheet-card__divider {
+    height: 0.75pt;
+    margin: 4pt 0;
+    background: $rule;
+  }
+
+  .sheet-card__referee {
+    margin-top: auto;
+    overflow: hidden;
+    font-size: 8pt;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .sheet-card__referee-label {
+    margin-right: 6pt;
+    font-size: 7.5pt;
+    color: $faint;
+  }
+
+  .sheet-card__referee-names {
+    color: $ink-soft;
+  }
+
+  .sheet-card__qr {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: var(--sheet-qr-column);
+  }
+
+  .sheet-card__qr-code,
+  .sheet-card__qr-slot {
+    width: var(--sheet-qr-size);
+    height: var(--sheet-qr-size);
+  }
+
+  .sheet-card__qr-caption {
+    margin-top: 6pt;
+    font-size: 8pt;
+    font-weight: 700;
+    color: $ink-soft;
+  }
+
+  .sheet-card__qr-expiry {
+    margin-top: 2pt;
+    font-size: 7pt;
+    color: $faint;
   }
 
   .score-cell-text {
-    font-size: 9pt;
+    font-size: 11pt;
     color: $ink;
 
     &.is-winner {
@@ -382,7 +380,7 @@ $day-wash: #eef2f7;
     }
   }
 
-  // The input IS the box: no border, no background, no radius of its own.
+  // The input IS the box: no border, background or radius of its own.
   .score-input {
     width: 100%;
     height: 100%;
@@ -393,7 +391,7 @@ $day-wash: #eef2f7;
     border-radius: 0;
     background: transparent;
     font-family: inherit;
-    font-size: 9pt;
+    font-size: 11pt;
     color: $ink;
     text-align: center;
     appearance: none;
@@ -405,24 +403,9 @@ $day-wash: #eef2f7;
     }
   }
 
-  .score-display {
-    display: block;
-    margin-top: 4pt;
-    font-size: 11pt;
-    font-weight: 700;
-    color: $brand;
-  }
-
-  .score-caption {
-    display: block;
-    margin-top: 4pt;
-    font-size: 7.5pt;
-    color: $faint;
-  }
-
-  // ----------------------------------------------------------- empty/foot --
-  .no-matches-print {
-    padding: 40pt $page-x;
+  // ------------------------------------------------------------ empty/foot --
+  .sheet-empty {
+    padding-top: 28pt;
 
     h3 {
       margin: 0;
@@ -438,32 +421,29 @@ $day-wash: #eef2f7;
     }
   }
 
-  // `display: flex` on a <td> drops its colspan and collapses the cell to the
-  // first column, so the flex row lives on an inner element.
-  .print-footer td {
-    padding: 8pt $page-x 12pt;
+  .sheet-footer {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
+    height: var(--sheet-footer-height);
+    padding: 0 var(--sheet-margin-x);
     border-top: 0.75pt solid $rule;
     font-size: 7.5pt;
     color: $faint;
   }
-
-  .print-footer__inner {
-    display: flex;
-    justify-content: space-between;
-  }
 }
 
-// A screen-only cue for boxes still waiting to be filled in. It disappears in
-// print, so it costs nothing in parity with the PDF.
+// A screen-only cue for boxes still waiting to be filled in; it disappears in print.
 @media screen {
-  .printable-view .score-grid__cell--empty {
+  .printable-view .sheet-card__box--empty {
     background: var(--gray-50);
   }
 }
 
 @media print {
-  // Backgrounds are the document here — the blue band, the zebra, the day bands.
-  // Without this the sheet prints as bare text.
+  // Backgrounds are the document here (the blue band); without this the band prints blank.
   .printable-view,
   .printable-view * {
     -webkit-print-color-adjust: exact !important;
@@ -506,40 +486,16 @@ $day-wash: #eef2f7;
       padding: 0;
     }
 
-    .matches-print-section {
-      display: block;
-    }
-
-    // The sheet becomes the page box: full bleed, no desk, no shadow.
-    .venue-section {
-      width: 100%;
+    // Each sheet is exactly one A4 page: no desk, no shadow, a break after each.
+    .sheet-page {
       box-shadow: none;
+      break-after: page;
+      page-break-after: always;
     }
 
-    // Repeat the venue band and the column strip on every physical page, the
-    // job `fixed` does for the PDF's running header.
-    .sheet > thead {
-      display: table-header-group;
-    }
-
-    .sheet > tfoot {
-      display: table-footer-group;
-    }
-
-    .venue-section--new-page {
-      page-break-before: always;
-      break-before: page;
-    }
-
-    .match-row {
-      page-break-inside: avoid;
-      break-inside: avoid;
-    }
-
-    // A day band at the foot of a page with its first match overleaf reads wrong.
-    .day-row {
-      page-break-after: avoid;
-      break-after: avoid;
+    .sheet-page:last-child {
+      break-after: auto;
+      page-break-after: auto;
     }
 
     // Typed scores print as the numbers themselves; empty boxes stay fillable.
@@ -548,8 +504,6 @@ $day-wash: #eef2f7;
     }
   }
 
-  // Full bleed: the band, zebra and day bands run to the paper edge, and the
-  // 34pt inset lives on the cells — as it does on the PDF page.
   @page {
     size: A4;
     margin: 0;
