@@ -3,7 +3,11 @@ import { Match, PlayerSuggestion, RefereeTeamAssignResult, RefereeTeamOption } f
 import { usePlayerSuggestions, useDebounce, useRefereeTeamOptions } from "../hooks";
 import Drawer from "../../shared/components/Drawer";
 import RefereeTeamsSection from "./RefereeTeamsSection";
-import { assignButtonLabel, summarizeTeamAssignment } from "../../../utils/refereeAssignText";
+import {
+  assignButtonLabel,
+  describeRefereeAssignment,
+  summarizeTeamAssignment,
+} from "../../../utils/refereeAssignText";
 import { shouldLabelCategories } from "../../../utils/matchSheetFormat";
 import "./BulkAssignRefereeModal.scss";
 
@@ -11,8 +15,11 @@ interface BulkAssignRefereeModalProps {
   isOpen: boolean;
   selectedMatches: Match[];
   onClose: () => void;
-  /** `keepOpen` asks the page not to close the drawer, so a team outcome stays readable. */
-  onAssign: (refereeIds: string[], matchIds: string[], keepOpen?: boolean) => Promise<void>;
+  /**
+   * `keepOpen` asks the page not to close the drawer, so a team outcome stays readable.
+   * Resolves true once the referees are assigned, false when they weren't (the page has said why).
+   */
+  onAssign: (refereeIds: string[], matchIds: string[], keepOpen?: boolean) => Promise<boolean>;
   /** Resolves with the per-match outcome, or null when the request failed (the page has said why). */
   onAssignTeams: (teamIds: string[], matchIds: string[]) => Promise<RefereeTeamAssignResult[] | null>;
   loading: boolean;
@@ -52,14 +59,24 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
   // shows each team's category and how many of the matches it can take.
   const labelCategories =
     shouldLabelCategories(selectedMatches) || new Set(teamOptions.map((team) => team.categoryName)).size > 1;
+  const eligibleCount = (team: RefereeTeamOption) => team.eligibleMatchIds.filter((id) => matchIds.includes(id)).length;
   const describeTeam = (team: RefereeTeamOption): string => {
-    const eligible = team.eligibleMatchIds.filter((id) => matchIds.includes(id)).length;
+    const eligible = eligibleCount(team);
     return [
       labelCategories ? team.categoryName : "",
       eligible < matchIds.length ? `eligible for ${eligible} of ${matchIds.length} matches` : "",
     ]
       .filter(Boolean)
       .join(" · ");
+  };
+
+  // The footer promises every match to the teams only when each picked team can take them all.
+  const teamsFitEveryMatch = selectedTeams.every((team) => eligibleCount(team) === matchIds.length);
+
+  // A skipped match is named by its teams: the drawer lists only the first few matches, unnumbered.
+  const matchName = (matchId: string) => {
+    const match = selectedMatches.find((selected) => selected.id === matchId);
+    return match && [match.homeTeamName, match.awayTeamName].filter(Boolean).join(" vs ");
   };
 
   const formatDateTime = (dateTimeString: string) => {
@@ -113,8 +130,9 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
     setActiveInputId("1");
   };
 
-  // Teams go in one request for every selected match, and the drawer stays open on the outcome.
-  // Referees alone take the existing path, which refreshes the list and closes the drawer.
+  // Teams go in one request for every selected match, and the drawer stays open on the outcome, which
+  // then confirms the referees picked with them. Referees alone take the existing path, which refreshes
+  // the list and closes the drawer. Picks that failed stay for another try (the page has said why).
   const handleAssign = async () => {
     if (pickCount === 0 || submitting) return;
     const teams = selectedTeams;
@@ -122,20 +140,20 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
     setSubmitting(true);
     setTeamOutcome(null);
     try {
+      let outcome = "";
       if (teams.length > 0) {
         const results = await onAssignTeams(teams.map((team) => team.teamId), matchIds);
         if (!results) return; // The page has said why; the picks stay for another try.
-        setTeamOutcome(
-          summarizeTeamAssignment(
-            results,
-            (teamId) => teams.find((team) => team.teamId === teamId)?.teamName ?? "A team",
-            (matchId) => (matchIds.includes(matchId) ? matchIds.indexOf(matchId) + 1 : undefined)
-          )
+        outcome = summarizeTeamAssignment(
+          results,
+          (teamId) => teams.find((team) => team.teamId === teamId)?.teamName ?? "A team",
+          matchName
         );
+        setTeamOutcome(outcome);
         setSelectedTeams([]);
       }
-      if (refereeIds.length > 0) {
-        await onAssign(refereeIds, matchIds, teams.length > 0);
+      if (refereeIds.length > 0 && (await onAssign(refereeIds, matchIds, teams.length > 0))) {
+        if (outcome) setTeamOutcome(`${outcome} · ${describeRefereeAssignment(refereeIds.length, matchIds.length)}`);
         resetReferees();
       }
     } finally {
@@ -178,7 +196,12 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
             >
               {loading || submitting
                 ? "Assigning..."
-                : assignButtonLabel(selectedTeams.length, selectedRefereesData.length, selectedMatches.length)}
+                : assignButtonLabel(
+                    selectedTeams.length,
+                    selectedRefereesData.length,
+                    selectedMatches.length,
+                    teamsFitEveryMatch
+                  )}
             </button>
           </div>
         ) : null

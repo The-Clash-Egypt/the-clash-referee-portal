@@ -14,7 +14,8 @@
       margin-bottom: 0;
     }
 
-    /* Current teams get the same round red control as the picks below them. */
+    /* Current teams get the match card's unassign control (MatchCard.scss .unassign-button), so a
+       server-side unassign reads differently from the local "×" remove of the picks below. */
     .assigned-referees-section .assigned-referees-list .assigned-referee-item {
       justify-content: space-between;
       gap: 12px;
@@ -24,26 +25,30 @@
         min-width: 0;
       }
 
-      .remove-button {
-        background: #fee2e2;
-        color: #dc2626;
-        border: none;
+      .unassign-button {
+        background: #fed7d7;
+        color: #c53030;
+        border: 1px solid #feb2b2;
         border-radius: 50%;
-        width: 24px;
-        height: 24px;
+        width: 20px;
+        height: 20px;
         display: flex;
         align-items: center;
         justify-content: center;
-        cursor: pointer;
         font-size: 14px;
-        font-weight: bold;
+        font-weight: 600;
+        cursor: pointer;
         transition: all 0.2s ease;
         flex-shrink: 0;
 
         &:hover:not(:disabled) {
-          background: #fecaca;
-          color: #b91c1c;
+          background: #feb2b2;
+          color: #9b2c2c;
           transform: scale(1.1);
+        }
+
+        &:active:not(:disabled) {
+          transform: scale(0.95);
         }
 
         &:disabled {

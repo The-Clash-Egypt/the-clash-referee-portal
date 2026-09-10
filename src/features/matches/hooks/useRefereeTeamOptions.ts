@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { QueryClient, useQuery } from "@tanstack/react-query";
 import { getRefereeTeamOptions } from "../api/refereeTeams";
 import { RefereeTeamOption } from "../types/match";
 
@@ -15,3 +15,11 @@ export const useRefereeTeamOptions = (matchIds: string[], enabled: boolean) =>
     staleTime: 0,
     retry: 1,
   });
+
+/**
+ * After an assignment change, drop every cached options list, so no drawer can show a stale one: an open
+ * drawer reloads (with its loading state), and a closed one (its query is disabled, so a plain invalidate
+ * would not refetch it) starts from "Loading teams..." when it reopens.
+ */
+export const forgetRefereeTeamOptions = (client: QueryClient) =>
+  client.resetQueries({ queryKey: [REFEREE_TEAM_OPTIONS_KEY] });

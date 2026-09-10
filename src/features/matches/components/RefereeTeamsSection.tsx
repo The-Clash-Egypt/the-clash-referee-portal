@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { RefereeTeam, RefereeTeamOption } from "../types/match";
 import "./RefereeTeamsSection.scss";
 
@@ -17,7 +17,10 @@ interface RefereeTeamsSectionProps {
   /** A team's second line, e.g. its category. */
   detailFor?: (team: RefereeTeamOption) => string;
   emptyText: string;
-  /** What the last assignment did (bulk drawer). */
+  /**
+   * What the last assignment did (bulk drawer). Passing it, even as null, keeps the empty live region
+   * mounted, so its text is announced when it arrives.
+   */
   outcome?: string | null;
 }
 
@@ -39,7 +42,17 @@ const RefereeTeamsSection: React.FC<RefereeTeamsSectionProps> = ({
   outcome,
 }) => {
   const [search, setSearch] = useState("");
-  const [removingTeamId, setRemovingTeamId] = useState<string | null>(null);
+  // One unassign at a time: each refreshes the list, and overlapping refreshes can land out of order.
+  const [unassigning, setUnassigning] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // The control a keyboard user just used leaves the list, so keep them in the drawer, on the search.
+  // Keyboard and assistive-tech activation fires click with detail 0, a tap or mouse click detail >= 1;
+  // focusing the input after a tap would only pop the phone keyboard.
+  const keepFocus = (fromKeyboard: boolean) => {
+    if (fromKeyboard) searchRef.current?.focus();
+  };
+  const isKeyboardClick = (event: React.MouseEvent) => event.detail === 0;
 
   const taken = new Set([...selected, ...assigned].map((team) => team.teamId));
   const term = search.trim().toLowerCase();
@@ -48,19 +61,32 @@ const RefereeTeamsSection: React.FC<RefereeTeamsSectionProps> = ({
     ? available.filter((team) => `${team.teamName} ${team.categoryName}`.toLowerCase().includes(term))
     : available;
 
-  const unassign = async (teamId: string) => {
-    if (!onUnassign) return;
-    setRemovingTeamId(teamId);
+  const unassign = async (team: RefereeTeam, fromKeyboard: boolean) => {
+    if (!onUnassign || unassigning || !window.confirm(`Unassign ${team.teamName}?`)) return;
+    setUnassigning(true);
     try {
-      await onUnassign(teamId);
+      await onUnassign(team.teamId);
     } finally {
-      setRemovingTeamId(null);
+      setUnassigning(false);
+      keepFocus(fromKeyboard);
     }
   };
 
-  const pick = (team: RefereeTeamOption) => {
+  const pick = (team: RefereeTeamOption, fromKeyboard: boolean) => {
     onSelect(team);
     setSearch("");
+    keepFocus(fromKeyboard);
+  };
+
+  const remove = (teamId: string, fromKeyboard: boolean) => {
+    onRemove(teamId);
+    keepFocus(fromKeyboard);
+  };
+
+  // "Add Falcons, Men's Open · eligible for 1 of 3 matches": the detail tells same-named teams apart.
+  const nameWithDetail = (verb: string, team: RefereeTeamOption) => {
+    const detail = detailFor?.(team);
+    return detail ? `${verb} ${team.teamName}, ${detail}` : `${verb} ${team.teamName}`;
   };
 
   const renderList = () => {
@@ -98,12 +124,12 @@ const RefereeTeamsSection: React.FC<RefereeTeamsSectionProps> = ({
               className="suggestion-item"
               role="button"
               tabIndex={0}
-              aria-label={`Add ${team.teamName}`}
-              onClick={() => pick(team)}
+              aria-label={nameWithDetail("Add", team)}
+              onClick={(event) => pick(team, isKeyboardClick(event))}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  pick(team);
+                  pick(team, true);
                 }
               }}
             >
@@ -133,13 +159,13 @@ const RefereeTeamsSection: React.FC<RefereeTeamsSectionProps> = ({
                 {onUnassign && (
                   <button
                     type="button"
-                    className="remove-button"
-                    onClick={() => unassign(team.teamId)}
-                    disabled={removingTeamId === team.teamId}
+                    className="unassign-button"
+                    onClick={(event) => unassign(team, isKeyboardClick(event))}
+                    disabled={unassigning}
                     title="Unassign referee team"
                     aria-label={`Unassign ${team.teamName}`}
                   >
-                    ×
+                    -
                   </button>
                 )}
               </div>
@@ -163,9 +189,9 @@ const RefereeTeamsSection: React.FC<RefereeTeamsSectionProps> = ({
                   <button
                     type="button"
                     className="remove-button"
-                    onClick={() => onRemove(team.teamId)}
+                    onClick={(event) => remove(team.teamId, isKeyboardClick(event))}
                     title="Remove team"
-                    aria-label={`Remove ${team.teamName}`}
+                    aria-label={nameWithDetail("Remove", team)}
                   >
                     ×
                   </button>
@@ -176,17 +202,16 @@ const RefereeTeamsSection: React.FC<RefereeTeamsSectionProps> = ({
         </div>
       )}
 
-      {outcome ? (
-        <p className="team-assign-outcome" role="status">
-          {outcome}
-        </p>
-      ) : null}
+      {outcome !== undefined && (
+        <div role="status">{outcome ? <p className="team-assign-outcome">{outcome}</p> : null}</div>
+      )}
 
       <div className="search-inputs-section">
         <h4>Add Referee Teams</h4>
         <div className="search-input-row">
           <div className="input-container">
             <input
+              ref={searchRef}
               type="text"
               placeholder="Search teams..."
               value={search}

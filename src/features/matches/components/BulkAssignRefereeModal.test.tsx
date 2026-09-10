@@ -44,7 +44,7 @@ const options: RefereeTeamOption[] = [
 
 const handlers = () => ({
   onClose: jest.fn(),
-  onAssign: jest.fn((refereeIds: string[], matchIds: string[], keepOpen?: boolean) => Promise.resolve()),
+  onAssign: jest.fn((refereeIds: string[], matchIds: string[], keepOpen?: boolean) => Promise.resolve(true)),
   onAssignTeams: jest.fn(
     (teamIds: string[], matchIds: string[]): Promise<RefereeTeamAssignResult[] | null> => Promise.resolve([])
   ),
@@ -73,9 +73,13 @@ it("offers the teams for every selected match, with their category when the matc
   render(<BulkAssignRefereeModal isOpen selectedMatches={acrossCategories} {...handlers()} />);
 
   expect(teamOptions).toHaveBeenCalledWith(["m1", "m2", "m3"], true);
-  expect(screen.getByRole("button", { name: "Add Falcons" })).toHaveTextContent("Men's Open · eligible for 1 of 3 matches");
-  expect(screen.getByRole("button", { name: "Add Waves" })).toHaveTextContent("Men's Open · eligible for 2 of 3 matches");
-  expect(screen.getByRole("button", { name: "Add Dunes" })).toHaveTextContent("Women's Open · eligible for 1 of 3 matches");
+  // The detail line is part of each option's name, so same-named teams in two categories stay apart.
+  expect(screen.getByRole("button", { name: "Add Falcons, Men's Open · eligible for 1 of 3 matches" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Add Waves, Men's Open · eligible for 2 of 3 matches" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Add Dunes, Women's Open · eligible for 1 of 3 matches" })).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: /^Add Falcons/ }));
+  expect(screen.getByRole("button", { name: "Remove Falcons, Men's Open · eligible for 1 of 3 matches" })).toBeInTheDocument();
 });
 
 it("leaves the category off when every selected match shares it", () => {
@@ -102,15 +106,21 @@ it("assigns the picked teams in one request and reports what was skipped", async
     },
   ]);
   render(<BulkAssignRefereeModal isOpen selectedMatches={acrossCategories} {...props} />);
+  // The live region is there, empty, before anything is assigned, so its new text is announced.
+  const status = screen.getByRole("status");
+  expect(status).toBeEmptyDOMElement();
 
-  fireEvent.click(screen.getByRole("button", { name: "Add Falcons" }));
-  fireEvent.click(screen.getByRole("button", { name: "Add Waves" }));
-  expect(assignButton()).toHaveTextContent("Assign 2 Teams to 3 Matches");
+  fireEvent.click(screen.getByRole("button", { name: /^Add Falcons/ }));
+  fireEvent.click(screen.getByRole("button", { name: /^Add Waves/ }));
+  // Neither team fits all three matches, so the button doesn't promise them all.
+  expect(assignButton()).toHaveTextContent(/^Assign 2 Teams$/);
   fireEvent.click(assignButton()!);
 
-  expect(await screen.findByRole("status")).toHaveTextContent(
-    "Assigned to 2 matches · skipped 3 (Falcons plays in match #1; different category ×2)"
+  // The skipped match is named, since the drawer lists only some of the matches and no numbers.
+  await waitFor(() =>
+    expect(status).toHaveTextContent("Assigned to 2 matches · skipped 3 (Falcons plays in Falcons vs Sharks; different category ×2)")
   );
+  expect(screen.getByRole("status")).toBe(status);
   expect(props.onAssignTeams).toHaveBeenCalledTimes(1);
   expect(props.onAssignTeams).toHaveBeenCalledWith(["t-falcons", "t-waves"], ["m1", "m2", "m3"]);
   expect(props.onAssign).not.toHaveBeenCalled();
@@ -118,7 +128,7 @@ it("assigns the picked teams in one request and reports what was skipped", async
   expect(assignButton()).not.toBeInTheDocument();
 });
 
-it("keeps the drawer open for the team outcome when referees go on in the same click", async () => {
+it("asks the page to keep the drawer open when referees go on with teams, and confirms both", async () => {
   const props = handlers();
   props.onAssignTeams.mockResolvedValue([
     { matchId: "m1", assignedTeamIds: ["t-waves"], unchangedTeamIds: [], skipped: [] },
@@ -126,7 +136,7 @@ it("keeps the drawer open for the team outcome when referees go on in the same c
   ]);
   render(<BulkAssignRefereeModal isOpen selectedMatches={matches} {...props} />);
 
-  fireEvent.click(screen.getByRole("button", { name: "Add Waves" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Add Waves/ }));
   fireEvent.change(screen.getByPlaceholderText("Search by name or email..."), { target: { value: "mo" } });
   fireEvent.click(await screen.findByText("Mona Salah"));
   expect(assignButton()).toHaveTextContent("Assign 1 Team, 1 Referee to 2 Matches");
@@ -134,10 +144,42 @@ it("keeps the drawer open for the team outcome when referees go on in the same c
 
   await waitFor(() => expect(props.onAssign).toHaveBeenCalledWith(["u-mona"], ["m1", "m2"], true));
   expect(props.onAssignTeams).toHaveBeenCalledWith(["t-waves"], ["m1", "m2"]);
-  expect(await screen.findByRole("status")).toHaveTextContent("Assigned to 2 matches");
+  await waitFor(() =>
+    expect(screen.getByRole("status")).toHaveTextContent(/^Assigned to 2 matches · 1 referee assigned to 2 matches$/)
+  );
+  expect(screen.queryByText("Referees to Assign (1)")).not.toBeInTheDocument();
 });
 
-it("hands referees alone to the page as before, which closes the drawer", async () => {
+it("keeps the referee picks, and confirms only the teams, when the page reports the referees failed", async () => {
+  const props = handlers();
+  props.onAssignTeams.mockResolvedValue([
+    { matchId: "m1", assignedTeamIds: ["t-waves"], unchangedTeamIds: [], skipped: [] },
+    { matchId: "m2", assignedTeamIds: ["t-waves"], unchangedTeamIds: [], skipped: [] },
+  ]);
+  props.onAssign.mockResolvedValue(false);
+  render(<BulkAssignRefereeModal isOpen selectedMatches={matches} {...props} />);
+
+  fireEvent.click(screen.getByRole("button", { name: /^Add Waves/ }));
+  fireEvent.change(screen.getByPlaceholderText("Search by name or email..."), { target: { value: "mo" } });
+  fireEvent.click(await screen.findByText("Mona Salah"));
+  fireEvent.click(assignButton()!);
+
+  await waitFor(() => expect(assignButton()).toHaveTextContent("Assign 1 Referee to 2 Matches"));
+  expect(screen.getByRole("status")).toHaveTextContent(/^Assigned to 2 matches$/);
+  expect(screen.getByText("Referees to Assign (1)")).toBeInTheDocument();
+});
+
+it("labels a mixed pick so only the referees are promised every match", async () => {
+  render(<BulkAssignRefereeModal isOpen selectedMatches={acrossCategories} {...handlers()} />);
+
+  fireEvent.click(screen.getByRole("button", { name: /^Add Waves/ }));
+  fireEvent.change(screen.getByPlaceholderText("Search by name or email..."), { target: { value: "mo" } });
+  fireEvent.click(await screen.findByText("Mona Salah"));
+
+  expect(assignButton()).toHaveTextContent("Assign 1 Team · 1 Referee to 3 Matches");
+});
+
+it("hands referees alone to the page without keepOpen, and clears the picks", async () => {
   const props = handlers();
   render(<BulkAssignRefereeModal isOpen selectedMatches={matches} {...props} />);
 

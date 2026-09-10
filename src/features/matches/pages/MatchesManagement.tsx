@@ -13,7 +13,7 @@ import {
   getRefereeMatches,
 } from "../api/matches";
 import { assignRefereeTeams, unassignRefereeTeam } from "../api/refereeTeams";
-import { REFEREE_TEAM_OPTIONS_KEY } from "../hooks";
+import { forgetRefereeTeamOptions } from "../hooks";
 import MatchCard from "../../shared/components/MatchCard";
 import Drawer from "../../shared/components/Drawer";
 import AssignRefereeModal from "../components/AssignRefereeModal";
@@ -573,8 +573,9 @@ const MatchesManagement: React.FC = () => {
   };
 
   // `keepOpen`: the drawer is showing a referee-team outcome, so leave it (and the selection) up.
+  // Resolves true once the referees are assigned; false when they weren't (a failure is alerted here).
   const handleBulkAssignReferee = async (refereeIds: string[], matchIds: string[], keepOpen = false) => {
-    if (!hasFullAccess) return;
+    if (!hasFullAccess) return false;
     try {
       setBulkAssigningReferee(true);
 
@@ -603,12 +604,14 @@ const MatchesManagement: React.FC = () => {
         setShowBulkAssignmentModal(false);
         setSelectedMatches(new Set());
       }
+      return true;
     } catch (error: any) {
       console.error("Error bulk assigning referees:", error);
       const errorMessage =
         error.message ||
         `Failed to assign ${refereeIds.length > 1 ? "referees" : "referee"} to one or more matches. Please try again.`;
       alert(errorMessage);
+      return false;
     } finally {
       setBulkAssigningReferee(false);
     }
@@ -631,7 +634,7 @@ const MatchesManagement: React.FC = () => {
 
   // After a referee-team change: the cards and the drawers' team lists both move.
   const refreshAfterRefereeTeamChange = () => {
-    void queryClient.invalidateQueries({ queryKey: [REFEREE_TEAM_OPTIONS_KEY] });
+    void forgetRefereeTeamOptions(queryClient);
     return fetchData(currentPageFilters(), false);
   };
 
