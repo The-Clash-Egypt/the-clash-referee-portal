@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Match, MatchGameScore, TeamMember, isFixedPointsFormat, sideDisplayName } from "../types/match";
 import { updateLiveScore } from "../api/matches";
+import { cellsFromGameScores, hasAnyScore, validateGameScores } from "../../../utils/scoreValidation";
 import "./UpdateScoreDialog.scss";
 
 interface UpdateScoreDialogProps {
@@ -270,37 +271,14 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   };
 
   const validateScores = (): boolean => {
+    const cells = cellsFromGameScores(gameScores);
     const newErrors: string[] = [];
 
-    const hasPlayedGames = gameScores.some((score) => score.homeScore > 0 || score.awayScore > 0);
-    if (!hasPlayedGames) {
+    if (!hasAnyScore(cells)) {
       newErrors.push("At least one game must have scores entered.");
     }
-
-    if (isFixedPointsFormat(match?.formatType)) {
-      // Americano/Mexicano: single game to a fixed points total; ties are legal and complete the match
-      const target = match?.pointsPerMatch;
-      const played = gameScores.filter((score) => score.homeScore > 0 || score.awayScore > 0);
-      if (played.length > 1) {
-        newErrors.push("This match is a single game — enter one score pair only.");
-      }
-      if (played.length === 1 && typeof target === "number" && target > 0) {
-        const total = played[0].homeScore + played[0].awayScore;
-        if (total !== target) {
-          newErrors.push(`Total points must equal ${target} (currently ${total}).`);
-        }
-      }
-    } else {
-      const drawsAllowed = (match?.pointsForDraw ?? 0) > 0;
-      if (!drawsAllowed) {
-        gameScores.forEach((score, index) => {
-          if (score.homeScore > 0 || score.awayScore > 0) {
-            if (score.homeScore === score.awayScore) {
-              newErrors.push(`Game ${index + 1} cannot end in a tie.`);
-            }
-          }
-        });
-      }
+    if (match) {
+      newErrors.push(...validateGameScores(match, cells));
     }
 
     setErrors(newErrors);
