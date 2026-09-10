@@ -15,6 +15,7 @@ import Tournaments from "./features/tournaments/pages";
 import MatchesManagement from "./features/matches/pages/MatchesManagement";
 import PrintableViewPage from "./features/matches/pages/PrintableViewPage";
 import GuestVenuePage from "./features/venue/pages/GuestVenuePage";
+import GuestMatchPage from "./features/matches/pages/GuestMatchPage";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -72,6 +73,7 @@ const App: React.FC = () => {
                     }
                   />
                   <Route path="venue/shared" element={<GuestVenuePage />} />
+                  <Route path="match/shared" element={<GuestMatchPage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </main>
