@@ -1,0 +1,17 @@
+import { useQuery } from "@tanstack/react-query";
+import { getRefereeTeamOptions } from "../api/refereeTeams";
+import { RefereeTeamOption } from "../types/match";
+
+/** Query-key root for the options, so a page can refresh them after assigning or unassigning. */
+export const REFEREE_TEAM_OPTIONS_KEY = "refereeTeamOptions";
+
+/** Teams that can referee the given matches. Fetched afresh each time a drawer opens. */
+export const useRefereeTeamOptions = (matchIds: string[], enabled: boolean) =>
+  useQuery<RefereeTeamOption[]>({
+    queryKey: [REFEREE_TEAM_OPTIONS_KEY, matchIds],
+    queryFn: () => getRefereeTeamOptions(matchIds),
+    enabled: enabled && matchIds.length > 0,
+    // Assignments change under the drawer (another admin, a card's unassign), so never trust a cached list.
+    staleTime: 0,
+    retry: 1,
+  });

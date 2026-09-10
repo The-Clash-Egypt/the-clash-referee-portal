@@ -8,6 +8,7 @@ interface MatchCardProps {
   match: Match;
   onAssignReferee?: (match: Match) => void;
   onUnassignReferee?: (refereeId: string, matchId: string) => Promise<void>;
+  onUnassignRefereeTeam?: (matchId: string, teamId: string) => Promise<void>;
   onUpdateScore?: (match: Match) => void;
   onEditMatch?: (match: Match) => void;
   onShowQR?: (match: Match) => void;
@@ -25,6 +26,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
   match,
   onAssignReferee,
   onUnassignReferee,
+  onUnassignRefereeTeam,
   onUpdateScore,
   onEditMatch,
   onShowQR,
@@ -250,11 +252,31 @@ const MatchCard: React.FC<MatchCardProps> = ({
         </div>
       </div>
 
-      {/* Assigned Referees */}
+      {/* Assigned Referees: referee teams first, then individuals */}
       {showAssignReferee && (
         <div className="referees-section">
           <div className="section-title">Assigned Referees</div>
           <div className="referees-list">
+            {match.refereeTeams?.map((team) => (
+              <div key={`team-${team.teamId}`} className="referee-item">
+                <div className="referee-info">
+                  <span className="referee-name">{team.teamName}</span>
+                  <span className="referee-email">Referee team</span>
+                </div>
+                <div className="referee-actions">
+                  {showAdminActions && onUnassignRefereeTeam && (
+                    <button
+                      className="unassign-button"
+                      onClick={() => onUnassignRefereeTeam(match.id, team.teamId)}
+                      title="Unassign referee team"
+                      aria-label={`Unassign ${team.teamName}`}
+                    >
+                      -
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
             {match?.referees && match.referees.length > 0 ? (
               match.referees?.map((referee, index) => (
                 <div key={referee.id} className="referee-item">
@@ -286,7 +308,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
                   </div>
                 </div>
               ))
-            ) : (
+            ) : match.refereeTeams && match.refereeTeams.length > 0 ? null : (
               <div className="referee-item">
                 <div className="referee-info">
                   <span className="no-referee">No referees assigned for this match</span>

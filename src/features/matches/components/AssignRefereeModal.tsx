@@ -1,7 +1,9 @@
 import React, { useState } from "react";
-import { Match, PlayerSuggestion } from "../types/match";
-import { usePlayerSuggestions, useDebounce } from "../hooks";
+import { Match, PlayerSuggestion, RefereeTeamAssignResult, RefereeTeamOption } from "../types/match";
+import { usePlayerSuggestions, useDebounce, useRefereeTeamOptions } from "../hooks";
 import Drawer from "../../shared/components/Drawer";
+import RefereeTeamsSection from "./RefereeTeamsSection";
+import { assignButtonLabel, describeSkippedTeams } from "../../../utils/refereeAssignText";
 import "./AssignRefereeModal.scss";
 
 interface AssignRefereeModalProps {
@@ -9,19 +11,39 @@ interface AssignRefereeModalProps {
   match: Match | null;
   onClose: () => void;
   onAssign: (refereeIds: string[]) => Promise<void>;
+  /** Resolves with the per-match outcome, or null when the request failed (the page has said why). */
+  onAssignTeams: (teamIds: string[], matchIds: string[]) => Promise<RefereeTeamAssignResult[] | null>;
+  onUnassignTeam: (matchId: string, teamId: string) => Promise<void>;
   loading: boolean;
 }
 
-const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({ isOpen, match, onClose, onAssign, loading }) => {
+const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({
+  isOpen,
+  match,
+  onClose,
+  onAssign,
+  onAssignTeams,
+  onUnassignTeam,
+  loading,
+}) => {
   const [searchInputs, setSearchInputs] = useState<{ id: string; value: string }[]>([{ id: "1", value: "" }]);
   const [selectedRefereesData, setSelectedRefereesData] = useState<PlayerSuggestion[]>([]);
   const [activeInputId, setActiveInputId] = useState<string>("1");
+  const [selectedTeams, setSelectedTeams] = useState<RefereeTeamOption[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   // Get the current search term from the active input
   const currentSearchTerm = searchInputs.find((input) => input.id === activeInputId)?.value || "";
   const debouncedSearchTerm = useDebounce(currentSearchTerm, 300);
 
   const { data: playerSuggestions = [], isLoading: suggestionsLoading } = usePlayerSuggestions(debouncedSearchTerm);
+  const {
+    data: teamOptions = [],
+    isLoading: teamOptionsLoading,
+    isError: teamOptionsFailed,
+  } = useRefereeTeamOptions(match ? [match.id] : [], isOpen && Boolean(match));
+
+  const pickCount = selectedTeams.length + selectedRefereesData.length;
 
   const formatDateTime = (dateTimeString: string) => {
     const date = new Date(dateTimeString);
@@ -60,20 +82,53 @@ const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({ isOpen, match, 
     }
   };
 
-  const handleAssign = async () => {
-    if (selectedRefereesData.length === 0) return;
-    const refereeIds = selectedRefereesData.map((ref) => ref.userId);
-    await onAssign(refereeIds);
+  const handleTeamSelect = (team: RefereeTeamOption) => {
+    setSelectedTeams((prev) => (prev.some((picked) => picked.teamId === team.teamId) ? prev : [...prev, team]));
+  };
+
+  const handleTeamRemove = (teamId: string) => {
+    setSelectedTeams((prev) => prev.filter((team) => team.teamId !== teamId));
+  };
+
+  const resetReferees = () => {
     setSelectedRefereesData([]);
     setSearchInputs([{ id: "1", value: "" }]);
     setActiveInputId("1");
   };
 
   const handleClose = () => {
-    setSelectedRefereesData([]);
-    setSearchInputs([{ id: "1", value: "" }]);
-    setActiveInputId("1");
+    resetReferees();
+    setSelectedTeams([]);
     onClose();
+  };
+
+  // Teams go first through their own request; the individuals then take the existing path,
+  // which refreshes the list and closes the drawer.
+  const handleAssign = async () => {
+    if (!match || pickCount === 0 || submitting) return;
+    const teams = selectedTeams;
+    const refereeIds = selectedRefereesData.map((ref) => ref.userId);
+    setSubmitting(true);
+    try {
+      if (teams.length > 0) {
+        const results = await onAssignTeams(teams.map((team) => team.teamId), [match.id]);
+        if (!results) return; // The page has said why; the picks stay for another try.
+        const skipped = describeSkippedTeams(
+          results,
+          (teamId) => teams.find((team) => team.teamId === teamId)?.teamName ?? "a team"
+        );
+        if (skipped) window.alert(skipped);
+        setSelectedTeams([]);
+      }
+      if (refereeIds.length > 0) {
+        await onAssign(refereeIds);
+        resetReferees();
+      } else {
+        handleClose();
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // The drawer supplies the header, close button, Escape, backdrop click and scroll lock.
@@ -85,12 +140,16 @@ const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({ isOpen, match, 
       size="md"
       className="assign-referee-drawer"
       footer={
-        selectedRefereesData.length > 0 ? (
+        pickCount > 0 ? (
           <div className="assign-actions">
-            <button className="btn-base btn-primary assign-button" onClick={handleAssign} disabled={loading}>
-              {loading
+            <button
+              className="btn-base btn-primary assign-button"
+              onClick={handleAssign}
+              disabled={loading || submitting}
+            >
+              {loading || submitting
                 ? "Assigning..."
-                : `Assign ${selectedRefereesData.length} Referee${selectedRefereesData.length > 1 ? "s" : ""}`}
+                : assignButtonLabel(selectedTeams.length, selectedRefereesData.length)}
             </button>
           </div>
         ) : null
@@ -110,6 +169,18 @@ const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({ isOpen, match, 
               <strong>Time:</strong> {match.startTime ? formatDateTime(match.startTime) : "TBD"}
             </p>
           </div>
+
+          <RefereeTeamsSection
+            options={teamOptions}
+            loading={teamOptionsLoading}
+            failed={teamOptionsFailed}
+            assigned={match.refereeTeams ?? []}
+            onUnassign={(teamId) => onUnassignTeam(match.id, teamId)}
+            selected={selectedTeams}
+            onSelect={handleTeamSelect}
+            onRemove={handleTeamRemove}
+            emptyText="No other team in this category can referee this match."
+          />
 
           <div className="referees-section">
             {/* Show already assigned referees */}

@@ -1,0 +1,84 @@
+/* The "Referee teams" block inside the Assign and Bulk Assign Referees drawers. Its markup reuses
+   the drawers' own cards (blue current, green selected, the suggestion list), so the look comes from
+   AssignRefereeModal.scss / BulkAssignRefereeModal.scss; this file only adds what teams need.
+   Drawer content is portalled to <body>, hence the drawer classes as the scope. */
+.assign-referee-drawer,
+.bulk-assign-referee-drawer {
+  .referees-section.referee-teams-section {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e2e8f0;
+
+    /* The list is the last thing in this block; the section's own bottom padding spaces it. */
+    .search-inputs-section .search-input-row {
+      margin-bottom: 0;
+    }
+
+    /* Current teams get the same round red control as the picks below them. */
+    .assigned-referees-section .assigned-referees-list .assigned-referee-item {
+      justify-content: space-between;
+      gap: 12px;
+
+      .referee-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .remove-button {
+        background: #fee2e2;
+        color: #dc2626;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+
+        &:hover:not(:disabled) {
+          background: #fecaca;
+          color: #b91c1c;
+          transform: scale(1.1);
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+      }
+    }
+
+    .suggestion-item:focus-visible {
+      outline: 2px solid var(--primary-color);
+      outline-offset: -2px;
+    }
+
+    /* The bulk outcome, in the drawer's blue "current state" card colours. */
+    .team-assign-outcome {
+      margin: 0 0 24px 0;
+      padding: 12px 16px;
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 8px;
+      color: #0369a1;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+  }
+}
+
+/* Responsive Design - Mobile */
+@media (max-width: 480px) {
+  .assign-referee-drawer,
+  .bulk-assign-referee-drawer {
+    .referees-section.referee-teams-section .team-assign-outcome {
+      padding: 12px;
+      font-size: 13px;
+    }
+  }
+}

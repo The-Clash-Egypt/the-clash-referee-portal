@@ -12,6 +12,8 @@ import {
   UnknownMatchFormatError,
   getRefereeMatches,
 } from "../api/matches";
+import { assignRefereeTeams, unassignRefereeTeam } from "../api/refereeTeams";
+import { REFEREE_TEAM_OPTIONS_KEY } from "../hooks";
 import MatchCard from "../../shared/components/MatchCard";
 import Drawer from "../../shared/components/Drawer";
 import AssignRefereeModal from "../components/AssignRefereeModal";
@@ -28,19 +30,20 @@ import { VenueManagement } from "../../venue/pages";
 import MultiSelectDropdown from "../components/MultiSelectDropdown";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
 import { RootState } from "../../../store";
-import { Match, MatchGameScore, MatchFilters, FilterOptions } from "../types/match";
+import { Match, MatchGameScore, MatchFilters, FilterOptions, RefereeTeamAssignResult } from "../types/match";
 import { groupMatchesByDay, getTournamentDayDuration, getTournamentDayTimeRange } from "../../../utils/durationUtils";
 import { AdminRole } from "../../auth/types/adminRoles";
 import "./MatchesManagement.scss";
 import "../components/PrintableView.scss";
 import "../components/SearchableDropdown.scss";
 
-/** A readable reason for one match's failed save in the bulk sheet. */
-const describeSaveError = (error: unknown): string => {
+/** A readable reason for a failed request: the server's message when it sent one. */
+const describeSaveError = (error: unknown, fallback = "Couldn't save this match. Please try again."): string => {
   if (error instanceof UnknownMatchFormatError) return error.message;
   const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-  return message || "Couldn't save this match. Please try again.";
+  return message || fallback;
 };
 
 const MatchesManagement: React.FC = () => {
@@ -48,6 +51,7 @@ const MatchesManagement: React.FC = () => {
   const [searchParams] = useSearchParams();
   const tournamentName = searchParams.get("name");
   const user = useSelector((state: RootState) => state.user.user);
+  const queryClient = useQueryClient();
 
   // Scroll to top when component mounts (navigating to tournament page)
   useEffect(() => {
@@ -568,7 +572,8 @@ const MatchesManagement: React.FC = () => {
     }
   };
 
-  const handleBulkAssignReferee = async (refereeIds: string[], matchIds: string[]) => {
+  // `keepOpen`: the drawer is showing a referee-team outcome, so leave it (and the selection) up.
+  const handleBulkAssignReferee = async (refereeIds: string[], matchIds: string[], keepOpen = false) => {
     if (!hasFullAccess) return;
     try {
       setBulkAssigningReferee(true);
@@ -593,9 +598,11 @@ const MatchesManagement: React.FC = () => {
         pageSize: pageSize,
         pageNumber: currentPage,
       };
-      await fetchData(currentFilters);
-      setShowBulkAssignmentModal(false);
-      setSelectedMatches(new Set());
+      await fetchData(currentFilters, !keepOpen);
+      if (!keepOpen) {
+        setShowBulkAssignmentModal(false);
+        setSelectedMatches(new Set());
+      }
     } catch (error: any) {
       console.error("Error bulk assigning referees:", error);
       const errorMessage =
@@ -621,6 +628,40 @@ const MatchesManagement: React.FC = () => {
     pageSize: pageSize,
     pageNumber: currentPage,
   });
+
+  // After a referee-team change: the cards and the drawers' team lists both move.
+  const refreshAfterRefereeTeamChange = () => {
+    void queryClient.invalidateQueries({ queryKey: [REFEREE_TEAM_OPTIONS_KEY] });
+    return fetchData(currentPageFilters(), false);
+  };
+
+  /** Resolves with the per-match outcome, or null when the request failed (already reported). */
+  const handleAssignRefereeTeams = async (
+    teamIds: string[],
+    matchIds: string[]
+  ): Promise<RefereeTeamAssignResult[] | null> => {
+    if (!hasFullAccess || teamIds.length === 0 || matchIds.length === 0) return null;
+    try {
+      const results = await assignRefereeTeams(teamIds, matchIds);
+      await refreshAfterRefereeTeamChange();
+      return results;
+    } catch (error) {
+      console.error("Error assigning referee teams:", error);
+      alert(describeSaveError(error, "Failed to assign the referee teams. Please try again."));
+      return null;
+    }
+  };
+
+  const handleUnassignRefereeTeam = async (matchId: string, teamId: string) => {
+    if (!hasFullAccess) return;
+    try {
+      await unassignRefereeTeam(matchId, teamId);
+      await refreshAfterRefereeTeamChange();
+    } catch (error) {
+      console.error("Error unassigning referee team:", error);
+      alert(describeSaveError(error, "Failed to unassign the referee team. Please try again."));
+    }
+  };
 
   // The sheet works on a snapshot: refreshing the list after a save must not reshuffle or drop rows mid-edit.
   const openBulkScoreSheet = () => {
@@ -803,6 +844,10 @@ const MatchesManagement: React.FC = () => {
     setSelectedMatch(match);
     setShowAssignmentModal(true);
   };
+
+  // selectedMatch is a snapshot from when the drawer opened. Unassigning a team keeps the drawer
+  // open, so it reads the match from the refreshed list instead.
+  const assignDrawerMatch = selectedMatch ? (matches.find((match) => match.id === selectedMatch.id) ?? selectedMatch) : null;
 
   const handleUpdateScore = (match: Match) => {
     setSelectedMatchForScore(match);
@@ -1667,6 +1712,7 @@ const MatchesManagement: React.FC = () => {
                     onUpdateScore={handleUpdateScore}
                     onAssignReferee={openAssignmentModal}
                     onUnassignReferee={handleUnassignReferee}
+                    onUnassignRefereeTeam={handleUnassignRefereeTeam}
                     onShowQR={hasFullAccess ? setQrMatch : undefined}
                     showAdminActions={hasFullAccess}
                     showUpdateScore={!match.isCompleted || hasFullAccess}
@@ -1747,9 +1793,11 @@ const MatchesManagement: React.FC = () => {
           {/* Assignment Modal */}
           <AssignRefereeModal
             isOpen={showAssignmentModal}
-            match={selectedMatch}
+            match={assignDrawerMatch}
             onClose={() => setShowAssignmentModal(false)}
             onAssign={handleAssignReferee}
+            onAssignTeams={handleAssignRefereeTeams}
+            onUnassignTeam={handleUnassignRefereeTeam}
             loading={assigningReferee}
           />
 
@@ -1759,6 +1807,7 @@ const MatchesManagement: React.FC = () => {
             selectedMatches={sortedMatches?.filter((match) => selectedMatches.has(match.id)) || []}
             onClose={() => setShowBulkAssignmentModal(false)}
             onAssign={handleBulkAssignReferee}
+            onAssignTeams={handleAssignRefereeTeams}
             loading={bulkAssigningReferee}
           />
 
