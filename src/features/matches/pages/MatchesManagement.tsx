@@ -16,7 +16,7 @@ import MatchCard from "../../shared/components/MatchCard";
 import AssignRefereeModal from "../components/AssignRefereeModal";
 import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
 import UpdateScoreDialog from "../components/UpdateScoreDialog";
-import BulkUpdateScoreModal from "../components/BulkUpdateScoreModal";
+import BulkUpdateScoreModal, { BulkScoreEntry, BulkScoreResult } from "../components/BulkUpdateScoreModal";
 import EditMatchModal from "../components/EditMatchModal";
 import MatchQRCodeModal from "../components/MatchQRCodeModal";
 import BulkEditMatchModal from "../components/BulkEditMatchModal";
@@ -34,6 +34,13 @@ import { AdminRole } from "../../auth/types/adminRoles";
 import "./MatchesManagement.scss";
 import "../components/PrintableView.scss";
 import "../components/SearchableDropdown.scss";
+
+/** A readable reason for one match's failed save in the bulk sheet. */
+const describeSaveError = (error: unknown): string => {
+  if (error instanceof UnknownMatchFormatError) return error.message;
+  const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+  return message || "Couldn't save this match. Please try again.";
+};
 
 const MatchesManagement: React.FC = () => {
   const { id } = useParams();
@@ -72,7 +79,7 @@ const MatchesManagement: React.FC = () => {
   const [showBulkAssignmentModal, setShowBulkAssignmentModal] = useState(false);
   const [bulkAssigningReferee, setBulkAssigningReferee] = useState(false);
   const [showBulkUpdateScoreModal, setShowBulkUpdateScoreModal] = useState(false);
-  const [bulkUpdatingScores, setBulkUpdatingScores] = useState(false);
+  const [bulkScoreMatches, setBulkScoreMatches] = useState<Match[]>([]);
   const [showEditMatchModal, setShowEditMatchModal] = useState(false);
   const [editingMatch, setEditingMatch] = useState(false);
   const [showBulkEditMatchModal, setShowBulkEditMatchModal] = useState(false);
@@ -599,55 +606,62 @@ const MatchesManagement: React.FC = () => {
     }
   };
 
-  const handleBulkUpdateScores = async (matchScores: { matchId: string; gameScores: MatchGameScore[] }[]) => {
-    if (!hasFullAccess) return;
-    try {
-      setBulkUpdatingScores(true);
+  const currentPageFilters = (): MatchFilters => ({
+    search: debouncedSearchTerm || undefined,
+    status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
+    tournament: id,
+    category: filterCategory !== "all" ? filterCategory : undefined,
+    format: filterFormat !== "all" ? filterFormat : undefined,
+    round: filterRound !== "all" ? filterRound : undefined,
+    venues: filterVenues.length > 0 ? filterVenues : undefined,
+    team: filterTeam !== "all" ? filterTeam : undefined,
+    referee: filterReferee !== "all" ? filterReferee : undefined,
+    date: filterDate !== "all" ? filterDate : undefined,
+    pageSize: pageSize,
+    pageNumber: currentPage,
+  });
 
-      // Update each match with its scores
-      const updatePromises = matchScores.map(async ({ matchId, gameScores }) => {
-        const match = matches?.find((m) => m.id === matchId);
-        if (!match) return;
+  // The sheet works on a snapshot: refreshing the list after a save must not reshuffle or drop rows mid-edit.
+  const openBulkScoreSheet = () => {
+    setBulkScoreMatches(sortedMatches.filter((match) => selectedMatches.has(match.id)));
+    setShowBulkUpdateScoreModal(true);
+  };
 
-        if (match.formatType === "Group") {
-          return updateGroupMatch(matchId, { gameScores });
-        } else if (match.formatType === "League") {
-          return updateLeagueMatch(matchId, { gameScores });
-        } else if (match.formatType === "Knockout") {
-          return updateKnockoutMatch(matchId, { gameScores });
-        } else if (match.formatType === "Americano") {
-          return updateAmericanoMatch(matchId, { gameScores });
-        } else if (match.formatType === "Mexicano") {
-          return updateMexicanoMatch(matchId, { gameScores });
-        }
+  const removeFromBulkScoreSheet = (matchId: string) => {
+    const remaining = bulkScoreMatches.filter((match) => match.id !== matchId);
+    setBulkScoreMatches(remaining);
+    handleMatchSelection(matchId, false);
+    if (remaining.length === 0) setShowBulkUpdateScoreModal(false);
+  };
+
+  const closeBulkScoreSheet = (savedMatchIds: string[]) => {
+    setShowBulkUpdateScoreModal(false);
+    setBulkScoreMatches([]);
+    if (savedMatchIds.length > 0) {
+      setSelectedMatches((previous) => {
+        const next = new Set(previous);
+        savedMatchIds.forEach((matchId) => next.delete(matchId));
+        return next;
       });
-
-      await Promise.all(updatePromises);
-
-      // Refresh data to show updated scores
-      const currentFilters: MatchFilters = {
-        search: debouncedSearchTerm || undefined,
-        status: filterStatus !== "all" ? (filterStatus as "completed" | "in-progress" | "upcoming") : undefined,
-        tournament: id,
-        category: filterCategory !== "all" ? filterCategory : undefined,
-        format: filterFormat !== "all" ? filterFormat : undefined,
-        round: filterRound !== "all" ? filterRound : undefined,
-        venues: filterVenues.length > 0 ? filterVenues : undefined,
-        team: filterTeam !== "all" ? filterTeam : undefined,
-        referee: filterReferee !== "all" ? filterReferee : undefined,
-        date: filterDate !== "all" ? filterDate : undefined,
-        pageSize: pageSize,
-        pageNumber: currentPage,
-      };
-      await fetchData(currentFilters);
-      setShowBulkUpdateScoreModal(false);
-      setSelectedMatches(new Set());
-    } catch (error: any) {
-      console.error("Error bulk updating scores:", error);
-      alert("Failed to update scores for one or more matches. Please try again.");
-    } finally {
-      setBulkUpdatingScores(false);
     }
+  };
+
+  const saveBulkScores = async (entries: BulkScoreEntry[]): Promise<BulkScoreResult[]> => {
+    if (!hasFullAccess) return entries.map(({ match }) => ({ matchId: match.id, ok: false, error: "Not allowed." }));
+
+    const settled = await Promise.allSettled(
+      entries.map(({ match, gameScores }) => updateMatchByFormat(match.formatType, match.id, { gameScores }))
+    );
+    const results = settled.map(
+      (outcome, index): BulkScoreResult =>
+        outcome.status === "fulfilled"
+          ? { matchId: entries[index].match.id, ok: true }
+          : { matchId: entries[index].match.id, ok: false, error: describeSaveError(outcome.reason) }
+    );
+
+    // Refresh the list behind the sheet without the full-page spinner.
+    void fetchData(currentPageFilters(), false);
+    return results;
   };
 
   const handleUnassignReferee = async (refereeId: string, matchId: string) => {
@@ -1491,7 +1505,7 @@ const MatchesManagement: React.FC = () => {
                   <button className="bulk-assign-btn" onClick={() => setShowBulkAssignmentModal(true)}>
                     Bulk Assign Referee
                   </button>
-                  <button className="bulk-update-score-btn" onClick={() => setShowBulkUpdateScoreModal(true)}>
+                  <button className="bulk-update-score-btn" onClick={openBulkScoreSheet}>
                     Bulk Update Scores
                   </button>
                   {hasFullAccess && (
@@ -1763,10 +1777,10 @@ const MatchesManagement: React.FC = () => {
           {/* Bulk Update Score Modal */}
           <BulkUpdateScoreModal
             isOpen={showBulkUpdateScoreModal}
-            selectedMatches={sortedMatches?.filter((match) => selectedMatches.has(match.id)) || []}
-            onClose={() => setShowBulkUpdateScoreModal(false)}
-            onSubmit={handleBulkUpdateScores}
-            loading={bulkUpdatingScores}
+            selectedMatches={bulkScoreMatches}
+            onRemoveMatch={removeFromBulkScoreSheet}
+            onSave={saveBulkScores}
+            onClose={closeBulkScoreSheet}
           />
 
           {/* Edit Match Modal */}

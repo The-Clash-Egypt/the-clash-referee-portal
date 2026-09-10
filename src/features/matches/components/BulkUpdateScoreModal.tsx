@@ -1,423 +1,370 @@
-import React, { useState, useEffect } from "react";
-import { Match, MatchGameScore, isFixedPointsFormat } from "../types/match";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Match, MatchGameScore, isFixedPointsFormat, sideDisplayName } from "../types/match";
+import { ScoreCell, ScoreDrafts, scoreCellsFor } from "../../../utils/matchScoreCells";
+import { filledCells, gameScoresFromCells, sameCells, validateGameScores } from "../../../utils/scoreValidation";
+import { groupMatchesByVenue } from "../../../utils/venueGrouping";
+import { formatClock, shouldLabelCategories } from "../../../utils/matchSheetFormat";
 import "./BulkUpdateScoreModal.scss";
+
+export interface BulkScoreEntry {
+  match: Match;
+  gameScores: MatchGameScore[];
+}
+
+export interface BulkScoreResult {
+  matchId: string;
+  ok: boolean;
+  error?: string;
+}
 
 interface BulkUpdateScoreModalProps {
   isOpen: boolean;
+  /** The ticked matches, snapshotted by the page when the sheet opened. */
   selectedMatches: Match[];
-  onClose: () => void;
-  onSubmit: (matchScores: { matchId: string; gameScores: MatchGameScore[] }[]) => Promise<void>;
-  loading: boolean;
+  /** Takes one match off the sheet and unticks it. */
+  onRemoveMatch: (matchId: string) => void;
+  /** Saves each entry; resolves with one result per entry (a single failure must not reject). */
+  onSave: (entries: BulkScoreEntry[]) => Promise<BulkScoreResult[]>;
+  /** Closes the sheet, reporting which matches were saved so the page can untick them. */
+  onClose: (savedMatchIds: string[]) => void;
 }
 
+type RowState = "saving" | "saved";
+
+function withoutKey<T>(record: Record<string, T>, key: string): Record<string, T> {
+  const next = { ...record };
+  delete next[key];
+  return next;
+}
+
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
+/**
+ * Every ticked match on one screen, grouped by court (spec §6.3). Scores are validated with the
+ * same rules as the single-match dialog; nothing is saved while a changed row has errors unless
+ * the user explicitly chooses to skip those rows. Invalid scores are never sent.
+ */
 const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
   isOpen,
   selectedMatches,
+  onRemoveMatch,
+  onSave,
   onClose,
-  onSubmit,
-  loading,
 }) => {
-  const [matchScores, setMatchScores] = useState<{ matchId: string; gameScores: MatchGameScore[] }[]>([]);
-  const [errors, setErrors] = useState<string[]>([]);
-  const [currentStep, setCurrentStep] = useState<number>(0);
-  const [showSummary, setShowSummary] = useState<boolean>(false);
+  const [entries, setEntries] = useState<ScoreDrafts>({});
+  const [touched, setTouched] = useState<Set<string>>(new Set());
+  const [rowState, setRowState] = useState<Record<string, RowState>>({});
+  const [failures, setFailures] = useState<Record<string, string>>({});
+  const [saveAttempted, setSaveAttempted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
-  // Prevent background scrolling when modal is open
+  // A fresh sheet every time it opens. Selection changes while open keep what was typed.
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
+    if (!isOpen) return;
+    setEntries({});
+    setTouched(new Set());
+    setRowState({});
+    setFailures({});
+    setSaveAttempted(false);
+    setSaving(false);
+  }, [isOpen]);
 
-    // Cleanup function to restore scrolling when component unmounts
+  useEffect(() => {
+    if (!isOpen) return;
+    document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
-  // Initialize match scores when selected matches change
-  useEffect(() => {
-    if (selectedMatches.length > 0) {
-      const initialScores = selectedMatches.map((match) => ({
-        matchId: match.id,
-        gameScores:
-          match.gameScores && match.gameScores.length > 0
-            ? match.gameScores.map((score) => ({
-                ...score,
-                homeScore: score.homeScore || 0,
-                awayScore: score.awayScore || 0,
-              }))
-            : [{ gameNumber: 1, homeScore: 0, awayScore: 0 }],
-      }));
-      setMatchScores(initialScores);
-      setErrors([]);
-      setCurrentStep(0);
-      setShowSummary(false);
-    }
-  }, [selectedMatches]);
+  const groups = useMemo(() => groupMatchesByVenue(selectedMatches), [selectedMatches]);
+  const orderedIds = useMemo(() => groups.flatMap((group) => group.matches.map((match) => match.id)), [groups]);
+  const showCategory = shouldLabelCategories(selectedMatches);
 
-  const getBestOfValue = (match: Match): number => {
-    if (match.bestOf) {
-      return match.bestOf;
-    }
-    return 1;
-  };
+  const cellsFor = (match: Match): ScoreCell[] => entries[match.id] ?? scoreCellsFor(match);
+  const isSaved = (match: Match) => rowState[match.id] === "saved";
+  const isChanged = (match: Match) =>
+    !isSaved(match) && !!entries[match.id] && !sameCells(entries[match.id], scoreCellsFor(match));
+  const errorsFor = (match: Match) => (isChanged(match) ? validateGameScores(match, cellsFor(match)) : []);
 
-  const updateGameScore = (matchId: string, gameNumber: number, field: "homeScore" | "awayScore", value: string) => {
-    const numericValue = value === "" ? 0 : Math.max(0, parseInt(value) || 0);
-    setMatchScores((prev) =>
-      prev.map((matchScore) =>
-        matchScore.matchId === matchId
-          ? {
-              ...matchScore,
-              gameScores: matchScore.gameScores.map((score) =>
-                score.gameNumber === gameNumber ? { ...score, [field]: numericValue } : score
-              ),
-            }
-          : matchScore
-      )
-    );
-  };
+  const changed = selectedMatches.filter(isChanged);
+  const invalid = changed.filter((match) => errorsFor(match).length > 0);
+  const valid = changed.filter((match) => errorsFor(match).length === 0);
+  const savedIds = selectedMatches.filter(isSaved).map((match) => match.id);
+  const notEntered = selectedMatches.length - changed.length - savedIds.length;
 
-  const addGame = (matchId: string) => {
-    setMatchScores((prev) =>
-      prev.map((matchScore) =>
-        matchScore.matchId === matchId
-          ? {
-              ...matchScore,
-              gameScores: [
-                ...matchScore.gameScores,
-                {
-                  gameNumber: matchScore.gameScores.length + 1,
-                  homeScore: 0,
-                  awayScore: 0,
-                },
-              ],
-            }
-          : matchScore
-      )
-    );
-  };
+  const updateCell = (match: Match, gameNumber: number, side: "home" | "away", raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, "").slice(0, 3);
+    const value = digits === "" ? null : parseInt(digits, 10);
 
-  const removeGame = (matchId: string, gameNumber: number) => {
-    setMatchScores((prev) =>
-      prev.map((matchScore) =>
-        matchScore.matchId === matchId
-          ? {
-              ...matchScore,
-              gameScores: matchScore.gameScores.filter((score) => score.gameNumber !== gameNumber),
-            }
-          : matchScore
-      )
-    );
-  };
-
-  const validateScores = (): boolean => {
-    const newErrors: string[] = [];
-
-    matchScores.forEach((matchScore) => {
-      const match = selectedMatches.find((m) => m.id === matchScore.matchId);
-      if (!match) return;
-
-      // Only validate matches that have scores entered
-      const hasPlayedGames = matchScore.gameScores.some((score) => score.homeScore > 0 || score.awayScore > 0);
-
-      if (hasPlayedGames) {
-        if (isFixedPointsFormat(match.formatType)) {
-          // Americano/Mexicano: single game to a fixed total; ties are legal
-          const played = matchScore.gameScores.filter((score) => score.homeScore > 0 || score.awayScore > 0);
-          if (played.length > 1) {
-            newErrors.push(
-              `${match.homeTeamName} vs ${match.awayTeamName}: single-game match - enter one score pair only.`
-            );
-          }
-          const target = match.pointsPerMatch;
-          if (played.length === 1 && typeof target === "number" && target > 0) {
-            const total = played[0].homeScore + played[0].awayScore;
-            if (total !== target) {
-              newErrors.push(
-                `${match.homeTeamName} vs ${match.awayTeamName}: total points must equal ${target} (currently ${total}).`
-              );
-            }
-          }
-        } else {
-          // Check for valid game outcomes (no ties in most sports) only for games with scores
-          matchScore.gameScores.forEach((score, index) => {
-            if (score.homeScore > 0 || score.awayScore > 0) {
-              if (score.homeScore === score.awayScore) {
-                newErrors.push(
-                  `${match.homeTeamName} vs ${match.awayTeamName} - Game ${index + 1}: Cannot end in a tie.`
-                );
-              }
-            }
-          });
-        }
-      }
+    setEntries((previous) => {
+      const base = previous[match.id] ?? scoreCellsFor(match);
+      return {
+        ...previous,
+        [match.id]: base.map((cell) => (cell.gameNumber === gameNumber ? { ...cell, [side]: value } : cell)),
+      };
     });
-
-    setErrors(newErrors);
-    return newErrors.length === 0;
+    setFailures((previous) => (previous[match.id] ? withoutKey(previous, match.id) : previous));
   };
 
-  const handleNext = () => {
-    if (currentStep < selectedMatches.length - 1) {
-      setCurrentStep(currentStep + 1);
-    } else {
-      if (validateScores()) {
-        setShowSummary(true);
-      }
+  // A row's errors appear once focus leaves the row (or on Save), not on every keystroke.
+  const handleRowBlur = (matchId: string) => (event: React.FocusEvent<HTMLDivElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    setTouched((previous) => (previous.has(matchId) ? previous : new Set(previous).add(matchId)));
+  };
+
+  const focusRow = (matchId: string | undefined) => {
+    if (!matchId) return;
+    const row = bodyRef.current?.querySelector<HTMLElement>(`[data-row="${matchId}"]`);
+    row?.scrollIntoView?.({ block: "center" });
+    row?.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus();
+  };
+
+  const firstInvalidId = () => orderedIds.find((id) => invalid.some((match) => match.id === id));
+
+  const handleKeyDown = (matchId: string) => (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    focusRow(orderedIds[orderedIds.indexOf(matchId) + 1]);
+  };
+
+  const saveRows = async (rows: Match[], closeWhenDone: boolean) => {
+    if (rows.length === 0) return;
+    setSaving(true);
+    setRowState((previous) => ({ ...previous, ...Object.fromEntries(rows.map((match) => [match.id, "saving" as RowState])) }));
+
+    let results: BulkScoreResult[];
+    try {
+      results = await onSave(rows.map((match) => ({ match, gameScores: gameScoresFromCells(cellsFor(match)) })));
+    } catch (error) {
+      console.error("Bulk score save failed:", error);
+      results = rows.map((match) => ({ matchId: match.id, ok: false, error: "Couldn't save this match. Please try again." }));
+    }
+
+    const byId = new Map(results.map((result) => [result.matchId, result]));
+    const succeeded = rows.filter((match) => byId.get(match.id)?.ok);
+
+    setRowState((previous) => {
+      const next = { ...previous };
+      rows.forEach((match) => {
+        if (byId.get(match.id)?.ok) next[match.id] = "saved";
+        else delete next[match.id];
+      });
+      return next;
+    });
+    setFailures((previous) => {
+      const next = { ...previous };
+      rows.forEach((match) => {
+        const result = byId.get(match.id);
+        if (result?.ok) delete next[match.id];
+        else next[match.id] = result?.error || "Couldn't save this match. Please try again.";
+      });
+      return next;
+    });
+    setSaving(false);
+
+    if (closeWhenDone && succeeded.length === rows.length) {
+      setSaveAttempted(false);
+      onClose([...savedIds, ...succeeded.map((match) => match.id)]);
     }
   };
 
-  const handlePrevious = () => {
-    if (showSummary) {
-      setShowSummary(false);
-    } else if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleBackToScores = () => {
-    setShowSummary(false);
-  };
-
-  const handleSubmit = async () => {
-    if (!validateScores()) {
+  const handleSave = () => {
+    setSaveAttempted(true);
+    if (invalid.length > 0) {
+      setTouched((previous) => {
+        const next = new Set(previous);
+        invalid.forEach((match) => next.add(match.id));
+        return next;
+      });
+      focusRow(firstInvalidId());
       return;
     }
+    void saveRows(valid, true);
+  };
 
-    // Only include matches that have played games
-    const matchesWithScores = matchScores
-      .map((matchScore) => ({
-        matchId: matchScore.matchId,
-        gameScores: matchScore.gameScores.filter((score) => score.homeScore > 0 || score.awayScore > 0),
-      }))
-      .filter((matchScore) => matchScore.gameScores.length > 0);
-
-    try {
-      await onSubmit(matchesWithScores);
-      onClose();
-    } catch (error) {
-      console.error("Error updating scores:", error);
-    }
+  const handleSaveValidOnly = () => {
+    void saveRows(valid, false);
   };
 
   const handleClose = () => {
-    setMatchScores([]);
-    setErrors([]);
-    setCurrentStep(0);
-    setShowSummary(false);
-    onClose();
-  };
-
-  const formatDateTime = (dateTimeString: string) => {
-    const date = new Date(dateTimeString);
-    return date.toLocaleString();
+    if (saving) return;
+    if (changed.length > 0 && !window.confirm("Discard the scores you've entered?")) return;
+    onClose(savedIds);
   };
 
   if (!isOpen || selectedMatches.length === 0) return null;
 
-  const currentMatch = selectedMatches[currentStep];
-  const currentMatchScores = matchScores.find((ms) => ms.matchId === currentMatch.id)?.gameScores || [];
-  const completedMatches = matchScores.filter((ms) =>
-    ms.gameScores.some((score) => score.homeScore > 0 || score.awayScore > 0)
-  ).length;
+  const renderStatus = (match: Match, errors: string[]) => {
+    const state = rowState[match.id];
+    if (state === "saved") return <span className="bulk-status bulk-status--ready">Saved ✓</span>;
+    if (state === "saving") return <span className="bulk-status">Saving…</span>;
+    if (failures[match.id]) return <span className="bulk-status bulk-status--error">Failed</span>;
+    if (!isChanged(match)) {
+      return <span className="bulk-status">{match.gameScores?.length ? "No changes" : "Not entered"}</span>;
+    }
+    if (errors.length === 0) return <span className="bulk-status bulk-status--ready">Ready</span>;
+    return touched.has(match.id) ? (
+      <span className="bulk-status bulk-status--error">{plural(errors.length, "error", "errors")}</span>
+    ) : (
+      <span className="bulk-status">Editing</span>
+    );
+  };
+
+  const renderRow = (match: Match) => {
+    const cells = cellsFor(match);
+    const home = sideDisplayName(match.homeTeamName, match.homeTeam2Name);
+    const away = sideDisplayName(match.awayTeamName, match.awayTeam2Name);
+    const fixedPoints = isFixedPointsFormat(match.formatType);
+    const locked = rowState[match.id] !== undefined;
+    const errors = errorsFor(match);
+    const visibleErrors = touched.has(match.id) ? errors : [];
+    const failure = failures[match.id];
+    const total = filledCells(cells).reduce((sum, cell) => sum + (cell.home ?? 0) + (cell.away ?? 0), 0);
+    const columns = `minmax(120px, 220px) repeat(${cells.length}, 48px)${fixedPoints ? " auto" : ""}`;
+
+    return (
+      <div
+        key={match.id}
+        data-row={match.id}
+        className={[
+          "bulk-row",
+          visibleErrors.length > 0 || failure ? "bulk-row--error" : "",
+          isSaved(match) ? "bulk-row--saved" : "",
+        ].filter(Boolean).join(" ")}
+        onBlur={handleRowBlur(match.id)}
+      >
+        <div className="bulk-row__rail">
+          <span className="bulk-row__time">{formatClock(match.startTime)}</span>
+          {match.round ? <span className="bulk-row__round">{match.round}</span> : null}
+          {showCategory && match.categoryName ? <span className="bulk-row__category">{match.categoryName}</span> : null}
+        </div>
+
+        {/* Explicit grid placement lets the DOM run home G1, away G1, home G2… so Tab follows game pairs. */}
+        <div className="bulk-row__grid" style={{ gridTemplateColumns: columns }}>
+          <span className="bulk-row__team" style={{ gridRow: 2, gridColumn: 1 }}>
+            {home}
+          </span>
+          <span className="bulk-row__team" style={{ gridRow: 3, gridColumn: 1 }}>
+            {away}
+          </span>
+          {cells.map((cell, index) => (
+            <React.Fragment key={cell.gameNumber}>
+              <span className="bulk-row__label" style={{ gridRow: 1, gridColumn: index + 2 }}>
+                {fixedPoints ? "Pts" : `G${cell.gameNumber}`}
+              </span>
+              {(["home", "away"] as const).map((side) => (
+                <input
+                  key={side}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={3}
+                  className="bulk-row__input"
+                  style={{ gridRow: side === "home" ? 2 : 3, gridColumn: index + 2 }}
+                  value={cell[side] === null ? "" : String(cell[side])}
+                  disabled={locked}
+                  aria-label={`${side === "home" ? home : away} game ${cell.gameNumber}`}
+                  onFocus={(event) => event.currentTarget.select()}
+                  onChange={(event) => updateCell(match, cell.gameNumber, side, event.target.value)}
+                  onKeyDown={handleKeyDown(match.id)}
+                />
+              ))}
+            </React.Fragment>
+          ))}
+          {fixedPoints && match.pointsPerMatch ? (
+            <span className="bulk-row__total" style={{ gridRow: "2 / 4", gridColumn: cells.length + 2 }}>
+              {total} / {match.pointsPerMatch} pts
+            </span>
+          ) : null}
+        </div>
+
+        <div className="bulk-row__side">
+          {renderStatus(match, errors)}
+          {!isSaved(match) ? (
+            <button
+              type="button"
+              className="bulk-row__remove"
+              onClick={() => onRemoveMatch(match.id)}
+              disabled={saving}
+              aria-label={`Remove ${home} vs ${away} from this list`}
+              title="Remove from this list"
+            >
+              ×
+            </button>
+          ) : null}
+        </div>
+
+        {visibleErrors.length > 0 || failure ? (
+          <ul className="bulk-row__messages">
+            {visibleErrors.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+            {failure ? <li>{failure}</li> : null}
+          </ul>
+        ) : null}
+      </div>
+    );
+  };
+
+  const summary = [
+    valid.length > 0 ? `${valid.length} ready` : null,
+    invalid.length > 0 ? `${invalid.length} need${invalid.length === 1 ? "s" : ""} attention` : null,
+    notEntered > 0 ? `${notEntered} not entered` : null,
+    savedIds.length > 0 ? `${savedIds.length} saved` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="bulk-update-score-modal-overlay" onClick={handleClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Bulk Update Scores</h3>
-          <button className="modal-close" onClick={handleClose}>
+      <div className="bulk-sheet" role="dialog" aria-modal="true" aria-label="Bulk update scores" onClick={(event) => event.stopPropagation()}>
+        <div className="bulk-sheet__header">
+          <div>
+            <h3>Bulk update scores</h3>
+            <p>{plural(selectedMatches.length, "match", "matches")} · blank boxes are skipped</p>
+          </div>
+          <button type="button" className="bulk-sheet__close" onClick={handleClose} aria-label="Close">
             ×
           </button>
         </div>
 
-        <div className="modal-body">
-          {/* Progress Header */}
-          <div className="progress-header">
-            <div className="progress-info">
-              <span className="step-indicator">
-                {showSummary ? "Review" : `Match ${currentStep + 1} of ${selectedMatches.length}`}
-              </span>
-              <div className="progress-bar">
-                <div
-                  className="progress-fill"
-                  style={{
-                    width: showSummary ? "100%" : `${((currentStep + 1) / selectedMatches.length) * 100}%`,
-                  }}
-                ></div>
+        <div className="bulk-sheet__body" ref={bodyRef}>
+          {groups.map((group) => (
+            <section key={group.venue} className="bulk-court">
+              <div className="bulk-court__header">
+                <h4>{group.venue}</h4>
+                <span>{plural(group.matches.length, "match", "matches")}</span>
               </div>
-            </div>
-            <div className="completion-stats">
-              <span className="completed-count">{completedMatches}</span>
-              <span className="total-count">/ {selectedMatches.length}</span>
-              <span className="completed-label">matches with scores</span>
-            </div>
-          </div>
+              {group.matches.map(renderRow)}
+            </section>
+          ))}
+        </div>
 
-          {showSummary ? (
-            /* Summary View */
-            <div className="summary-view">
-              <h4>Review Scores Before Submitting</h4>
-              <div className="summary-matches">
-                {matchScores
-                  .filter((ms) => ms.gameScores.some((score) => score.homeScore > 0 || score.awayScore > 0))
-                  .map((matchScore) => {
-                    const match = selectedMatches.find((m) => m.id === matchScore.matchId);
-                    if (!match) return null;
-
-                    const playedGames = matchScore.gameScores.filter(
-                      (score) => score.homeScore > 0 || score.awayScore > 0
-                    );
-
-                    return (
-                      <div key={match.id} className="summary-match">
-                        <div className="match-header">
-                          <h5>
-                            {match.homeTeamName} vs {match.awayTeamName}
-                          </h5>
-                          <span className="match-format">{match.format || "Best of 1"}</span>
-                        </div>
-                        <div className="match-scores">
-                          {playedGames.map((score) => (
-                            <div key={score.gameNumber} className="game-summary">
-                              <span className="game-label">Game {score.gameNumber}:</span>
-                              <span className="score-display">
-                                {score.homeScore} - {score.awayScore}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
+        <div className="bulk-sheet__footer">
+          {saveAttempted && invalid.length > 0 ? (
+            <div className="bulk-sheet__blocked" role="alert">
+              <span>{invalid.length === 1 ? "1 match has errors." : `${invalid.length} matches have errors.`}</span>
+              <button type="button" className="btn btn-secondary" onClick={() => focusRow(firstInvalidId())}>
+                Review errors
+              </button>
+              {valid.length > 0 ? (
+                <button type="button" className="btn btn-primary" onClick={handleSaveValidOnly} disabled={saving}>
+                  Save {valid.length} valid, skip {invalid.length}
+                </button>
+              ) : null}
             </div>
           ) : (
-            /* Score Entry View */
-            <>
-              <div className="match-info">
-                <h4>Match Details</h4>
-                <p>
-                  <strong>Teams:</strong> {currentMatch.homeTeamName} vs {currentMatch.awayTeamName}
-                </p>
-                <p>
-                  <strong>Format:</strong> {currentMatch.format || "Best of 1"}
-                </p>
-                <p>
-                  <strong>Venue:</strong> {currentMatch.venue || "TBD"}
-                </p>
-                <p>
-                  <strong>Time:</strong> {currentMatch.startTime ? formatDateTime(currentMatch.startTime) : "TBD"}
-                </p>
-              </div>
-
-              <div className="score-section">
-                <h4>Game Scores</h4>
-                <p className="score-instructions">
-                  Enter scores for each game. Leave empty if the game hasn't been played yet. You can skip matches
-                  without scores - only matches with entered scores will be updated.
-                </p>
-
-                <div className="games-grid">
-                  {currentMatchScores.map((score, index) => (
-                    <div key={score.gameNumber} className="game-score-card">
-                      <div className="game-header">
-                        <h5>Game {score.gameNumber}</h5>
-                        {currentMatchScores.length > 1 && (
-                          <button
-                            className="remove-game-btn"
-                            onClick={() => removeGame(currentMatch.id, score.gameNumber)}
-                            type="button"
-                            title="Remove game"
-                          >
-                            ×
-                          </button>
-                        )}
-                      </div>
-                      <div className="score-inputs">
-                        <div className="team-score">
-                          <label>{currentMatch.homeTeamName}</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={score.homeScore === 0 ? "" : score.homeScore}
-                            onChange={(e) =>
-                              updateGameScore(currentMatch.id, score.gameNumber, "homeScore", e.target.value)
-                            }
-                            className="score-input"
-                          />
-                        </div>
-                        <div className="score-divider"></div>
-                        <div className="team-score">
-                          <label>{currentMatch.awayTeamName}</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={score.awayScore === 0 ? "" : score.awayScore}
-                            onChange={(e) =>
-                              updateGameScore(currentMatch.id, score.gameNumber, "awayScore", e.target.value)
-                            }
-                            className="score-input"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {currentMatchScores.length < getBestOfValue(currentMatch) && (
-                  <div className="add-game-section">
-                    <button className="add-game-btn" onClick={() => addGame(currentMatch.id)} type="button">
-                      + Add Game
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
+            <span className="bulk-sheet__summary">{summary}</span>
           )}
 
-          {errors.length > 0 && (
-            <div className="error-messages">
-              <h4>Validation Errors:</h4>
-              {errors.map((error, index) => (
-                <p key={index} className="error-message">
-                  {error}
-                </p>
-              ))}
-            </div>
-          )}
-
-          <div className="modal-actions">
-            <button className="btn btn-secondary" onClick={handleClose} disabled={loading}>
+          <div className="bulk-sheet__actions">
+            <button type="button" className="btn btn-secondary" onClick={handleClose} disabled={saving}>
               Cancel
             </button>
-
-            {!showSummary && (
-              <div className="navigation-buttons">
-                <button className="btn btn-secondary" onClick={handlePrevious} disabled={currentStep === 0 || loading}>
-                  Previous
-                </button>
-                <button className="btn btn-primary" onClick={handleNext} disabled={loading}>
-                  {currentStep === selectedMatches.length - 1 ? "Review & Submit" : "Next Match"}
-                </button>
-              </div>
-            )}
-
-            {showSummary && (
-              <div className="summary-actions">
-                <button className="btn btn-secondary" onClick={handleBackToScores} disabled={loading}>
-                  Back to Scores
-                </button>
-                <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
-                  {loading
-                    ? "Updating..."
-                    : `Update ${completedMatches} Match${completedMatches !== 1 ? "es" : ""} with Scores`}
-                </button>
-              </div>
-            )}
+            <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving || changed.length === 0}>
+              {saving ? "Saving…" : `Save ${plural(changed.length, "match", "matches")}`}
+            </button>
           </div>
         </div>
       </div>
