@@ -4,6 +4,7 @@ import { ScoreCell, ScoreDrafts, scoreCellsFor } from "../../../utils/matchScore
 import { filledCells, gameScoresFromCells, sameCells, validateGameScores } from "../../../utils/scoreValidation";
 import { groupMatchesByVenue } from "../../../utils/venueGrouping";
 import { formatClock, shouldLabelCategories } from "../../../utils/matchSheetFormat";
+import Drawer from "../../shared/components/Drawer";
 import "./BulkUpdateScoreModal.scss";
 
 export interface BulkScoreEntry {
@@ -68,14 +69,6 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
     setFailures({});
     setSaveAttempted(false);
     setSaving(false);
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "unset";
-    };
   }, [isOpen]);
 
   const groups = useMemo(() => groupMatchesByVenue(selectedMatches), [selectedMatches]);
@@ -193,8 +186,6 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
     if (changed.length > 0 && !window.confirm("Discard the scores you've entered?")) return;
     onClose(savedIds);
   };
-
-  if (!isOpen || selectedMatches.length === 0) return null;
 
   const renderStatus = (match: Match, errors: string[]) => {
     const state = rowState[match.id];
@@ -316,31 +307,17 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
     .filter(Boolean)
     .join(" · ");
 
+  // The drawer supplies the header, close button, Escape, backdrop click and scroll lock; every way
+  // of closing goes through handleClose, so typed scores still ask before being thrown away.
   return (
-    <div className="bulk-update-score-modal-overlay" onClick={handleClose}>
-      <div className="bulk-sheet" role="dialog" aria-modal="true" aria-label="Bulk update scores" onClick={(event) => event.stopPropagation()}>
-        <div className="bulk-sheet__header">
-          <div>
-            <h3>Bulk update scores</h3>
-            <p>{plural(selectedMatches.length, "match", "matches")} · blank boxes are skipped</p>
-          </div>
-          <button type="button" className="bulk-sheet__close" onClick={handleClose} aria-label="Close">
-            ×
-          </button>
-        </div>
-
-        <div className="bulk-sheet__body" ref={bodyRef}>
-          {groups.map((group) => (
-            <section key={group.venue} className="bulk-court">
-              <div className="bulk-court__header">
-                <h4>{group.venue}</h4>
-                <span>{plural(group.matches.length, "match", "matches")}</span>
-              </div>
-              {group.matches.map(renderRow)}
-            </section>
-          ))}
-        </div>
-
+    <Drawer
+      isOpen={isOpen && selectedMatches.length > 0}
+      onClose={handleClose}
+      title="Bulk update scores"
+      subtitle={`${plural(selectedMatches.length, "match", "matches")} · blank boxes are skipped`}
+      size="lg"
+      className="bulk-score-drawer"
+      footer={
         <div className="bulk-sheet__footer">
           {saveAttempted && invalid.length > 0 ? (
             <div className="bulk-sheet__blocked" role="alert">
@@ -367,8 +344,20 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
             </button>
           </div>
         </div>
+      }
+    >
+      <div ref={bodyRef}>
+        {groups.map((group) => (
+          <section key={group.venue} className="bulk-court">
+            <div className="bulk-court__header">
+              <h4>{group.venue}</h4>
+              <span>{plural(group.matches.length, "match", "matches")}</span>
+            </div>
+            {group.matches.map(renderRow)}
+          </section>
+        ))}
       </div>
-    </div>
+    </Drawer>
   );
 };
 

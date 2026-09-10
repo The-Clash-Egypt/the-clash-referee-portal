@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Match, TeamMember } from "../types/match";
+import Drawer from "../../shared/components/Drawer";
 import "./EditMatchModal.scss";
 
 // Helper function to convert date to local datetime-local format
@@ -107,19 +108,6 @@ const EditMatchModal: React.FC<EditMatchModalProps> = ({
     onClose();
   };
 
-  // Prevent background scrolling when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen]);
-
   // Helper function to render team members (max 3, captain indicator only if more than 3)
   const renderTeamMembers = (members: TeamMember[] | undefined) => {
     if (!members || members.length === 0) return null;
@@ -139,21 +127,27 @@ const EditMatchModal: React.FC<EditMatchModalProps> = ({
     );
   };
 
-  if (!isOpen || !match) return null;
-
+  // The drawer supplies the header, close button, Escape, backdrop click and scroll lock.
   return (
-    <div className="edit-match-modal-overlay" onClick={handleClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Edit Match Details</h3>
-          <button className="modal-close" onClick={handleClose}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
+    <Drawer
+      isOpen={isOpen && Boolean(match)}
+      onClose={handleClose}
+      title="Edit Match Details"
+      size="md"
+      className="edit-match-drawer"
+      footer={
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={handleClose} disabled={loading}>
+            Cancel
+          </button>
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
+            {loading ? "Saving..." : "Save Changes"}
           </button>
         </div>
-
-        <div className="modal-body">
+      }
+    >
+      {match ? (
+        <>
           {/* Teams Display */}
           <div className="teams-section">
             <div className="teams-row">
@@ -229,18 +223,9 @@ const EditMatchModal: React.FC<EditMatchModalProps> = ({
               ))}
             </div>
           )}
-
-          <div className="modal-actions">
-            <button className="btn btn-secondary" onClick={handleClose} disabled={loading}>
-              Cancel
-            </button>
-            <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
-              {loading ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+        </>
+      ) : null}
+    </Drawer>
   );
 };
 

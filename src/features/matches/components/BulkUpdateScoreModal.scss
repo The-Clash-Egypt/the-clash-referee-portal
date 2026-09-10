@@ -1,99 +1,42 @@
 @import "../../../styles/colors.scss";
 
-.bulk-update-score-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background-color: rgba(0, 0, 0, 0.5);
-}
+// The bulk score sheet inside its drawer. The Drawer supplies the panel, header, close button and
+// footer bar; court headers and rows run edge to edge, so the drawer body has no padding here.
+.bulk-score-drawer {
+  .drawer__body {
+    padding: 0;
+  }
 
-.bulk-sheet {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 960px;
-  max-height: 90vh;
-  border-radius: 12px;
-  background: $white;
-  box-shadow: $shadow-xl;
-
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 20px 24px;
-    border-bottom: 1px solid $border-primary;
-
-    h3 {
-      margin: 0;
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: $text-primary;
+  .bulk-sheet {
+    // Laid out inside the drawer footer, which draws the separator and padding.
+    &__footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px 16px;
     }
 
-    p {
-      margin: 2px 0 0;
+    &__summary {
       font-size: 0.875rem;
       color: $text-secondary;
     }
-  }
 
-  &__close {
-    padding: 4px 10px;
-    border: none;
-    border-radius: 4px;
-    background: none;
-    color: $text-secondary;
-    font-size: 1.5rem;
-    line-height: 1;
-    cursor: pointer;
-
-    &:hover {
-      background-color: $gray-100;
-      color: $gray-700;
+    &__blocked {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: $error-color;
     }
-  }
 
-  &__body {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-  }
-
-  &__footer {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px 16px;
-    padding: 16px 24px;
-    border-top: 1px solid $border-primary;
-  }
-
-  &__summary {
-    font-size: 0.875rem;
-    color: $text-secondary;
-  }
-
-  &__blocked {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: $error-color;
-  }
-
-  &__actions {
-    display: flex;
-    gap: 12px;
-    margin-left: auto;
+    &__actions {
+      display: flex;
+      gap: 12px;
+      margin-left: auto;
+    }
   }
 
   // Button look carried over from the previous bulk modal.
@@ -131,201 +74,209 @@
       }
     }
   }
-}
 
-.bulk-court__header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 10px 24px;
-  border-bottom: 1px solid $border-primary;
-  background: $gray-50;
-
-  h4 {
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: $primary-color;
-  }
-
-  span {
-    font-size: 0.8rem;
-    color: $text-secondary;
-  }
-}
-
-.bulk-row {
-  display: grid;
-  grid-template-columns: 88px minmax(0, 1fr) auto;
-  align-items: center;
-  column-gap: 16px;
-  padding: 12px 24px;
-  border-bottom: 1px solid $border-primary;
-
-  &--error {
-    background: $error-color-light;
-  }
-
-  &--saved {
-    background: $success-color-light;
-  }
-
-  &__rail {
+  .bulk-court__header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
+    align-items: baseline;
+    gap: 8px;
+    padding: 10px 24px;
+    border-bottom: 1px solid $border-primary;
+    background: $gray-50;
 
-  &__time {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: $text-primary;
-  }
-
-  &__round,
-  &__category {
-    font-size: 0.75rem;
-    color: $text-secondary;
-  }
-
-  &__grid {
-    display: grid;
-    grid-template-rows: auto auto auto;
-    align-items: center;
-    justify-content: start;
-    gap: 4px 6px;
-  }
-
-  &__team {
-    overflow: hidden;
-    padding-right: 8px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: $text-primary;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  &__label {
-    font-size: 0.7rem;
-    color: $text-tertiary;
-    text-align: center;
-  }
-
-  &__input {
-    width: 48px;
-    height: 34px;
-    box-sizing: border-box;
-    border: 1px solid $border-secondary;
-    border-radius: 6px;
-    background: $white;
-    color: $text-primary;
-    font-family: inherit;
-    font-size: 1rem;
-    font-weight: 600;
-    text-align: center;
-
-    &:focus {
-      outline: none;
-      border-color: $primary-color;
-      box-shadow: 0 0 0 3px $primary-color-light;
+    h4 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: $primary-color;
     }
 
-    &:disabled {
-      background: $gray-100;
+    span {
+      font-size: 0.8rem;
       color: $text-secondary;
     }
   }
 
-  &__total {
-    padding-left: 8px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: $text-secondary;
-    white-space: nowrap;
-  }
-
-  &__side {
-    display: flex;
+  .bulk-row {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px;
-  }
+    column-gap: 16px;
+    padding: 12px 24px;
+    border-bottom: 1px solid $border-primary;
 
-  &__remove {
-    width: 28px;
-    height: 28px;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    color: $text-tertiary;
-    font-size: 1.25rem;
-    line-height: 1;
-    cursor: pointer;
+    &--error {
+      background: $error-color-light;
+    }
 
-    &:hover:not(:disabled) {
-      background: $gray-100;
+    &--saved {
+      background: $success-color-light;
+    }
+
+    &__rail {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    &__time {
+      font-size: 0.9rem;
+      font-weight: 700;
       color: $text-primary;
     }
 
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+    &__round,
+    &__category {
+      font-size: 0.75rem;
+      color: $text-secondary;
+    }
+
+    // A long best-of row scrolls inside itself on a phone instead of widening the drawer. The 3px
+    // padding (cancelled by the margin) keeps the inputs' focus ring clear of the scroll clip.
+    &__grid {
+      display: grid;
+      grid-template-rows: auto auto auto;
+      align-items: center;
+      justify-content: start;
+      gap: 4px 6px;
+      max-width: 100%;
+      margin: -3px;
+      padding: 3px;
+      overflow-x: auto;
+    }
+
+    &__team {
+      overflow: hidden;
+      padding-right: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: $text-primary;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    &__label {
+      font-size: 0.7rem;
+      color: $text-tertiary;
+      text-align: center;
+    }
+
+    &__input {
+      width: 48px;
+      height: 34px;
+      box-sizing: border-box;
+      border: 1px solid $border-secondary;
+      border-radius: 6px;
+      background: $white;
+      color: $text-primary;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      text-align: center;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-color;
+        box-shadow: 0 0 0 3px $primary-color-light;
+      }
+
+      &:disabled {
+        background: $gray-100;
+        color: $text-secondary;
+      }
+    }
+
+    &__total {
+      padding-left: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: $text-secondary;
+      white-space: nowrap;
+    }
+
+    &__side {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    &__remove {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: $text-tertiary;
+      font-size: 1.25rem;
+      line-height: 1;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        background: $gray-100;
+        color: $text-primary;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    &__messages {
+      grid-column: 2 / -1;
+      margin: 8px 0 0;
+      padding-left: 18px;
+      font-size: 0.8rem;
+      color: $error-color;
     }
   }
 
-  &__messages {
-    grid-column: 2 / -1;
-    margin: 8px 0 0;
-    padding-left: 18px;
-    font-size: 0.8rem;
-    color: $error-color;
-  }
-}
+  .bulk-status {
+    padding: 3px 10px;
+    border-radius: 1000px;
+    background: $gray-100;
+    color: $text-secondary;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
 
-.bulk-status {
-  padding: 3px 10px;
-  border-radius: 1000px;
-  background: $gray-100;
-  color: $text-secondary;
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
+    &--ready {
+      background: $success-color-light;
+      color: $success-color-hover;
+    }
 
-  &--ready {
-    background: $success-color-light;
-    color: $success-color-hover;
-  }
-
-  &--error {
-    background: $error-color-light;
-    color: $error-color-hover;
+    &--error {
+      background: $error-color-light;
+      color: $error-color-hover;
+    }
   }
 }
 
 @media (max-width: 640px) {
-  .bulk-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: 8px;
+  .bulk-score-drawer {
+    .bulk-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      row-gap: 8px;
 
-    &__rail {
-      grid-column: 1 / -1;
-      flex-direction: row;
-      gap: 8px;
+      &__rail {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        gap: 8px;
+      }
+
+      &__messages {
+        grid-column: 1 / -1;
+      }
     }
 
-    &__messages {
-      grid-column: 1 / -1;
-    }
-  }
+    .bulk-sheet__actions {
+      width: 100%;
 
-  .bulk-sheet__actions {
-    width: 100%;
-
-    .btn {
-      flex: 1;
+      .btn {
+        flex: 1;
+      }
     }
   }
 }

@@ -1175,154 +1175,6 @@
     }
   }
 
-  // Base modal styles
-  .bulk-whatsapp-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 20px;
-    overflow: hidden; /* Prevent scrolling on the overlay */
-
-    .bulk-whatsapp-modal-content {
-      background: white;
-      border-radius: 12px;
-      max-width: 500px;
-      width: 100%;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
-      border: 1px solid #e2e8f0;
-
-      .bulk-whatsapp-modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 20px 24px 0 24px;
-
-        h3 {
-          color: #2d3748;
-          font-size: 20px;
-          font-weight: 600;
-          margin: 0;
-        }
-
-        .modal-close {
-          background: #f7fafc;
-          border: 1px solid #e2e8f0;
-          font-size: 18px;
-          color: #718096;
-          cursor: pointer;
-          padding: 0;
-          width: 32px;
-          height: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 6px;
-          transition: all 0.2s ease;
-
-          &:hover {
-            background: #edf2f7;
-            color: #4a5568;
-          }
-        }
-      }
-
-      .bulk-whatsapp-modal-body {
-        padding: 24px;
-
-        .referees-list {
-          max-height: 300px;
-          overflow-y: auto;
-          margin-top: 16px;
-
-          .referee-item {
-            padding: 12px 0;
-            border-bottom: 1px solid #f1f5f9;
-
-            &:last-child {
-              border-bottom: none;
-            }
-
-            .referee-checkbox {
-              display: flex;
-              align-items: center;
-              gap: 12px;
-              cursor: pointer;
-
-              input[type="radio"] {
-                width: 18px;
-                height: 18px;
-                cursor: pointer;
-              }
-
-              .referee-name {
-                font-weight: 600;
-                color: #2d3748;
-                flex: 1;
-              }
-
-              .referee-phone {
-                color: #718096;
-                font-size: 14px;
-              }
-            }
-          }
-        }
-      }
-
-      .modal-footer {
-        display: flex;
-        justify-content: flex-end;
-        gap: 12px;
-        padding: 0 24px 24px 24px;
-        border-top: 1px solid #e2e8f0;
-        margin-top: 20px;
-        padding-top: 20px;
-
-        .btn {
-          padding: 10px 20px;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          border: none;
-
-          &.btn-secondary {
-            background: #f7fafc;
-            color: #4a5568;
-            border: 1px solid #e2e8f0;
-
-            &:hover {
-              background: #edf2f7;
-            }
-          }
-
-          &.btn-primary {
-            background: #3182ce;
-            color: white;
-
-            &:hover:not(:disabled) {
-              background: #2c5aa0;
-            }
-
-            &:disabled {
-              background: #cbd5e0;
-              cursor: not-allowed;
-            }
-          }
-        }
-      }
-    }
-  }
-
   @media (max-width: 360px) {
     padding: 12px;
 
@@ -1409,6 +1261,89 @@
     .matches-stats {
       .status-stats {
         grid-template-columns: 1fr; /* stack stats in one column on very small screens */
+      }
+    }
+  }
+}
+
+// Share-on-WhatsApp drawer content. The drawer renders under <body>, outside .matches-management, and
+// supplies the panel, header, close button and paddings.
+.bulk-whatsapp-drawer {
+  .referees-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 16px;
+
+    .referee-item {
+      padding: 12px 0;
+      border-bottom: 1px solid #f1f5f9;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .referee-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+
+        input[type="radio"] {
+          width: 18px;
+          height: 18px;
+          cursor: pointer;
+        }
+
+        .referee-name {
+          font-weight: 600;
+          color: #2d3748;
+          flex: 1;
+        }
+
+        .referee-phone {
+          color: #718096;
+          font-size: 14px;
+        }
+      }
+    }
+  }
+
+  // In the drawer footer, which draws the separator and padding.
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+
+      &.btn-secondary {
+        background: #f7fafc;
+        color: #4a5568;
+        border: 1px solid #e2e8f0;
+
+        &:hover {
+          background: #edf2f7;
+        }
+      }
+
+      &.btn-primary {
+        background: #3182ce;
+        color: white;
+
+        &:hover:not(:disabled) {
+          background: #2c5aa0;
+        }
+
+        &:disabled {
+          background: #cbd5e0;
+          cursor: not-allowed;
+        }
       }
     }
   }

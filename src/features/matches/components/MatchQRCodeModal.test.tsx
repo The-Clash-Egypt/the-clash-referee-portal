@@ -1,7 +1,8 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import MatchQRCodeModal, { matchQrFileName } from "./MatchQRCodeModal";
+import { DRAWER_EXIT_MS } from "../../shared/components/Drawer";
 import { issueMatchAccessTokens } from "../api/matchAccess";
 import { Match } from "../types/match";
 
@@ -22,7 +23,10 @@ const tokenFor = (hour: number, minute: number) => [
 
 beforeEach(() => issue.mockReset());
 
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+  jest.useRealTimers();
+  jest.restoreAllMocks();
+});
 
 it("mints a token on open and shows the QR with its expiry", async () => {
   issue.mockResolvedValue(tokenFor(14, 32));
@@ -55,6 +59,22 @@ it("tells the admin a completed match's QR shows the result", async () => {
 
   expect(screen.getByText("Scan to view this match's final result.")).toBeInTheDocument();
   await screen.findByText(/Valid until/);
+});
+
+it("slides out still showing the last match once it is cleared", async () => {
+  issue.mockResolvedValue(tokenFor(9, 0));
+
+  const { rerender } = render(<MatchQRCodeModal match={match} onClose={jest.fn()} />);
+  await screen.findByText(/Valid until/);
+
+  jest.useFakeTimers();
+  rerender(<MatchQRCodeModal match={null} onClose={jest.fn()} />);
+  expect(screen.getByRole("dialog", { name: "Match QR code" })).toHaveTextContent("Falcons vs Sharks");
+
+  act(() => {
+    jest.advanceTimersByTime(DRAWER_EXIT_MS);
+  });
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
 
 describe("matchQrFileName", () => {

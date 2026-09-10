@@ -67,31 +67,33 @@ const MatchQRCodeModal: React.FC<MatchQRCodeModalProps> = ({ match, onClose }) =
     };
   }, [match, attempt]);
 
-  if (!match) return null;
-
-  const home = sideDisplayName(match.homeTeamName, match.homeTeam2Name);
-  const away = sideDisplayName(match.awayTeamName, match.awayTeam2Name);
-  const when = match.startTime ? moment(match.startTime).format("ddd D MMM, h:mm A") : "Time TBD";
+  // Stays mounted after the match is cleared so the drawer can slide out; it keeps showing the last
+  // match's QR while it does.
+  const home = match ? sideDisplayName(match.homeTeamName, match.homeTeam2Name) : "";
+  const away = match ? sideDisplayName(match.awayTeamName, match.awayTeam2Name) : "";
+  const when = match?.startTime ? moment(match.startTime).format("ddd D MMM, h:mm A") : "Time TBD";
   const fileName = matchQrFileName(home, away);
 
   return (
     <QRCodeModal
-      isOpen
+      isOpen={Boolean(match)}
       title="Match QR code"
       description={
-        match.isCompleted
+        match?.isCompleted
           ? "Scan to view this match's final result."
           : "Scan to enter this match's score — no login needed."
       }
       shareUrl={state.url}
       downloadName={fileName}
       details={
-        <>
-          <strong>
-            {home} vs {away}
-          </strong>
-          <span>{[match.venue, when, match.round].filter(Boolean).join(" · ")}</span>
-        </>
+        match ? (
+          <>
+            <strong>
+              {home} vs {away}
+            </strong>
+            <span>{[match.venue, when, match.round].filter(Boolean).join(" · ")}</span>
+          </>
+        ) : null
       }
       footnote={state.expiresAt ? `Valid until ${formatValidUntil(state.expiresAt)}` : undefined}
       loading={state.loading}

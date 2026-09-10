@@ -1,0 +1,172 @@
+@import "../../../styles/colors.scss";
+
+$drawer-enter: 280ms;
+$drawer-exit: 220ms; // keep equal to DRAWER_EXIT_MS in Drawer.tsx
+$drawer-ease-in: cubic-bezier(0.22, 1, 0.36, 1);
+$drawer-ease-out: cubic-bezier(0.4, 0, 1, 1);
+
+// Above the sticky navbar (z-index 1000).
+.drawer-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  animation: drawer-fade-in $drawer-enter ease both;
+}
+
+// The panel rests at `transform: none` (the keyframes end there), so fixed-position
+// children such as confirm prompts stay anchored to the viewport once it has slid in.
+.drawer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 560px;
+  max-width: 100vw;
+  height: 100%;
+  background: $white;
+  box-shadow: $shadow-xl;
+  outline: none;
+  animation: drawer-slide-in $drawer-enter $drawer-ease-in;
+
+  &--lg {
+    width: 960px;
+  }
+}
+
+.drawer-root--closing {
+  .drawer-overlay {
+    animation: drawer-fade-out $drawer-exit ease forwards;
+  }
+
+  .drawer {
+    animation: drawer-slide-out $drawer-exit $drawer-ease-out forwards;
+  }
+}
+
+.drawer__header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid $border-primary;
+}
+
+.drawer__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: $text-primary;
+}
+
+.drawer__subtitle {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: $text-secondary;
+}
+
+.drawer__close {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid $border-primary;
+  border-radius: 6px;
+  background: $gray-50;
+  color: $text-secondary;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: $gray-100;
+    color: $text-primary;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $primary-color;
+    outline-offset: 2px;
+  }
+}
+
+.drawer__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.drawer__footer {
+  flex-shrink: 0;
+  padding: 16px 20px;
+  border-top: 1px solid $border-primary;
+  background: $white;
+}
+
+@media (max-width: 640px) {
+  .drawer,
+  .drawer--lg {
+    width: 100vw;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer-overlay,
+  .drawer,
+  .drawer-root--closing .drawer-overlay,
+  .drawer-root--closing .drawer {
+    animation: none;
+  }
+
+  .drawer-root--closing {
+    visibility: hidden;
+  }
+}
+
+@keyframes drawer-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes drawer-slide-out {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes drawer-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes drawer-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}

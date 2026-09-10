@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Match, PlayerSuggestion } from "../types/match";
 import { usePlayerSuggestions, useDebounce } from "../hooks";
+import Drawer from "../../shared/components/Drawer";
 import "./AssignRefereeModal.scss";
 
 interface AssignRefereeModalProps {
@@ -21,19 +22,6 @@ const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({ isOpen, match, 
   const debouncedSearchTerm = useDebounce(currentSearchTerm, 300);
 
   const { data: playerSuggestions = [], isLoading: suggestionsLoading } = usePlayerSuggestions(debouncedSearchTerm);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-
-    // Cleanup function to restore scrolling when component unmounts
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen]);
 
   const formatDateTime = (dateTimeString: string) => {
     const date = new Date(dateTimeString);
@@ -88,19 +76,28 @@ const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({ isOpen, match, 
     onClose();
   };
 
-  if (!isOpen || !match) return null;
-
+  // The drawer supplies the header, close button, Escape, backdrop click and scroll lock.
   return (
-    <div className="assign-referee-modal-overlay" onClick={handleClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Assign Referees to Match</h3>
-          <button className="modal-close" onClick={handleClose}>
-            ×
-          </button>
-        </div>
-
-        <div className="modal-body">
+    <Drawer
+      isOpen={isOpen && Boolean(match)}
+      onClose={handleClose}
+      title="Assign Referees to Match"
+      size="md"
+      className="assign-referee-drawer"
+      footer={
+        selectedRefereesData.length > 0 ? (
+          <div className="assign-actions">
+            <button className="btn-base btn-primary assign-button" onClick={handleAssign} disabled={loading}>
+              {loading
+                ? "Assigning..."
+                : `Assign ${selectedRefereesData.length} Referee${selectedRefereesData.length > 1 ? "s" : ""}`}
+            </button>
+          </div>
+        ) : null
+      }
+    >
+      {match ? (
+        <>
           <div className="match-info">
             <h4>Match Details</h4>
             <p>
@@ -232,21 +229,10 @@ const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({ isOpen, match, 
                 + Add Another Referee
               </button>
             </div>
-
-            {/* Assign button */}
-            {selectedRefereesData.length > 0 && (
-              <div className="assign-actions">
-                <button className="btn-base btn-primary assign-button" onClick={handleAssign} disabled={loading}>
-                  {loading
-                    ? "Assigning..."
-                    : `Assign ${selectedRefereesData.length} Referee${selectedRefereesData.length > 1 ? "s" : ""}`}
-                </button>
-              </div>
-            )}
           </div>
-        </div>
-      </div>
-    </div>
+        </>
+      ) : null}
+    </Drawer>
   );
 };
 
