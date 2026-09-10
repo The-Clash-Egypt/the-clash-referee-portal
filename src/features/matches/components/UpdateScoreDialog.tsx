@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Match, MatchGameScore, TeamMember, isFixedPointsFormat, sideDisplayName } from "../types/match";
 import { updateLiveScore } from "../api/matches";
 import { cellsFromGameScores, hasAnyScore, validateGameScores } from "../../../utils/scoreValidation";
+import Drawer from "../../shared/components/Drawer";
 import "./UpdateScoreDialog.scss";
 
 /** What the fullscreen back arrow leaves behind, so re-opening the same match carries on from there. */
@@ -99,18 +101,22 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     }
   }, [isFullscreen, isLandscape, isMobile, wasInitiallyMobile, rotateHintDismissed]);
 
-  // Prevent background scrolling when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
+  // Whether the fullscreen scoreboard is on screen (its branch is below); an expired access link
+  // falls back to the drawer, which explains it.
+  const showScoreboard =
+    isOpen && match !== null && isFullscreen && (isMobile || wasInitiallyMobile) && !isUnauthorized;
 
+  // Prevent background scrolling behind the scoreboard; in modal mode the Drawer does it. Keyed on the
+  // scoreboard being on screen, not on isFullscreen (still set after the expired-link fallback), so
+  // the two locks never overlap: each restores what it found, and overlapping would leave the page locked.
+  useEffect(() => {
+    if (!showScoreboard) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = previousOverflow;
     };
-  }, [isOpen]);
+  }, [showScoreboard]);
 
   // Initialize game scores when match changes
   useEffect(() => {
@@ -385,10 +391,9 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     );
   };
 
-  if (!isOpen || !match) return null;
-
-  const homeSideName = sideDisplayName(match.homeTeamName, match.homeTeam2Name);
-  const awaySideName = sideDisplayName(match.awayTeamName, match.awayTeam2Name);
+  // No early `return null` when closed: in modal mode the Drawer must stay mounted to slide out.
+  const homeSideName = match ? sideDisplayName(match.homeTeamName, match.homeTeam2Name) : "";
+  const awaySideName = match ? sideDisplayName(match.awayTeamName, match.awayTeam2Name) : "";
 
   // Only count completed sets (sets that have been played)
   const completedSets = gameScores.filter((score) => score.homeScore > 0 || score.awayScore > 0);
@@ -398,7 +403,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
 
   // Fullscreen Scoreboard View (Mobile Only)
   // Keep fullscreen open if it was opened on a mobile device, even after rotation
-  if (isFullscreen && (isMobile || wasInitiallyMobile) && !isUnauthorized) {
+  if (showScoreboard && match) {
     return (
       <div className="fullscreen-scoreboard">
         <div className="scoreboard-content">
@@ -674,14 +679,31 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     );
   }
 
-  // Regular Modal View
+  // Escape while the confirm prompt is up backs out of the prompt only, as a click beside it does.
+  // (The prompt covers the backdrop and the close button, so Escape is the only way to reach this.)
+  const closeDrawer = showConfirmation ? () => setShowConfirmation(false) : handleClose;
+
+  // Regular Modal View: the right-side drawer. It supplies the header, close button, Escape, backdrop
+  // click and scroll lock, and keeps showing its last content while it slides out.
   return (
-    <div className="update-score-modal-overlay" onClick={handleClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="header-title-row">
-            <h3>Enter Match Scores</h3>
-            <div className="header-actions">
+    <>
+      <Drawer
+        isOpen={isOpen && match !== null}
+        onClose={closeDrawer}
+        title="Enter Match Scores"
+        subtitle={
+          match ? (
+            <span className="match-info">
+              <span className="best-of-badge">
+                {isFixedPointsFormat(match.formatType) && match.pointsPerMatch
+                  ? `Game to ${match.pointsPerMatch} points`
+                  : `Best of ${getBestOfValue(match)}`}
+              </span>
+              {!isBestOfOne(match) && (
+                <span className="sets-progress">
+                  {completedSets.length} of {getBestOfValue(match)} sets completed
+                </span>
+              )}
               {isMobile && (
                 <button
                   className="fullscreen-toggle"
@@ -700,128 +722,12 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                   </svg>
                 </button>
               )}
-              <button className="modal-close" onClick={handleClose}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div className="match-info">
-            <span className="best-of-badge">
-              {isFixedPointsFormat(match.formatType) && match.pointsPerMatch
-                ? `Game to ${match.pointsPerMatch} points`
-                : `Best of ${getBestOfValue(match)}`}
             </span>
-            {!isBestOfOne(match) && (
-              <span className="sets-progress">
-                {completedSets.length} of {getBestOfValue(match)} sets completed
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Sticky Teams Display */}
-        <div className="sticky-teams" onClick={(e) => e.stopPropagation()}>
-          <div className="dialog-teams-row">
-            <div className="dialog-team-card home">
-              <span className="dialog-team-name">{homeSideName}</span>
-              {renderTeamMembers(match.homeTeamMembers)}
-            </div>
-            <span className="dialog-vs">vs</span>
-            <div className="dialog-team-card away">
-              <span className="dialog-team-name">{awaySideName}</span>
-              {renderTeamMembers(match.awayTeamMembers)}
-            </div>
-          </div>
-        </div>
-
-        <div className="modal-body" onClick={(e) => e.stopPropagation()}>
-          {/* Score Inputs */}
-          <div className="score-inputs">
-            {gameScores.map((score, index) => (
-              <div key={score.gameNumber} className="score-row">
-                <div className="set-label">Set {score.gameNumber}</div>
-                <div className="score-inputs-container">
-                  <div className="team-input home">
-                    <input
-                      type="number"
-                      min="0"
-                      value={score.homeScore === 0 ? "" : score.homeScore}
-                      onChange={(e) => updateGameScore(score.gameNumber, "homeScore", e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="score-input"
-                      placeholder="0"
-                      disabled={isUnauthorized}
-                    />
-                  </div>
-                  <div className="score-divider">-</div>
-                  <div className="team-input away">
-                    <input
-                      type="number"
-                      min="0"
-                      value={score.awayScore === 0 ? "" : score.awayScore}
-                      onChange={(e) => updateGameScore(score.gameNumber, "awayScore", e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="score-input"
-                      placeholder="0"
-                      disabled={isUnauthorized}
-                    />
-                  </div>
-                </div>
-                {!isBestOfOne(match) && gameScores.length > 1 && (
-                  <button
-                    className="remove-set-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeGame(score.gameNumber);
-                    }}
-                    type="button"
-                    title="Remove set"
-                    disabled={isUnauthorized}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Add Set Button */}
-          {!isBestOfOne(match) && canAddMoreSets() && (
-            <div className="add-set-section">
-              <button
-                className="add-set-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  addGame();
-                }}
-                type="button"
-                disabled={isUnauthorized}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" />
-                </svg>
-                Add Another Set
-              </button>
-            </div>
-          )}
-
-          {errors.length > 0 && (
-            <div className={`error-messages ${isUnauthorized ? "unauthorized-error" : ""}`}>
-              {errors.map((error, index) => (
-                <p key={index} className={`error-message ${isUnauthorized ? "unauthorized-message" : ""}`}>
-                  {error}
-                </p>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Sticky Footer */}
-        <div className="modal-footer" onClick={(e) => e.stopPropagation()}>
+          ) : null
+        }
+        size="md"
+        className="update-score-drawer"
+        footer={
           <div className="modal-actions">
             <button
               className="btn btn-secondary"
@@ -844,66 +750,173 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
               {loading ? "Saving..." : "Save Scores"}
             </button>
           </div>
-        </div>
-
-        {/* Confirmation Overlay */}
-        {showConfirmation && (
-          <div className="confirmation-overlay" onClick={() => setShowConfirmation(false)}>
-            <div className="confirmation-dialog" onClick={(e) => e.stopPropagation()}>
-              <h4>Confirm Save</h4>
-              <p>Are you sure you want to save these scores?</p>
-              <div className="confirmation-teams-summary">
-                <div className="confirmation-team home">
-                  <span className="confirmation-team-name">{homeSideName}</span>
-                  {match.homeTeamMembers && match.homeTeamMembers.length > 0 && (
-                    <div className="confirmation-members">
-                      {match.homeTeamMembers.map((m) => (
-                        <span key={m.id} className="confirmation-member">
-                          {m.firstName} {m.lastName}{m.isCaptain ? " (C)" : ""}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+        }
+      >
+        {match ? (
+          <>
+            {/* Sticky Teams Display */}
+            <div className="sticky-teams" onClick={(e) => e.stopPropagation()}>
+              <div className="dialog-teams-row">
+                <div className="dialog-team-card home">
+                  <span className="dialog-team-name">{homeSideName}</span>
+                  {renderTeamMembers(match.homeTeamMembers)}
                 </div>
-                <span className="confirmation-vs">vs</span>
-                <div className="confirmation-team away">
-                  <span className="confirmation-team-name">{awaySideName}</span>
-                  {match.awayTeamMembers && match.awayTeamMembers.length > 0 && (
-                    <div className="confirmation-members">
-                      {match.awayTeamMembers.map((m) => (
-                        <span key={m.id} className="confirmation-member">
-                          {m.firstName} {m.lastName}{m.isCaptain ? " (C)" : ""}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                <span className="dialog-vs">vs</span>
+                <div className="dialog-team-card away">
+                  <span className="dialog-team-name">{awaySideName}</span>
+                  {renderTeamMembers(match.awayTeamMembers)}
                 </div>
-              </div>
-              <div className="confirmation-scores-summary">
-                {gameScores
-                  .filter((s) => s.homeScore > 0 || s.awayScore > 0)
-                  .map((s) => (
-                    <div key={s.gameNumber} className="confirmation-set">
-                      <span className="set-label">Set {s.gameNumber}:</span>
-                      <span className="home-score">{s.homeScore}</span>
-                      <span className="score-dash">-</span>
-                      <span className="away-score">{s.awayScore}</span>
-                    </div>
-                  ))}
-              </div>
-              <div className="confirmation-actions">
-                <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)}>
-                  Cancel
-                </button>
-                <button className="btn btn-primary" onClick={handleConfirmSave} disabled={loading}>
-                  {loading ? "Saving..." : "Confirm"}
-                </button>
               </div>
             </div>
-          </div>
-        )}
-      </div>
-    </div>
+
+            <div className="modal-body" onClick={(e) => e.stopPropagation()}>
+              {/* Score Inputs */}
+              <div className="score-inputs">
+                {gameScores.map((score, index) => (
+                  <div key={score.gameNumber} className="score-row">
+                    <div className="set-label">Set {score.gameNumber}</div>
+                    <div className="score-inputs-container">
+                      <div className="team-input home">
+                        <input
+                          type="number"
+                          min="0"
+                          value={score.homeScore === 0 ? "" : score.homeScore}
+                          onChange={(e) => updateGameScore(score.gameNumber, "homeScore", e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="score-input"
+                          placeholder="0"
+                          disabled={isUnauthorized}
+                        />
+                      </div>
+                      <div className="score-divider">-</div>
+                      <div className="team-input away">
+                        <input
+                          type="number"
+                          min="0"
+                          value={score.awayScore === 0 ? "" : score.awayScore}
+                          onChange={(e) => updateGameScore(score.gameNumber, "awayScore", e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="score-input"
+                          placeholder="0"
+                          disabled={isUnauthorized}
+                        />
+                      </div>
+                    </div>
+                    {!isBestOfOne(match) && gameScores.length > 1 && (
+                      <button
+                        className="remove-set-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeGame(score.gameNumber);
+                        }}
+                        type="button"
+                        title="Remove set"
+                        disabled={isUnauthorized}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Set Button */}
+              {!isBestOfOne(match) && canAddMoreSets() && (
+                <div className="add-set-section">
+                  <button
+                    className="add-set-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addGame();
+                    }}
+                    type="button"
+                    disabled={isUnauthorized}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" />
+                    </svg>
+                    Add Another Set
+                  </button>
+                </div>
+              )}
+
+              {errors.length > 0 && (
+                <div className={`error-messages ${isUnauthorized ? "unauthorized-error" : ""}`}>
+                  {errors.map((error, index) => (
+                    <p key={index} className={`error-message ${isUnauthorized ? "unauthorized-message" : ""}`}>
+                      {error}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        ) : null}
+      </Drawer>
+
+      {/* Confirmation Overlay. Portalled beside the drawer, not inside it: inside, it would be part of
+          the drawer's last frame and ride out on the slide-out after every save. */}
+      {isOpen && match && showConfirmation
+        ? createPortal(
+            <div className="confirmation-overlay" onClick={() => setShowConfirmation(false)}>
+              <div className="confirmation-dialog" onClick={(e) => e.stopPropagation()}>
+                <h4>Confirm Save</h4>
+                <p>Are you sure you want to save these scores?</p>
+                <div className="confirmation-teams-summary">
+                  <div className="confirmation-team home">
+                    <span className="confirmation-team-name">{homeSideName}</span>
+                    {match.homeTeamMembers && match.homeTeamMembers.length > 0 && (
+                      <div className="confirmation-members">
+                        {match.homeTeamMembers.map((m) => (
+                          <span key={m.id} className="confirmation-member">
+                            {m.firstName} {m.lastName}{m.isCaptain ? " (C)" : ""}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <span className="confirmation-vs">vs</span>
+                  <div className="confirmation-team away">
+                    <span className="confirmation-team-name">{awaySideName}</span>
+                    {match.awayTeamMembers && match.awayTeamMembers.length > 0 && (
+                      <div className="confirmation-members">
+                        {match.awayTeamMembers.map((m) => (
+                          <span key={m.id} className="confirmation-member">
+                            {m.firstName} {m.lastName}{m.isCaptain ? " (C)" : ""}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="confirmation-scores-summary">
+                  {gameScores
+                    .filter((s) => s.homeScore > 0 || s.awayScore > 0)
+                    .map((s) => (
+                      <div key={s.gameNumber} className="confirmation-set">
+                        <span className="set-label">Set {s.gameNumber}:</span>
+                        <span className="home-score">{s.homeScore}</span>
+                        <span className="score-dash">-</span>
+                        <span className="away-score">{s.awayScore}</span>
+                      </div>
+                    ))}
+                </div>
+                <div className="confirmation-actions">
+                  <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)}>
+                    Cancel
+                  </button>
+                  <button className="btn btn-primary" onClick={handleConfirmSave} disabled={loading}>
+                    {loading ? "Saving..." : "Confirm"}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+    </>
   );
 };
 

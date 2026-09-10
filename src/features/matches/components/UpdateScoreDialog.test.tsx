@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import UpdateScoreDialog from "./UpdateScoreDialog";
+import { DRAWER_EXIT_MS } from "../../shared/components/Drawer";
 import { updateLiveScore } from "../api/matches";
 import { Match, MatchGameScore } from "../types/match";
 
@@ -16,6 +17,29 @@ jest.mock("../api/matches", () => ({
 
 // jsdom's default 1024×768 viewport counts as a phone to this dialog, so `openInFullscreen`
 // opens the fullscreen scoreboard exactly as it does on the guest pages.
+
+// A desktop, touch-free viewport: the dialog then opens as the right-side drawer only.
+const useDesktopViewport = () => {
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: 1440 });
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: 900 });
+  Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, value: 0 });
+  // jsdom defines ontouchstart only if something adds it; make sure it's absent.
+  delete (window as unknown as { ontouchstart?: unknown }).ontouchstart;
+};
+// jsdom's own values, put back after every test.
+const originalViewport = (
+  [
+    [window, "innerWidth"],
+    [window, "innerHeight"],
+    [navigator, "maxTouchPoints"],
+    [window, "ontouchstart"],
+  ] as const
+).map(([target, key]) => ({ target, key, descriptor: Object.getOwnPropertyDescriptor(target, key) }));
+const restoreViewport = () =>
+  originalViewport.forEach(({ target, key, descriptor }) => {
+    if (descriptor) Object.defineProperty(target, key, descriptor);
+    else delete (target as unknown as Record<string, unknown>)[key];
+  });
 
 const liveScore = updateLiveScore as jest.Mock;
 
@@ -86,7 +110,11 @@ beforeEach(() => {
   liveScore.mockResolvedValue({ data: {} });
 });
 
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+  jest.restoreAllMocks();
+  jest.useRealTimers();
+  restoreViewport();
+});
 
 describe("fullscreen snapshot (back arrow keeps the score for the same match)", () => {
   it("restores the snapshot for the same match, but never over a game saved since", async () => {
@@ -212,4 +240,112 @@ it("stays open with the typed scores when the save is rejected", async () => {
   expect(onClose).not.toHaveBeenCalled();
   expect(screen.getAllByRole("spinbutton").map((input) => (input as HTMLInputElement).value)).toEqual(["21", "17"]);
   expect(errorSpy).toHaveBeenCalledWith("Error updating scores:", expect.any(Error));
+});
+
+describe("modal mode: the right-side drawer", () => {
+  beforeEach(useDesktopViewport);
+
+  const typeScore = (home: string, away: string) => {
+    const [homeInput, awayInput] = screen.getAllByRole("spinbutton");
+    fireEvent.change(homeInput, { target: { value: home } });
+    fireEvent.change(awayInput, { target: { value: away } });
+  };
+
+  it("opens as a right-side drawer on desktop", () => {
+    render(
+      <UpdateScoreDialog
+        isOpen
+        match={match()}
+        onClose={jest.fn()}
+        onSubmit={jest.fn()}
+        loading={false}
+        openInFullscreen={false}
+      />
+    );
+
+    const drawer = screen.getByRole("dialog", { name: "Enter Match Scores" });
+    expect(drawer).toHaveClass("drawer");
+    expect(within(drawer).getAllByRole("spinbutton")).toHaveLength(2);
+    expect(within(drawer).getByRole("button", { name: "Save Scores" })).toBeInTheDocument();
+    // A desktop gets no switch to the phone scoreboard.
+    expect(screen.queryByTitle("Enter fullscreen scoreboard")).not.toBeInTheDocument();
+  });
+
+  it("slides out, then unmounts, when closed", () => {
+    jest.useFakeTimers();
+    const props = { onClose: jest.fn(), onSubmit: jest.fn(), loading: false, openInFullscreen: false };
+    const { rerender } = render(<UpdateScoreDialog isOpen match={match()} {...props} />);
+
+    // MatchesManagement clears the match as it closes; the drawer keeps showing it while it slides out.
+    rerender(<UpdateScoreDialog isOpen={false} match={null} {...props} />);
+    expect(screen.getByRole("dialog")).toHaveTextContent("Falcons");
+    // eslint-disable-next-line testing-library/no-node-access -- the slide-out is a class on the drawer's root
+    expect(document.querySelector(".drawer-root--closing")).not.toBeNull();
+
+    act(() => {
+      jest.advanceTimersByTime(DRAWER_EXIT_MS);
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("drops the confirm prompt the moment a save closes the drawer", async () => {
+    const current = match();
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const Harness: React.FC = () => {
+      const [open, setOpen] = useState(true);
+      return (
+        <UpdateScoreDialog
+          isOpen={open}
+          match={open ? current : null}
+          onClose={() => setOpen(false)}
+          onSubmit={onSubmit}
+          loading={false}
+        />
+      );
+    };
+    render(<Harness />);
+
+    typeScore("21", "17");
+    fireEvent.click(screen.getByRole("button", { name: "Save Scores" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    // eslint-disable-next-line testing-library/no-node-access -- the slide-out is a class on the drawer's root
+    await waitFor(() => expect(document.querySelector(".drawer-root--closing")).not.toBeNull());
+    expect(onSubmit).toHaveBeenCalledWith([game(1, 21, 17)]);
+    // The scores slide out with the drawer; the prompt is gone already.
+    expect(screen.getByRole("dialog")).toHaveTextContent("Falcons");
+    expect(screen.queryByText("Are you sure you want to save these scores?")).not.toBeInTheDocument();
+  });
+
+  it("Escape backs out of the confirm prompt, not the whole drawer", () => {
+    const onClose = jest.fn();
+    render(<UpdateScoreDialog isOpen match={match()} onClose={onClose} onSubmit={jest.fn()} loading={false} />);
+
+    typeScore("21", "17");
+    fireEvent.click(screen.getByRole("button", { name: "Save Scores" }));
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(screen.queryByRole("button", { name: "Confirm" })).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getAllByRole("spinbutton").map((input) => (input as HTMLInputElement).value)).toEqual(["21", "17"]);
+  });
+});
+
+it("falls back to the drawer when a guest's link has expired, and the page scrolls again once it closes", async () => {
+  const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+  liveScore.mockRejectedValue({ response: { status: 401 } });
+  render(<Page matches={[match()]} submit={jest.fn()} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Score Falcons" }));
+  addPoint("home");
+  expect(document.body.style.overflow).toBe("hidden"); // the scoreboard holds the page still
+
+  // The live update is refused: the scoreboard gives way to the drawer, which says why.
+  const drawer = await screen.findByRole("dialog", { name: "Enter Match Scores" });
+  expect(drawer).toHaveTextContent("Your access link is invalid or has expired.");
+  expect(errorSpy).toHaveBeenCalledWith("Failed to update live score:", expect.anything());
+
+  fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  expect(document.body.style.overflow).not.toBe("hidden");
 });
