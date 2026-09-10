@@ -69,8 +69,15 @@ export const issueMatchAccessTokens = async (matchIds: string[]): Promise<MatchA
   return tokens;
 };
 
+/** Match ids are GUIDs; anything else in a guest link was mangled or tampered with. */
+export const isMatchId = (value: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
+// The id comes from the guest link's query string, so it is encoded before it goes into a path.
+const guestMatchPath = (matchId: string) => `/MatchAccess/${encodeURIComponent(matchId)}`;
+
 export const getGuestMatch = async (matchId: string, token: string): Promise<GuestMatch> => {
-  const response = await api.get<ApiEnvelope<GuestMatch>>(`/MatchAccess/${matchId}`, guestHeaders(token));
+  const response = await api.get<ApiEnvelope<GuestMatch>>(guestMatchPath(matchId), guestHeaders(token));
   return response.data.data;
 };
 
@@ -80,7 +87,7 @@ export const submitGuestMatchScore = async (
   gameScores: MatchGameScore[]
 ): Promise<GuestMatch> => {
   const response = await api.put<ApiEnvelope<GuestMatch>>(
-    `/MatchAccess/${matchId}/score`,
+    `${guestMatchPath(matchId)}/score`,
     { gameScores },
     guestHeaders(token)
   );

@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Match, MatchGameScore, TeamMember, isFixedPointsFormat, sideDisplayName } from "../types/match";
 import { updateLiveScore } from "../api/matches";
 import { cellsFromGameScores, hasAnyScore, validateGameScores } from "../../../utils/scoreValidation";
 import "./UpdateScoreDialog.scss";
+
+/** What the fullscreen back arrow leaves behind, so re-opening the same match carries on from there. */
+interface ScoreSnapshot {
+  matchId: string;
+  scores: MatchGameScore[];
+  setIndex: number;
+}
 
 interface UpdateScoreDialogProps {
   isOpen: boolean;
@@ -33,8 +40,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   const [isMobile, setIsMobile] = useState(false);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
   const [hasLoggedFirstPoint, setHasLoggedFirstPoint] = useState(false);
-  const [preservedGameScores, setPreservedGameScores] = useState<MatchGameScore[]>([]);
-  const [preservedSelectedSetIndex, setPreservedSelectedSetIndex] = useState(0);
+  // A ref, not state: it is read once when the dialog opens and must never re-initialise an open dialog.
+  const snapshotRef = useRef<ScoreSnapshot | null>(null);
   const [wasInitiallyMobile, setWasInitiallyMobile] = useState(false);
   const [showRotateHint, setShowRotateHint] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
@@ -110,10 +117,14 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     if (match && isOpen) {
       let initialScores: MatchGameScore[] = [];
 
-      // For guest venue context, check if we have preserved scores for this match
-      if (openInFullscreen && preservedGameScores.length > 0) {
-        initialScores = [...preservedGameScores];
-        setSelectedSetIndex(preservedSelectedSetIndex);
+      // Guest pages: carry on from the back arrow's snapshot, but only for the match it was taken
+      // from (live scoring would otherwise write it into another match). It is used up here, so a
+      // later re-initialisation — e.g. the page applying a save's result — reads the match instead.
+      const snapshot = snapshotRef.current;
+      snapshotRef.current = null;
+      if (openInFullscreen && snapshot && snapshot.matchId === match.id && snapshot.scores.length > 0) {
+        initialScores = [...snapshot.scores];
+        setSelectedSetIndex(snapshot.setIndex);
       } else {
         // Normal initialization
         if (match.gameScores && match.gameScores.length > 0) {
@@ -143,7 +154,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
       setIsUnauthorized(false);
       setHasLoggedFirstPoint(false);
     }
-  }, [match, isOpen, openInFullscreen, preservedGameScores, preservedSelectedSetIndex]);
+  }, [match, isOpen, openInFullscreen]);
 
   // Send live score updates when game scores change (with debouncing)
   // Only send live score updates after the first point has been logged
@@ -265,11 +276,18 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   };
 
   const removeGame = (gameNumber: number) => {
-    setGameScores((prev) => {
-      const newScores = prev.filter((score) => score.gameNumber !== gameNumber);
+    const removedIndex = gameScores.findIndex((score) => score.gameNumber === gameNumber);
+    if (removedIndex === -1) return;
 
-      return newScores;
-    });
+    // Renumber 1..n: the server only accepts contiguous game numbers, and addGame numbers by count.
+    const remaining = gameScores
+      .filter((_, index) => index !== removedIndex)
+      .map((score, index) => ({ ...score, gameNumber: index + 1 }));
+    setGameScores(remaining);
+    // Keep the fullscreen scoreboard on the same set, and never past the last one.
+    setSelectedSetIndex((current) =>
+      Math.max(0, Math.min(current > removedIndex ? current - 1 : current, remaining.length - 1))
+    );
   };
 
   const validateScores = (): boolean => {
@@ -300,6 +318,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     try {
       await onSubmit(playedGames);
       setShowConfirmation(false);
+      snapshotRef.current = null; // saved: nothing to carry on from
       onClose();
     } catch (error) {
       console.error("Error updating scores:", error);
@@ -315,8 +334,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     setIsFullscreen(false);
     setSelectedSetIndex(0);
     setHasLoggedFirstPoint(false);
-    setPreservedGameScores([]);
-    setPreservedSelectedSetIndex(0);
+    snapshotRef.current = null;
     setWasInitiallyMobile(false);
     setRotateHintDismissed(false);
     setSidesSwapped(false);
@@ -325,9 +343,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   };
 
   const handleGuestVenueClose = () => {
-    // For guest venue context, preserve the current state but close the dialog
-    setPreservedGameScores([...gameScores]);
-    setPreservedSelectedSetIndex(selectedSetIndex);
+    // For guest venue context, preserve the current state (for this match only) but close the dialog
+    snapshotRef.current = match ? { matchId: match.id, scores: [...gameScores], setIndex: selectedSetIndex } : null;
     setErrors([]);
     setIsUnauthorized(false);
     setIsFullscreen(false);
@@ -387,7 +404,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
         <div className="scoreboard-content">
           {/* Header */}
           <div className="scoreboard-header">
-            <button className="back-btn" onClick={exitFullscreen}>
+            <button className="back-btn" onClick={exitFullscreen} aria-label="Back">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" />
               </svg>
@@ -567,6 +584,17 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                 <span className="label">{sidesSwapped ? "Home Wins" : "Away Wins"}</span>
                 <span className="value">{sidesSwapped ? homeWins : awayWins}</span>
               </div>
+            </div>
+          )}
+
+          {/* Why a save was refused (a tie, a points mismatch, a gap) — same messages as the modal */}
+          {errors.length > 0 && (
+            <div className="error-messages" role="alert">
+              {errors.map((error, index) => (
+                <p key={index} className="error-message">
+                  {error}
+                </p>
+              ))}
             </div>
           )}
 

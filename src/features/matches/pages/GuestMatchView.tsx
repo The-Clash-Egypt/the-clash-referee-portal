@@ -9,6 +9,7 @@ import {
   guestAccessErrorMessage,
   guestAccessErrorReason,
   guestMatchToMatch,
+  isMatchId,
   submitGuestMatchScore,
 } from "../api/matchAccess";
 import { formatValidUntil } from "../../../utils/matchSheetFormat";
@@ -18,6 +19,7 @@ interface Blocked {
   title: string;
   message: string;
   tone: "error" | "neutral";
+  /** A network or server failure: worth retrying, and not a reason to hide a match already shown. */
   canRetry?: boolean;
 }
 
@@ -54,7 +56,7 @@ const blockedFor = (error: unknown): Blocked => {
 
 /** One match reached through its QR code (spec §4.4). Final, then locked: completed matches are read-only. */
 export const GuestMatchView: React.FC<{ matchId: string; token: string }> = ({ matchId, token }) => {
-  const hasParams = matchId !== "" && token !== "";
+  const isWellFormedLink = isMatchId(matchId) && token !== "";
   const queryClient = useQueryClient();
   const queryKey = ["guest-match", matchId, token];
 
@@ -62,10 +64,10 @@ export const GuestMatchView: React.FC<{ matchId: string; token: string }> = ({ m
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const { data: guestMatch, error, isLoading, refetch } = useQuery({
+  const { data: guestMatch, error, isFetching, refetch } = useQuery({
     queryKey,
     queryFn: () => getGuestMatch(matchId, token),
-    enabled: hasParams,
+    enabled: isWellFormedLink,
     retry: false,
     // No background refetch while the score dialog is open, so an unlock/reconnect mid-entry
     // can't swap `guestMatch`'s identity out from under UpdateScoreDialog and reset its state.
@@ -102,7 +104,8 @@ export const GuestMatchView: React.FC<{ matchId: string; token: string }> = ({ m
     void refetch(); // pick up live scores logged while the dialog was open
   };
 
-  if (hasParams && isLoading) {
+  // The first load and every "Try again" with nothing on screen yet — so a retry always shows it's working.
+  if (isWellFormedLink && isFetching && !guestMatch) {
     return (
       <div className="guest-match-page">
         <div className="guest-match-page__loading">
@@ -113,7 +116,12 @@ export const GuestMatchView: React.FC<{ matchId: string; token: string }> = ({ m
     );
   }
 
-  const blocked = !hasParams ? INVALID : error ? blockedFor(error) : null;
+  // An expired or invalid link always blocks. A network or server failure only blocks when there is
+  // nothing to show yet; a failed refresh keeps the match on screen with a notice instead.
+  const failure = error ? blockedFor(error) : null;
+  const blocked = !isWellFormedLink ? INVALID : failure && (!failure.canRetry || !guestMatch) ? failure : null;
+  const refreshFailed = failure !== null && blocked === null;
+
   if (blocked || !guestMatch || !match) {
     const shown = blocked ?? UNREACHABLE;
     return (
@@ -142,6 +150,11 @@ export const GuestMatchView: React.FC<{ matchId: string; token: string }> = ({ m
         {notice ? (
           <p className="guest-match-page__notice" role="status">
             {notice}
+          </p>
+        ) : null}
+        {refreshFailed ? (
+          <p className="guest-match-page__notice guest-match-page__notice--warning" role="status">
+            Couldn't refresh this match, so these may not be the latest scores.
           </p>
         ) : null}
 

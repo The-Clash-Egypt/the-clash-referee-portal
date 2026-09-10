@@ -891,6 +891,22 @@
       }
     }
 
+    /* Validation errors - the modal's error-message look, above the save buttons */
+    .error-messages {
+      padding: 8px 20px 0;
+      flex-shrink: 0;
+
+      .error-message {
+        color: var(--error-color-hover);
+        font-size: 13px;
+        margin: 4px 0;
+        padding: 10px 14px;
+        background: var(--error-color-light);
+        border-radius: 8px;
+        text-align: center;
+      }
+    }
+
     /* Save Section */
     .save-section {
       padding: 14px 20px !important;

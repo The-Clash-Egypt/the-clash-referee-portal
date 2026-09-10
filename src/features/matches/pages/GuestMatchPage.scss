@@ -43,6 +43,11 @@
     color: $success-color-hover;
     font-weight: 600;
     text-align: center;
+
+    &--warning {
+      background: $warning-color-light;
+      color: $text-primary;
+    }
   }
 
   &__final {

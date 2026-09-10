@@ -14,6 +14,8 @@ import {
 
 const match = (categoryName?: string): Match => ({ id: "m", categoryName, isCompleted: false }) as Match;
 
+afterEach(() => jest.restoreAllMocks());
+
 describe("distinctCategories", () => {
   it("lists each category once, in first-seen order", () => {
     expect(distinctCategories([match("2v2 Men"), match("2v2 Women"), match("2v2 Men")])).toEqual([
@@ -66,10 +68,9 @@ describe("formatClock", () => {
   });
 
   it("replaces the narrow no-break space newer ICU puts before AM/PM", () => {
-    const spy = jest.spyOn(Date.prototype, "toLocaleTimeString").mockReturnValue("2:32 PM");
+    jest.spyOn(Date.prototype, "toLocaleTimeString").mockReturnValue("2:32 PM");
     expect(formatValidUntil(new Date(2026, 8, 11, 14, 32).toISOString())).toBe("Fri 11 Sep, 2:32 PM");
     expect(formatClock(new Date(2026, 8, 12, 10, 30).toISOString())).toBe("2:32 PM");
-    spy.mockRestore();
   });
 });
 

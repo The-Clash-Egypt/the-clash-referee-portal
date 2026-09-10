@@ -602,6 +602,11 @@
       border-color: #3b82f6;
       background-color: #f8fafc;
     }
+
+    // Keep the header's first line (name, or the badge row and QR icon) clear of the checkbox
+    .tournament-header {
+      padding-right: 32px;
+    }
   }
 
   &.selected {

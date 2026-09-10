@@ -6,6 +6,7 @@ import {
   getGuestMatch,
   guestAccessErrorReason,
   guestMatchToMatch,
+  isMatchId,
   issueMatchAccessTokens,
   submitGuestMatchScore,
 } from "./matchAccess";
@@ -93,6 +94,28 @@ describe("guest calls", () => {
       { gameScores: scores },
       { headers: { [MATCH_ACCESS_HEADER]: "tok" } }
     );
+  });
+
+  it("encodes the match id before putting it in the path", async () => {
+    http.get.mockResolvedValue({ data: { data: guest() } });
+    http.put.mockResolvedValue({ data: { data: guest() } });
+
+    await getGuestMatch("../tokens?x=1", "tok");
+    await submitGuestMatchScore("a/b", "tok", []);
+
+    expect(http.get).toHaveBeenCalledWith("/MatchAccess/..%2Ftokens%3Fx%3D1", expect.anything());
+    expect(http.put).toHaveBeenCalledWith("/MatchAccess/a%2Fb/score", { gameScores: [] }, expect.anything());
+  });
+});
+
+describe("isMatchId", () => {
+  it("accepts a GUID in either case, and nothing else", () => {
+    expect(isMatchId("3f2c8a1e-9b4d-4c6e-8f1a-2b3c4d5e6f70")).toBe(true);
+    expect(isMatchId("3F2C8A1E-9B4D-4C6E-8F1A-2B3C4D5E6F70")).toBe(true);
+    expect(isMatchId("m1")).toBe(false);
+    expect(isMatchId("../tokens")).toBe(false);
+    expect(isMatchId(" 3f2c8a1e-9b4d-4c6e-8f1a-2b3c4d5e6f70")).toBe(false);
+    expect(isMatchId("")).toBe(false);
   });
 });
 

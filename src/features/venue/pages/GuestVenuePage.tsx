@@ -112,16 +112,7 @@ const GuestVenuePage: React.FC = () => {
     try {
       setUpdatingScore(true);
 
-      try {
-        await updateMatchByFormat(selectedMatchForScore.formatType, selectedMatchForScore.id, { gameScores });
-      } catch (error) {
-        if (error instanceof UnknownMatchFormatError) {
-          // Never close the modal as if saved (silent data loss).
-          alert(`${error.message} Please contact the tournament organizer.`);
-          return;
-        }
-        throw error;
-      }
+      await updateMatchByFormat(selectedMatchForScore.formatType, selectedMatchForScore.id, { gameScores });
 
       // Refresh venue data to show updated scores
       if (venueId) {
@@ -132,6 +123,11 @@ const GuestVenuePage: React.FC = () => {
       setShowUpdateScoreModal(false);
       setSelectedMatchForScore(null);
     } catch (error: any) {
+      if (error instanceof UnknownMatchFormatError) {
+        // Never close the modal as if saved (silent data loss): rejecting keeps UpdateScoreDialog open.
+        alert(`${error.message} Please contact the tournament organizer.`);
+        throw error;
+      }
       console.error("Error updating scores:", error);
       alert("Failed to update scores. Please try again.");
     } finally {

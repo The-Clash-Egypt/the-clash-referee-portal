@@ -21,6 +21,15 @@ interface QrState {
 const IDLE: QrState = { url: null, expiresAt: null, loading: false, error: null };
 
 /**
+ * "Falcons-vs-Sharks-QR". Letters (with their combining marks) and digits of any script survive,
+ * so an Arabic team name isn't dropped. A RegExp object, not a literal: TypeScript refuses the
+ * `u` flag in a literal at this project's ES5 target.
+ */
+export const matchQrFileName = (home: string, away: string): string =>
+  `${home}-vs-${away}-QR`.replace(new RegExp("[^\\p{L}\\p{M}\\p{N}]+", "gu"), "-").replace(/^-|-$/g, "") ||
+  "match-QR";
+
+/**
  * Mints a fresh 24h token each time it opens (spec §4.3). Older QRs keep working until their
  * own expiry, because the tokens are stateless.
  */
@@ -63,7 +72,7 @@ const MatchQRCodeModal: React.FC<MatchQRCodeModalProps> = ({ match, onClose }) =
   const home = sideDisplayName(match.homeTeamName, match.homeTeam2Name);
   const away = sideDisplayName(match.awayTeamName, match.awayTeam2Name);
   const when = match.startTime ? moment(match.startTime).format("ddd D MMM, h:mm A") : "Time TBD";
-  const fileName = `${home}-vs-${away}-QR`.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "match-QR";
+  const fileName = matchQrFileName(home, away);
 
   return (
     <QRCodeModal

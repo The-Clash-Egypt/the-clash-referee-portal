@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GuestMatchView } from "./GuestMatchView";
@@ -34,8 +34,10 @@ jest.mock("../components/UpdateScoreDialog", () => ({
 const load = getGuestMatch as jest.Mock;
 const submitScore = submitGuestMatchScore as jest.Mock;
 
+const MATCH_ID = "3f2c8a1e-9b4d-4c6e-8f1a-2b3c4d5e6f70";
+
 const guest = (over: Partial<GuestMatch> = {}): GuestMatch => ({
-  id: "m1",
+  id: MATCH_ID,
   tournamentName: "Summer Open",
   categoryName: "Men's Open",
   formatName: "Pool A",
@@ -60,7 +62,7 @@ const guest = (over: Partial<GuestMatch> = {}): GuestMatch => ({
   ...over,
 });
 
-const renderView = (matchId = "m1", token = "tok") =>
+const renderView = (matchId = MATCH_ID, token = "tok") =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <GuestMatchView matchId={matchId} token={token} />
@@ -72,6 +74,8 @@ beforeEach(() => {
   submitScore.mockReset();
 });
 
+afterEach(() => jest.restoreAllMocks());
+
 it("offers score entry for a match still to be played", async () => {
   load.mockResolvedValue(guest());
 
@@ -79,7 +83,7 @@ it("offers score entry for a match still to be played", async () => {
 
   expect(await screen.findByRole("button", { name: "Enter score" })).toBeInTheDocument();
   expect(screen.getByText("This link works until Fri 11 Sep, 2:32 PM.")).toBeInTheDocument();
-  expect(load).toHaveBeenCalledWith("m1", "tok");
+  expect(load).toHaveBeenCalledWith(MATCH_ID, "tok");
 });
 
 it("is read-only once the match is completed", async () => {
@@ -128,7 +132,14 @@ it("refuses a tampered link", async () => {
 });
 
 it("refuses a link with no token without calling the API", () => {
-  renderView("m1", "");
+  renderView(MATCH_ID, "");
+
+  expect(screen.getByText("This link isn't valid. Ask the referee desk for a new QR code.")).toBeInTheDocument();
+  expect(load).not.toHaveBeenCalled();
+});
+
+it.each(["m1", "../tokens", ""])("refuses the malformed match id %p without calling the API", (matchId) => {
+  renderView(matchId, "tok");
 
   expect(screen.getByText("This link isn't valid. Ask the referee desk for a new QR code.")).toBeInTheDocument();
   expect(load).not.toHaveBeenCalled();
@@ -144,6 +155,43 @@ it("shows a generic message for a server error", async () => {
   ).toBeInTheDocument();
 });
 
+it("shows that Try again is working, then loads the match", async () => {
+  let finishLoading: (value: GuestMatch) => void = () => undefined;
+  load
+    .mockRejectedValueOnce(new Error("Network Error"))
+    .mockReturnValueOnce(new Promise<GuestMatch>((resolve) => (finishLoading = resolve)));
+
+  renderView();
+  fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+
+  expect(await screen.findByText("Loading match…")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+
+  await act(async () => finishLoading(guest()));
+  expect(await screen.findByRole("button", { name: "Enter score" })).toBeInTheDocument();
+});
+
+it.each([
+  ["a network failure", new Error("Network Error")],
+  ["a server error", { response: { status: 500, data: {} } }],
+])("keeps the match on screen when a refresh hits %s", async (_label, refreshError) => {
+  load.mockResolvedValueOnce(guest());
+  submitScore.mockResolvedValueOnce(guest({ homeTeamSets: 1, gameScores: [{ gameNumber: 1, homeScore: 21, awayScore: 17 }] }));
+  load.mockRejectedValueOnce(refreshError); // the refetch when the dialog closes
+
+  renderView();
+
+  fireEvent.click(await screen.findByRole("button", { name: "Enter score" }));
+  fireEvent.click(screen.getByRole("button", { name: "Submit stub" }));
+
+  expect(
+    await screen.findByText("Couldn't refresh this match, so these may not be the latest scores.")
+  ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Enter score" })).toBeInTheDocument();
+  expect(screen.getByText("Score saved.")).toBeInTheDocument();
+  expect(screen.queryByText("Couldn't load this match")).not.toBeInTheDocument();
+});
+
 it("saves a score for a match that stays open", async () => {
   load.mockResolvedValueOnce(guest());
   submitScore.mockResolvedValueOnce(guest({ homeTeamSets: 1, gameScores: [{ gameNumber: 1, homeScore: 21, awayScore: 17 }] }));
@@ -155,7 +203,7 @@ it("saves a score for a match that stays open", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Submit stub" }));
 
   expect(await screen.findByText("Score saved.")).toBeInTheDocument();
-  expect(submitScore).toHaveBeenCalledWith("m1", "tok", [{ gameNumber: 1, homeScore: 21, awayScore: 17 }]);
+  expect(submitScore).toHaveBeenCalledWith(MATCH_ID, "tok", [{ gameNumber: 1, homeScore: 21, awayScore: 17 }]);
 });
 
 it("locks the page when a save completes the match", async () => {
@@ -225,6 +273,4 @@ it("alerts on an unexpected save failure and keeps the dialog open", async () =>
 
   await waitFor(() => expect(alertSpy).toHaveBeenCalledWith("Enter at least one game's score."));
   expect(screen.getByRole("button", { name: "Submit stub" })).toBeInTheDocument();
-
-  alertSpy.mockRestore();
 });
