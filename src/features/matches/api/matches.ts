@@ -81,6 +81,42 @@ export const updateAmericanoMatch = (matchId: string, data: UpdateMatchDTO) =>
 export const updateMexicanoMatch = (matchId: string, data: UpdateMatchDTO) =>
   api.put(`/Mexicano/match/${matchId}`, data);
 
+export class UnknownMatchFormatError extends Error {
+  readonly formatType: string | undefined;
+
+  constructor(formatType: string | undefined) {
+    super(`Cannot save scores: unknown match format "${formatType ?? ""}".`);
+    this.name = "UnknownMatchFormatError";
+    this.formatType = formatType;
+    Object.setPrototypeOf(this, UnknownMatchFormatError.prototype);
+  }
+}
+
+/**
+ * Saves a match through its own format's endpoint, so standings and brackets update exactly
+ * as that format expects. An unknown format is refused rather than guessed at.
+ */
+export const updateMatchByFormat = (
+  formatType: string | undefined,
+  matchId: string,
+  data: UpdateMatchDTO
+): Promise<unknown> => {
+  switch (formatType) {
+    case "Group":
+      return updateGroupMatch(matchId, data);
+    case "League":
+      return updateLeagueMatch(matchId, data);
+    case "Knockout":
+      return updateKnockoutMatch(matchId, data);
+    case "Americano":
+      return updateAmericanoMatch(matchId, data);
+    case "Mexicano":
+      return updateMexicanoMatch(matchId, data);
+    default:
+      return Promise.reject(new UnknownMatchFormatError(formatType));
+  }
+};
+
 export const assignRefereeToMatch = (refereeId: string, matchId: string) =>
   api.post(`/Referee/${refereeId}/assign/${matchId}`);
 

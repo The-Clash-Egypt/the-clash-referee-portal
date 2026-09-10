@@ -6,13 +6,7 @@ import { VenueMatch } from "../types/venue";
 import MatchCard from "../../shared/components/MatchCard";
 import { Match, MatchGameScore } from "../../matches/types/match";
 import UpdateScoreDialog from "../../matches/components/UpdateScoreDialog";
-import {
-  updateGroupMatch,
-  updateLeagueMatch,
-  updateKnockoutMatch,
-  updateAmericanoMatch,
-  updateMexicanoMatch,
-} from "../../matches/api/matches";
+import { UnknownMatchFormatError, updateMatchByFormat } from "../../matches/api/matches";
 import "./GuestVenuePage.scss";
 
 const GuestVenuePage: React.FC = () => {
@@ -118,23 +112,15 @@ const GuestVenuePage: React.FC = () => {
     try {
       setUpdatingScore(true);
 
-      // Call API to update match scores based on formatType (block type)
-      if (selectedMatchForScore.formatType === "Group") {
-        await updateGroupMatch(selectedMatchForScore.id, { gameScores });
-      } else if (selectedMatchForScore.formatType === "League") {
-        await updateLeagueMatch(selectedMatchForScore.id, { gameScores });
-      } else if (selectedMatchForScore.formatType === "Knockout") {
-        await updateKnockoutMatch(selectedMatchForScore.id, { gameScores });
-      } else if (selectedMatchForScore.formatType === "Americano") {
-        await updateAmericanoMatch(selectedMatchForScore.id, { gameScores });
-      } else if (selectedMatchForScore.formatType === "Mexicano") {
-        await updateMexicanoMatch(selectedMatchForScore.id, { gameScores });
-      } else {
-        // Previously this fell through and closed the modal as if saved (silent data loss)
-        alert(
-          `Cannot save scores: unknown match format "${selectedMatchForScore.formatType}". Please contact the tournament organizer.`
-        );
-        return;
+      try {
+        await updateMatchByFormat(selectedMatchForScore.formatType, selectedMatchForScore.id, { gameScores });
+      } catch (error) {
+        if (error instanceof UnknownMatchFormatError) {
+          // Never close the modal as if saved (silent data loss).
+          alert(`${error.message} Please contact the tournament organizer.`);
+          return;
+        }
+        throw error;
       }
 
       // Refresh venue data to show updated scores

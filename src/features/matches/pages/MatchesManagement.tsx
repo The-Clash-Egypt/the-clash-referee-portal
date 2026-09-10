@@ -8,6 +8,8 @@ import {
   updateGroupMatch,
   updateAmericanoMatch,
   updateMexicanoMatch,
+  updateMatchByFormat,
+  UnknownMatchFormatError,
   getRefereeMatches,
 } from "../api/matches";
 import MatchCard from "../../shared/components/MatchCard";
@@ -818,22 +820,8 @@ const MatchesManagement: React.FC = () => {
     try {
       setUpdatingScore(true);
 
-      // Call API to update match scores based on formatType (block type: Group/League/Knockout)
-      const formatType = selectedMatchForScore.formatType;
-      if (formatType === "Group") {
-        await updateGroupMatch(selectedMatchForScore.id, { gameScores });
-      } else if (formatType === "League") {
-        await updateLeagueMatch(selectedMatchForScore.id, { gameScores });
-      } else if (formatType === "Knockout") {
-        await updateKnockoutMatch(selectedMatchForScore.id, { gameScores });
-      } else if (formatType === "Americano") {
-        await updateAmericanoMatch(selectedMatchForScore.id, { gameScores });
-      } else if (formatType === "Mexicano") {
-        await updateMexicanoMatch(selectedMatchForScore.id, { gameScores });
-      } else {
-        console.warn("Unknown match formatType:", formatType, "- attempting knockout update as fallback");
-        await updateKnockoutMatch(selectedMatchForScore.id, { gameScores });
-      }
+      // Each format saves through its own endpoint; unknown formats are refused, not guessed.
+      await updateMatchByFormat(selectedMatchForScore.formatType, selectedMatchForScore.id, { gameScores });
 
       // Refresh data to show updated scores
       const currentFilters: MatchFilters = {
@@ -855,7 +843,7 @@ const MatchesManagement: React.FC = () => {
       setSelectedMatchForScore(null);
     } catch (error: any) {
       console.error("Error updating scores:", error);
-      alert("Failed to update scores. Please try again.");
+      alert(error instanceof UnknownMatchFormatError ? error.message : "Failed to update scores. Please try again.");
     } finally {
       setUpdatingScore(false);
     }
