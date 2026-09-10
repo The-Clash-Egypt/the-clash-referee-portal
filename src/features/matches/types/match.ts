@@ -24,6 +24,8 @@ export interface Match {
   awayScore?: number;
   gameScores?: MatchGameScore[];
   referees?: Referee[];
+  /** Teams assigned to referee this match. Never one of the teams playing it. */
+  refereeTeams?: RefereeTeam[];
   homeTeamMembers?: TeamMember[];
   awayTeamMembers?: TeamMember[];
   isCompleted: boolean;
@@ -56,6 +58,35 @@ export interface Referee {
   fullName: string;
   email: string;
   phoneNumber: string;
+}
+
+/** A team assigned to referee a match. Names only: no roster, no contact details. */
+export interface RefereeTeam {
+  teamId: string;
+  teamName: string;
+}
+
+/** A team that can referee at least one of the matches it was requested for. */
+export interface RefereeTeamOption {
+  teamId: string;
+  teamName: string;
+  categoryName: string;
+  /** Which of the requested matches this team may referee (same category, not playing). */
+  eligibleMatchIds: string[];
+}
+
+export interface RefereeTeamSkip {
+  teamId: string;
+  /** "plays in this match" | "different category" | "not a real team" */
+  reason: string;
+}
+
+/** What one match got from a referee-team assignment. */
+export interface RefereeTeamAssignResult {
+  matchId: string;
+  assignedTeamIds: string[];
+  unchangedTeamIds: string[];
+  skipped: RefereeTeamSkip[];
 }
 
 export interface TeamMember {

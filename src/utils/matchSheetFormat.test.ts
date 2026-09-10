@@ -4,6 +4,7 @@ import {
   cardRuleLabel,
   distinctCategories,
   formatClock,
+  formatRefereeLine,
   formatShortDay,
   formatValidUntil,
   headerCategory,
@@ -114,5 +115,39 @@ describe("card text", () => {
   it("captions the QR for what a scan will do", () => {
     expect(qrCaption(card())).toBe("Scan to enter score");
     expect(qrCaption(card({ isCompleted: true }))).toBe("Scan to view result");
+  });
+});
+
+describe("formatRefereeLine", () => {
+  const mona = { id: "r1", userId: "u1", fullName: "Mona Salah", email: "", phoneNumber: "" };
+  const omar = { id: "r2", userId: "u2", fullName: "Omar Adel", email: "", phoneNumber: "" };
+  const falcons = { teamId: "t1", teamName: "Falcons" };
+  const sharks = { teamId: "t2", teamName: "Sharks" };
+  const line = (over: Partial<Match>) => formatRefereeLine({ id: "m", isCompleted: false, ...over } as Match);
+
+  it("says Unassigned only when there are neither teams nor referees", () => {
+    expect(line({})).toBe("Unassigned");
+    expect(line({ referees: [], refereeTeams: [] })).toBe("Unassigned");
+  });
+
+  it("lists individual referees as before", () => {
+    expect(line({ referees: [mona] })).toBe("Mona Salah");
+    expect(line({ referees: [mona, omar], refereeTeams: [] })).toBe("Mona Salah, Omar Adel");
+  });
+
+  it("marks each referee team", () => {
+    expect(line({ refereeTeams: [falcons] })).toBe("Falcons (team)");
+    expect(line({ referees: [], refereeTeams: [falcons, sharks] })).toBe("Falcons (team), Sharks (team)");
+  });
+
+  it("puts teams first, then the individuals", () => {
+    expect(line({ referees: [mona], refereeTeams: [falcons, sharks] })).toBe("Falcons (team), Sharks (team) · Mona Salah");
+    expect(line({ referees: [mona, omar], refereeTeams: [sharks] })).toBe("Sharks (team) · Mona Salah, Omar Adel");
+  });
+
+  it("never prints a blank name", () => {
+    expect(line({ referees: [{ ...mona, fullName: "" }], refereeTeams: [{ teamId: "t3", teamName: "" }] })).toBe(
+      "Unknown (team) · Unknown"
+    );
   });
 });

@@ -91,6 +91,27 @@ it("keeps printing when QR codes fail, and offers a retry", () => {
   expect(screen.getByRole("button", { name: "Preview PDF" })).toBeEnabled();
 });
 
+it("prints referee teams before the individual referees on the card's one referee line", () => {
+  const refereed = m(1, {
+    refereeTeams: [
+      { teamId: "t1", teamName: "Falcons" },
+      { teamId: "t2", teamName: "Sharks" },
+    ],
+    referees: [{ id: "r1", userId: "u1", fullName: "Mona Salah", email: "", phoneNumber: "" }],
+  });
+  const teamsOnly = m(2, { refereeTeams: [{ teamId: "t3", teamName: "Eagles" }], referees: [] });
+  const { container } = view([refereed, teamsOnly, m(3)]);
+
+  const lines = Array.from(container.querySelectorAll(".sheet-card__referee"));
+  expect(lines).toHaveLength(3);
+  lines.forEach((line) => expect(line.querySelector(".sheet-card__referee-label")).toHaveTextContent("Referees"));
+  expect(lines.map((line) => line.querySelector(".sheet-card__referee-names")?.textContent)).toEqual([
+    "Falcons (team), Sharks (team) · Mona Salah",
+    "Eagles (team)",
+    "Unassigned",
+  ]);
+});
+
 it("hands typed scores and the QR links to the PDF", async () => {
   const matches = [m(1)];
   view(matches);

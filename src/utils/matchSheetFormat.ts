@@ -59,9 +59,15 @@ export const formatMembers = (members?: Match["homeTeamMembers"]): string => {
     .join(", ");
 };
 
-export const formatReferees = (referees?: Match["referees"]): string => {
-  if (!referees || referees.length === 0) return "Unassigned";
-  return referees.map((referee) => referee.fullName || "Unknown").join(", ");
+/**
+ * The card's one referee line: teams first, each marked "(team)", then the individuals.
+ * "Falcons (team), Sharks (team) · Mona Salah". "Unassigned" only when there are neither.
+ */
+export const formatRefereeLine = (match: Pick<Match, "referees" | "refereeTeams">): string => {
+  const teams = (match.refereeTeams ?? []).map((team) => `${team.teamName || "Unknown"} (team)`).join(", ");
+  const people = (match.referees ?? []).map((referee) => referee.fullName || "Unknown").join(", ");
+  if (!teams && !people) return "Unassigned";
+  return [teams, people].filter(Boolean).join(" · ");
 };
 
 /** Distinct category names across a report, in first-seen order. */

@@ -17,7 +17,7 @@ import {
   cardMetaItems,
   cardRuleLabel,
   formatMembers,
-  formatReferees,
+  formatRefereeLine,
   formatValidUntil,
   headerCategory,
   matchCountLabel,
@@ -227,7 +227,7 @@ const PrintableView: React.FC<PrintableViewProps> = ({
 
           <div className="sheet-card__referee">
             <span className="sheet-card__referee-label">Referees</span>
-            <span className="sheet-card__referee-names">{formatReferees(match.referees)}</span>
+            <span className="sheet-card__referee-names">{formatRefereeLine(match)}</span>
           </div>
         </div>
 

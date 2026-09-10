@@ -18,7 +18,7 @@ import {
   cardMetaItems,
   cardRuleLabel,
   formatMembers,
-  formatReferees,
+  formatRefereeLine,
   formatValidUntil,
   headerCategory,
   matchIsLive,
@@ -232,7 +232,7 @@ const MatchSheetCard: React.FC<{
         <View style={styles.spacer} />
         <View style={styles.referee}>
           <Text style={styles.refereeLabel}>Referees</Text>
-          <Text style={styles.refereeNames}>{formatReferees(match.referees)}</Text>
+          <Text style={styles.refereeNames}>{formatRefereeLine(match)}</Text>
         </View>
       </View>
 
