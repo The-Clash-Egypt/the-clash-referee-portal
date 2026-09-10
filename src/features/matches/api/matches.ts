@@ -149,11 +149,19 @@ export const bulkUpdateMatchScores = async (matchScores: { matchId: string; game
   return promises;
 };
 
+/** Guest credentials for live scoring. Signed-in referees send neither. */
+export interface GuestAccessTokens {
+  venueAccessToken?: string;
+  matchAccessToken?: string;
+}
+
 // Live score logging
 export const updateLiveScore = (
   data: LiveScoreRequest,
-  venueAccessToken?: string
+  access: GuestAccessTokens = {}
 ): Promise<{ data: LiveScoreResponse }> => {
-  const headers = venueAccessToken ? { "X-Venue-Access-Token": venueAccessToken } : {};
+  const headers: Record<string, string> = {};
+  if (access.venueAccessToken) headers["X-Venue-Access-Token"] = access.venueAccessToken;
+  if (access.matchAccessToken) headers["X-Match-Access-Token"] = access.matchAccessToken;
   return api.put("/tournament/matches/live-score", data, { headers });
 };

@@ -11,6 +11,7 @@ interface UpdateScoreDialogProps {
   onSubmit: (gameScores: MatchGameScore[]) => Promise<void>;
   loading: boolean;
   venueAccessToken?: string;
+  matchAccessToken?: string; // match QR guest page
   openInFullscreen?: boolean; // New prop to control fullscreen behavior
 }
 
@@ -21,6 +22,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   onSubmit,
   loading,
   venueAccessToken,
+  matchAccessToken,
   openInFullscreen = false,
 }) => {
   const [gameScores, setGameScores] = useState<MatchGameScore[]>([]);
@@ -202,7 +204,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
           matchId: match.id,
           gameScores: gameScores,
         },
-        venueAccessToken
+        { venueAccessToken, matchAccessToken }
       );
     } catch (error: any) {
       console.error("Failed to update live score:", error);
@@ -210,7 +212,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
       // Check if it's a 401 unauthorized error
       if (error.response?.status === 401) {
         setIsUnauthorized(true);
-        setErrors(["Your venue access token is invalid or expired. Please contact the tournament organizer."]);
+        setErrors(["Your access link is invalid or has expired. Please contact the tournament organizer."]);
         // Reset scores to original values
         setGameScores([...originalGameScores]);
       } else {
