@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Match, MatchGameScore, TeamMember, isFixedPointsFormat, sideDisplayName } from "../types/match";
 import { updateLiveScore } from "../api/matches";
@@ -161,6 +161,27 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
       setHasLoggedFirstPoint(false);
     }
   }, [match, isOpen, openInFullscreen]);
+
+  // Every open starts without a confirm prompt: a late click on the frozen Save while the drawer
+  // slid out would otherwise leave one waiting for the next open.
+  useEffect(() => {
+    if (isOpen) setShowConfirmation(false);
+  }, [isOpen]);
+
+  // The drawer's confirm prompt (the scoreboard has its own): Confirm takes the focus when it opens,
+  // and hands it back to what had it (Save) when it goes.
+  const confirmTitleId = useId();
+  const confirmTextId = useId();
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerConfirmOpen = isOpen && match !== null && showConfirmation && !showScoreboard;
+  useEffect(() => {
+    if (!drawerConfirmOpen) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    confirmButtonRef.current?.focus();
+    return () => {
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [drawerConfirmOpen]);
 
   // Send live score updates when game scores change (with debouncing)
   // Only send live score updates after the first point has been logged
@@ -775,8 +796,9 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                 {gameScores.map((score, index) => (
                   <div key={score.gameNumber} className="score-row">
                     <div className="set-label">Set {score.gameNumber}</div>
+                    {/* Each score sits under its team's card; the set's higher score takes its team's colour */}
                     <div className="score-inputs-container">
-                      <div className="team-input home">
+                      <div className={`team-input home${score.homeScore > score.awayScore ? " leading" : ""}`}>
                         <input
                           type="number"
                           min="0"
@@ -785,11 +807,12 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                           onClick={(e) => e.stopPropagation()}
                           className="score-input"
                           placeholder="0"
+                          aria-label={`${homeSideName}, set ${score.gameNumber}`}
                           disabled={isUnauthorized}
                         />
                       </div>
-                      <div className="score-divider">-</div>
-                      <div className="team-input away">
+                      <div className="score-divider" aria-hidden="true">-</div>
+                      <div className={`team-input away${score.awayScore > score.homeScore ? " leading" : ""}`}>
                         <input
                           type="number"
                           min="0"
@@ -798,6 +821,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                           onClick={(e) => e.stopPropagation()}
                           className="score-input"
                           placeholder="0"
+                          aria-label={`${awaySideName}, set ${score.gameNumber}`}
                           disabled={isUnauthorized}
                         />
                       </div>
@@ -858,12 +882,19 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
 
       {/* Confirmation Overlay. Portalled beside the drawer, not inside it: inside, it would be part of
           the drawer's last frame and ride out on the slide-out after every save. */}
-      {isOpen && match && showConfirmation
+      {drawerConfirmOpen && match
         ? createPortal(
             <div className="confirmation-overlay" onClick={() => setShowConfirmation(false)}>
-              <div className="confirmation-dialog" onClick={(e) => e.stopPropagation()}>
-                <h4>Confirm Save</h4>
-                <p>Are you sure you want to save these scores?</p>
+              <div
+                className="confirmation-dialog"
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby={confirmTitleId}
+                aria-describedby={confirmTextId}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h4 id={confirmTitleId}>Confirm Save</h4>
+                <p id={confirmTextId}>Are you sure you want to save these scores?</p>
                 <div className="confirmation-teams-summary">
                   <div className="confirmation-team home">
                     <span className="confirmation-team-name">{homeSideName}</span>
@@ -907,7 +938,12 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                   <button className="btn btn-secondary" onClick={() => setShowConfirmation(false)}>
                     Cancel
                   </button>
-                  <button className="btn btn-primary" onClick={handleConfirmSave} disabled={loading}>
+                  <button
+                    ref={confirmButtonRef}
+                    className="btn btn-primary"
+                    onClick={handleConfirmSave}
+                    disabled={loading}
+                  >
                     {loading ? "Saving..." : "Confirm"}
                   </button>
                 </div>

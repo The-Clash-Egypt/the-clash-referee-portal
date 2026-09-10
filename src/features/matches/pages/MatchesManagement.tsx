@@ -1837,30 +1837,36 @@ const MatchesManagement: React.FC = () => {
               </div>
             }
           >
-            <p>Select one of the assigned referees to share matches on WhatsApp</p>
-            <div className="referees-list">
-              {getAllRefereesFromSelectedMatches().map((referee) => (
-                <div key={referee.phoneNumber} className="referee-item">
-                  <label
-                    className="referee-checkbox"
-                    onClick={() => {
-                      setSelectedReferee(referee.phoneNumber);
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="selectedReferee"
-                      checked={selectedReferee === referee.phoneNumber}
-                      onChange={() => {
-                        setSelectedReferee(referee.phoneNumber);
-                      }}
-                    />
-                    <span className="referee-name">{referee.fullName}</span>
-                    <span className="referee-phone">{referee.phoneNumber}</span>
-                  </label>
+            {/* Built only while open (the drawer keeps its last content to slide out), so the
+                referee list isn't worked out on every render of the page. */}
+            {showBulkWhatsAppModal && (
+              <>
+                <p>Select one of the assigned referees to share matches on WhatsApp</p>
+                <div className="referees-list">
+                  {getAllRefereesFromSelectedMatches().map((referee) => (
+                    <div key={referee.phoneNumber} className="referee-item">
+                      <label
+                        className="referee-checkbox"
+                        onClick={() => {
+                          setSelectedReferee(referee.phoneNumber);
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="selectedReferee"
+                          checked={selectedReferee === referee.phoneNumber}
+                          onChange={() => {
+                            setSelectedReferee(referee.phoneNumber);
+                          }}
+                        />
+                        <span className="referee-name">{referee.fullName}</span>
+                        <span className="referee-phone">{referee.phoneNumber}</span>
+                      </label>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </Drawer>
 
           {/* Export Views */}

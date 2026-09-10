@@ -1,5 +1,11 @@
 /* Score drawer (modal mode). The Drawer supplies the panel, header, close button and footer; the
    match info and the scoreboard switch sit in its subtitle, Cancel / Save in its footer. */
+
+// Each set's two scores sit in the same columns as the team cards above them.
+$score-team-gap: 10px; // between a team card and the "vs" column
+$score-vs-col: 24px; // the "vs" column; each set's "-" sits in it too
+$score-card-inset: 13px; // a set card's border (1px) + side padding (12px)
+
 .update-score-drawer {
   // Laid out like the old modal: the teams stay pinned while the score list below them scrolls.
   .drawer__body {
@@ -74,10 +80,11 @@
     .dialog-teams-row {
       display: flex;
       align-items: stretch;
-      gap: 10px;
+      gap: $score-team-gap;
 
       .dialog-team-card {
         flex: 1;
+        min-width: 0; // equal halves whatever the names, so the score columns below line up
         text-align: left;
         padding: 10px 12px;
         border-radius: 10px;
@@ -105,6 +112,7 @@
           font-size: 13px;
           font-weight: 600;
           margin-bottom: 4px;
+          overflow-wrap: anywhere;
         }
 
         .team-members-display {
@@ -129,7 +137,9 @@
 
       .dialog-vs {
         display: flex;
+        flex: 0 0 $score-vs-col;
         align-items: center;
+        justify-content: center;
         color: #94a3b8;
         font-size: 11px;
         font-weight: 600;
@@ -138,52 +148,140 @@
     }
   }
 
-  // Modal Body - Scrollable
+  // Modal Body - Scrollable. Same side padding as the teams above, so the columns line up.
   .modal-body {
-    padding: 12px 20px;
+    padding: 12px 20px 16px;
     flex: 1;
     overflow-y: auto;
     min-height: 0;
 
-    /* Score Inputs */
+    /* Score Inputs: one card per set. A header line holds the set pill and the remove control;
+       below it, each score sits in its team's column, centred under that team's card. */
     .score-inputs {
-      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 10px;
 
       .score-row {
-        display: flex;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+          "label remove"
+          "scores scores";
         align-items: center;
-        padding: 10px 14px;
+        row-gap: 10px;
+        padding: 10px ($score-card-inset - 1px) 12px;
         background: #f8fafc;
-        border-radius: 10px;
         border: 1px solid #e2e8f0;
-        margin-bottom: 8px;
-        position: relative;
+        border-radius: 10px;
 
         .set-label {
-          position: absolute;
-          left: 10px;
-          top: 50%;
-          transform: translateY(-50%);
+          grid-area: label;
+          justify-self: start;
+          padding: 3px 10px;
+          border-radius: 12px;
           background: #64748b;
           color: white;
-          padding: 4px 8px;
-          border-radius: 12px;
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 600;
-          text-align: center;
+          line-height: 16px;
+          letter-spacing: 0.3px;
+          text-transform: uppercase;
+        }
+
+        // A 44px tap target that doesn't grow the header line: the negative margins reach into
+        // the card's padding and the gap above the scores, never into the inputs.
+        .remove-set-btn {
+          grid-area: remove;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 44px;
+          height: 44px;
+          margin: -10px -10px -10px 0;
+          padding: 0;
+          background: transparent;
+          color: #94a3b8;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+
+          svg {
+            box-sizing: border-box;
+            width: 28px;
+            height: 28px;
+            padding: 7px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+          }
+
+          &:hover:not(:disabled) {
+            color: #dc2626;
+
+            svg {
+              background: #fef2f2;
+            }
+          }
+
+          &:focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: -4px;
+          }
+
+          &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+          }
         }
 
         .score-inputs-container {
-          display: flex;
+          grid-area: scores;
+          display: grid;
+          // The team row's columns; adding the card inset to the gaps centres each input under
+          // its team's card.
+          grid-template-columns: minmax(0, 1fr) $score-vs-col minmax(0, 1fr);
+          column-gap: $score-team-gap + $score-card-inset;
           align-items: center;
-          width: 100%;
-          justify-content: center;
-          gap: 10px;
 
           .team-input {
-            flex: 1;
-            display: flex;
-            justify-content: center;
+            min-width: 0;
+
+            .score-input {
+              box-sizing: border-box;
+              display: block;
+              width: 100%;
+              height: 48px;
+              margin: 0;
+              padding: 0 8px;
+              border: 2px solid #e2e8f0;
+              border-radius: 8px;
+              background: white;
+              color: #1e293b;
+              font-family: inherit;
+              font-size: 22px;
+              font-weight: 700;
+              font-variant-numeric: tabular-nums;
+              text-align: center;
+              outline: none;
+              transition: all 0.2s ease;
+
+              &::placeholder {
+                color: #94a3b8;
+                font-weight: 600;
+              }
+
+              &::-webkit-outer-spin-button,
+              &::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+              }
+
+              &[type="number"] {
+                appearance: textfield;
+                -moz-appearance: textfield;
+              }
+            }
 
             &.home .score-input {
               border-color: #fecaca;
@@ -205,96 +303,62 @@
               }
             }
 
-            .score-input {
-              width: 60px;
-              padding: 8px 10px;
-              border: 2px solid #e2e8f0;
-              border-radius: 8px;
-              font-size: 18px;
-              font-weight: 700;
-              text-align: center;
-              transition: all 0.2s ease;
+            // The set's higher score, in its team's colour (the team card's name and deeper tint).
+            &.leading.home .score-input {
+              background: #fee2e2;
+              color: #b91c1c;
+            }
 
-              &:disabled {
-                background: #f8fafc;
-                border-color: #e2e8f0;
-                color: #94a3b8;
-                cursor: not-allowed;
-                opacity: 0.6;
-              }
+            &.leading.away .score-input {
+              background: #dbeafe;
+              color: #1d4ed8;
+            }
 
-              &::-webkit-outer-spin-button,
-              &::-webkit-inner-spin-button {
-                -webkit-appearance: none;
-                margin: 0;
-              }
-
-              &[type="number"] {
-                appearance: textfield;
-                -moz-appearance: textfield;
-              }
+            // Last, so it beats the team and leading tints.
+            &.home .score-input:disabled,
+            &.away .score-input:disabled {
+              background: #f8fafc;
+              border-color: #e2e8f0;
+              color: #94a3b8;
+              cursor: not-allowed;
+              opacity: 0.6;
             }
           }
 
           .score-divider {
             color: #94a3b8;
-            font-size: 16px;
+            font-size: 20px;
             font-weight: 600;
-          }
-        }
-
-        .remove-set-btn {
-          background: transparent;
-          color: #94a3b8;
-          border: none;
-          border-radius: 6px;
-          width: 28px;
-          height: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: all 0.2s ease;
-
-          &:hover {
-            background: #fef2f2;
-            color: #dc2626;
-          }
-
-          &:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-          }
-
-          svg {
-            width: 14px;
-            height: 14px;
+            text-align: center;
           }
         }
       }
     }
 
-    /* Add Set Section */
+    /* Add Set Section: as wide as the set cards */
     .add-set-section {
-      display: flex;
-      justify-content: center;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
 
       .add-set-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 16px;
         background: white;
         color: #64748b;
         border: 1px dashed #cbd5e0;
         border-radius: 10px;
-        padding: 8px 16px;
-        font-size: 12px;
-        font-weight: 500;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        gap: 6px;
 
-        &:hover {
+        &:hover:not(:disabled) {
           background: #f8fafc;
           border-color: #94a3b8;
           color: #475569;
@@ -344,24 +408,52 @@
       }
     }
 
-    /* Error Messages */
+    /* Error Messages: a tray under the sets, as wide as the list. While the list scrolls it stays
+       at the list's bottom edge, so a refused save is always explained right above Save. The
+       negative bottom offset/margin cancel the list's 16px bottom padding, which sticky honours. */
     .error-messages {
-      margin-bottom: 16px;
+      position: sticky;
+      bottom: -16px;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 0 -20px -16px;
+      padding: 10px 20px 16px;
+      background: white;
+      border-top: 1px solid #f1f5f9;
 
       .error-message {
-        color: #dc2626;
-        font-size: 13px;
-        margin: 4px 0;
-        padding: 10px 14px;
-        background: #fef2f2;
-        border: 1px solid #fecaca;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin: 0;
+        padding: 10px 12px;
         border-radius: 8px;
+        background: var(--error-color-light);
+        color: var(--error-color-hover);
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 18px;
+        text-align: left;
+
+        &::before {
+          content: "!";
+          flex: 0 0 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: var(--error-color);
+          color: white;
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 18px;
+          text-align: center;
+        }
       }
 
       &.unauthorized-error {
         .error-message.unauthorized-message {
           font-weight: 600;
-          text-align: center;
         }
       }
     }
@@ -906,29 +998,6 @@
 
 /* Responsive Design - Tablet */
 @media (max-width: 768px) {
-  .update-score-drawer {
-    .modal-body {
-      padding: 0 24px 24px 24px;
-
-      .score-inputs {
-        .score-row {
-          flex-direction: column;
-          padding: 16px;
-
-          .score-inputs-container {
-            .team-input {
-              .score-input {
-                width: 70px;
-                padding: 10px 12px;
-                font-size: 16px;
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
   .fullscreen-scoreboard {
     .scoreboard-content {
       .scoreboard-main {
@@ -958,93 +1027,6 @@
 
 /* Responsive Design - Mobile */
 @media (max-width: 480px) {
-  .update-score-drawer {
-    .modal-body {
-      padding: 0 20px 20px 20px;
-
-      .score-inputs {
-        .score-row {
-          flex-direction: column;
-          gap: 12px;
-          padding: 12px 16px;
-          text-align: left;
-          align-items: center;
-
-          .set-label {
-            align-self: center;
-            min-width: 50px;
-            padding: 6px 12px;
-            font-size: 12px;
-          }
-
-          .score-inputs-container {
-            flex-direction: row;
-            gap: 12px;
-            flex: 1;
-
-            .team-input {
-              flex: 1;
-              flex-direction: column;
-              gap: 6px;
-              align-items: center;
-
-              label {
-                font-size: 12px;
-                font-weight: 500;
-              }
-
-              .score-input {
-                width: 60px;
-                padding: 8px 12px;
-                font-size: 16px;
-              }
-            }
-
-            .score-divider {
-              font-size: 18px;
-              padding: 0 8px;
-            }
-          }
-
-          .remove-set-btn {
-            align-self: center;
-            width: 28px;
-            height: 28px;
-            padding: 4px;
-
-            svg {
-              width: 14px;
-              height: 14px;
-            }
-          }
-        }
-      }
-
-      .add-set-section {
-        .add-set-btn {
-          width: 100%;
-          justify-content: center;
-          padding: 12px 16px;
-          font-size: 14px;
-        }
-      }
-
-      .error-messages {
-        .error-message {
-          font-size: 13px;
-          padding: 8px 12px;
-          text-align: center;
-        }
-
-        &.unauthorized-error {
-          .error-message.unauthorized-message {
-            text-align: center;
-          }
-        }
-      }
-    }
-  }
-
   .fullscreen-scoreboard {
     .scoreboard-content {
       .scoreboard-header {

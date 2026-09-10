@@ -317,6 +317,46 @@ describe("modal mode: the right-side drawer", () => {
     expect(screen.queryByText("Are you sure you want to save these scores?")).not.toBeInTheDocument();
   });
 
+  it("asks in a labelled alert dialog with Confirm focused, and hands the focus back to Save", () => {
+    render(<UpdateScoreDialog isOpen match={match()} onClose={jest.fn()} onSubmit={jest.fn()} loading={false} />);
+
+    typeScore("21", "17");
+    const save = screen.getByRole("button", { name: "Save Scores" });
+    save.focus(); // a click focuses the button in a browser; fireEvent doesn't
+    fireEvent.click(save);
+
+    const prompt = screen.getByRole("alertdialog", { name: "Confirm Save" });
+    expect(prompt).toHaveAttribute("aria-modal", "true");
+    expect(prompt).toHaveAccessibleDescription("Are you sure you want to save these scores?");
+    expect(within(prompt).getByRole("button", { name: "Confirm" })).toHaveFocus();
+
+    fireEvent.click(within(prompt).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(save).toHaveFocus();
+  });
+
+  it("never reopens on a confirm prompt left over from the slide-out", () => {
+    jest.useFakeTimers();
+    const current = match();
+    const props = { onClose: jest.fn(), onSubmit: jest.fn(), loading: false };
+    const { rerender } = render(<UpdateScoreDialog isOpen match={current} {...props} />);
+    typeScore("21", "17");
+
+    // The page closes the dialog, and a late click lands on the frozen Save as the drawer slides
+    // out (a browser drops it, the panel being inert; jsdom doesn't).
+    rerender(<UpdateScoreDialog isOpen={false} match={null} {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Save Scores" }));
+    act(() => {
+      jest.advanceTimersByTime(DRAWER_EXIT_MS);
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    rerender(<UpdateScoreDialog isOpen match={current} {...props} />);
+    expect(screen.getByRole("dialog", { name: "Enter Match Scores" })).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Confirm" })).not.toBeInTheDocument();
+  });
+
   it("Escape backs out of the confirm prompt, not the whole drawer", () => {
     const onClose = jest.fn();
     render(<UpdateScoreDialog isOpen match={match()} onClose={onClose} onSubmit={jest.fn()} loading={false} />);

@@ -94,6 +94,8 @@ const Drawer: React.FC<DrawerProps> = ({
   const frame = isOpen ? { title, subtitle, footer, children } : lastFrame.current;
   const interactive = phase === "open";
 
+  // While sliding out, the last content is frozen: `inert` takes it out of clicks, focus and the
+  // accessibility tree (and the closing root has pointer-events: none).
   return createPortal(
     <div className={`drawer-root drawer-root--${phase}`}>
       <div
@@ -108,6 +110,7 @@ const Drawer: React.FC<DrawerProps> = ({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
+        inert={phase === "closing"}
       >
         <header className="drawer__header">
           <div className="drawer__heading">

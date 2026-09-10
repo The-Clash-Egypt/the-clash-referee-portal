@@ -40,7 +40,11 @@ $drawer-ease-out: cubic-bezier(0.4, 0, 1, 1);
   }
 }
 
+// Sliding out, the drawer still shows its last content, but none of it can be clicked (the panel
+// is also `inert`), and clicks reach the page behind.
 .drawer-root--closing {
+  pointer-events: none;
+
   .drawer-overlay {
     animation: drawer-fade-out $drawer-exit ease forwards;
   }

@@ -63,7 +63,9 @@
   }
 }
 
-.error-message {
+// The venue page's load error, as a toast at the top right. Scoped to the page: unscoped, it turned
+// every `.error-message` in the portal into a toast, over the drawers' close button.
+.venue-management .error-message {
   position: fixed;
   top: 20px;
   right: 20px;

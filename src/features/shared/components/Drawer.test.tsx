@@ -62,6 +62,35 @@ it("keeps its last content on screen while sliding out, then unmounts", () => {
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
 
+it("is inert while sliding out, so its last content can't be used", () => {
+  jest.useFakeTimers();
+  const onClose = jest.fn();
+  const { rerender } = render(
+    <Drawer isOpen onClose={onClose} title="Edit match">
+      <button>Save</button>
+    </Drawer>
+  );
+  const panel = screen.getByRole("dialog");
+  expect(panel).not.toHaveAttribute("inert");
+
+  rerender(<Drawer isOpen={false} onClose={onClose} title="Edit match">{null}</Drawer>);
+  // The frozen Save is still on screen, but the panel is inert and the root takes no clicks.
+  expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+  expect(panel).toHaveAttribute("inert");
+  // eslint-disable-next-line testing-library/no-node-access -- pointer-events: none hangs off the root's class
+  expect(document.querySelector(".drawer-root")).toHaveClass("drawer-root--closing");
+
+  // Re-opened before the slide-out ends: usable again.
+  rerender(
+    <Drawer isOpen onClose={onClose} title="Edit match">
+      <button>Save</button>
+    </Drawer>
+  );
+  expect(screen.getByRole("dialog")).not.toHaveAttribute("inert");
+  // eslint-disable-next-line testing-library/no-node-access -- see above
+  expect(document.querySelector(".drawer-root")).not.toHaveClass("drawer-root--closing");
+});
+
 it("locks page scroll while open and restores it afterwards", () => {
   jest.useFakeTimers();
   document.body.style.overflow = "auto";
