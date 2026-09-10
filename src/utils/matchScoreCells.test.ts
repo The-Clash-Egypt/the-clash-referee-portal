@@ -1,7 +1,8 @@
 import { Match } from "../features/matches/types/match";
 import {
+  SCORE_BOX_AREA_WIDTH,
+  SCORE_BOX_GAP,
   SCORE_CELL_MAX_WIDTH,
-  SCORE_COLUMN_WIDTH,
   isCellWinner,
   scoreCellWidth,
   scoreCellsFor,
@@ -70,19 +71,19 @@ describe("scoreCellsFor", () => {
 });
 
 describe("scoreCellWidth", () => {
-  it("keeps full width while the grid fits the score column", () => {
+  it("keeps full-size writing boxes up to five games", () => {
     expect(scoreCellWidth(1)).toBe(SCORE_CELL_MAX_WIDTH);
     expect(scoreCellWidth(5)).toBe(SCORE_CELL_MAX_WIDTH);
   });
 
-  it("shrinks cells rather than overflowing once there are six or more games", () => {
+  it("shrinks boxes rather than overflowing from six games", () => {
     expect(scoreCellWidth(6)).toBeLessThan(SCORE_CELL_MAX_WIDTH);
   });
 
-  it("never lets the grid exceed the score column width", () => {
+  it("never lets boxes and gaps exceed the box area", () => {
     for (let count = 1; count <= 12; count += 1) {
-      const gridWidth = count * scoreCellWidth(count) + 2 * 0.75;
-      expect(gridWidth).toBeLessThanOrEqual(SCORE_COLUMN_WIDTH);
+      const used = count * scoreCellWidth(count) + SCORE_BOX_GAP * (count - 1);
+      expect(used).toBeLessThanOrEqual(SCORE_BOX_AREA_WIDTH + 1e-9);
     }
   });
 });

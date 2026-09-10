@@ -1,5 +1,16 @@
 import { Match } from "../features/matches/types/match";
-import { distinctCategories, headerCategory, shouldLabelCategories, formatClock, formatValidUntil } from "./matchSheetFormat";
+import {
+  cardMetaItems,
+  cardRuleLabel,
+  distinctCategories,
+  formatClock,
+  formatShortDay,
+  formatValidUntil,
+  headerCategory,
+  qrCaption,
+  reportSpansMultipleDays,
+  shouldLabelCategories,
+} from "./matchSheetFormat";
 
 const match = (categoryName?: string): Match => ({ id: "m", categoryName, isCompleted: false }) as Match;
 
@@ -59,5 +70,48 @@ describe("formatClock", () => {
     expect(formatValidUntil(new Date(2026, 8, 11, 14, 32).toISOString())).toBe("Fri 11 Sep, 2:32 PM");
     expect(formatClock(new Date(2026, 8, 12, 10, 30).toISOString())).toBe("2:32 PM");
     spy.mockRestore();
+  });
+});
+
+describe("card text", () => {
+  const at = (day: number, hour: number) => new Date(2026, 8, day, hour, 30).toISOString();
+  const card = (over: Partial<Match> = {}): Match =>
+    ({ id: "m", isCompleted: false, bestOf: 3, formatType: "Group", round: "Round 1", startTime: at(12, 10), ...over }) as Match;
+
+  it("formats a short day", () => {
+    expect(formatShortDay(at(12, 10))).toBe("Sat 12 Sep");
+    expect(formatShortDay(undefined)).toBe("Date TBC");
+  });
+
+  it("knows when a report spans several days", () => {
+    expect(reportSpansMultipleDays([card(), card({ startTime: at(12, 16) })])).toBe(false);
+    expect(reportSpansMultipleDays([card(), card({ startTime: at(13, 9) })])).toBe(true);
+  });
+
+  it("builds the card's meta line from only what the report needs", () => {
+    expect(cardMetaItems(card(), 3, { showDate: false, showCategory: false, showCourt: false })).toEqual([
+      "#3",
+      "10:30 AM",
+      "Round 1",
+    ]);
+    expect(
+      cardMetaItems(card({ categoryName: "Women", venue: " Court 2 " }), 1, { showDate: true, showCategory: true, showCourt: true })
+    ).toEqual(["#1", "Sat 12 Sep", "10:30 AM", "Round 1", "Women", "Court 2"]);
+  });
+
+  it("labels the rule, or the final result", () => {
+    expect(cardRuleLabel(card())).toBe("Best of 3");
+    expect(cardRuleLabel(card({ isCompleted: true, homeScore: 2, awayScore: 1 }))).toBe("Final · 2–1");
+    expect(cardRuleLabel(card({ formatType: "Americano", pointsPerMatch: 21 }))).toBe("Americano · to 21 pts");
+    expect(
+      cardRuleLabel(
+        card({ formatType: "Mexicano", isCompleted: true, gameScores: [{ gameNumber: 1, homeScore: 13, awayScore: 11 }] })
+      )
+    ).toBe("Final · 13–11");
+  });
+
+  it("captions the QR for what a scan will do", () => {
+    expect(qrCaption(card())).toBe("Scan to enter score");
+    expect(qrCaption(card({ isCompleted: true }))).toBe("Scan to view result");
   });
 });

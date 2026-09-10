@@ -18,6 +18,9 @@ const startTimeOf = (match: Match): number => {
   return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
 };
 
+/** Chronological order; matches without a start time go last. */
+export const compareStartTimes = (a: Match, b: Match): number => startTimeOf(a) - startTimeOf(b);
+
 /**
  * Splits matches into one group per venue, ordered naturally by venue name, with
  * matches inside each group in chronological order. Matches with no venue are
@@ -39,7 +42,7 @@ export const groupMatchesByVenue = (matches: Match[]): VenueGroup[] => {
   return Array.from(groups.entries())
     .map(([venue, venueMatches]) => ({
       venue,
-      matches: [...venueMatches].sort((a, b) => startTimeOf(a) - startTimeOf(b)),
+      matches: [...venueMatches].sort(compareStartTimes),
     }))
     .sort((a, b) => {
       if (a.venue === UNASSIGNED_VENUE_LABEL) return 1;

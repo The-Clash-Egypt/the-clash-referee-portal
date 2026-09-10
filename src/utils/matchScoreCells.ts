@@ -10,19 +10,24 @@ export interface ScoreCell {
 /** Cells typed into the preview but not yet saved, keyed by match id. */
 export type ScoreDrafts = Record<string, ScoreCell[]>;
 
-/** Geometry of the score grid, in PDF points. The HTML sheet uses the same numbers. */
-export const SCORE_COLUMN_WIDTH = 150;
-export const SCORE_CELL_MAX_WIDTH = 25;
-export const SCORE_CELL_HEIGHT = 16;
+/**
+ * Geometry of the handwriting boxes, in PDF points. The HTML sheet reads the same numbers
+ * through sheetCssVariables (src/utils/matchSheetLayout.ts).
+ */
+export const SCORE_BOX_AREA_WIDTH = 170;
+export const SCORE_CELL_MAX_WIDTH = 30;
+export const SCORE_CELL_HEIGHT = 24;
+export const SCORE_BOX_GAP = 4;
+/** Border of the legacy joined grid; removed when the PDF moves to separate boxes. */
 export const SCORE_GRID_BORDER = 0.75;
 
 /**
- * Cells shrink once there are enough games that the grid would overflow the score
- * column: 6 games at full width would be 6 * 25 + 1.5 = 151.5pt against a 150pt column.
+ * Boxes stay full size up to five games (5 × 30 + 4 × 4 = 166pt) and shrink beyond that so a
+ * long best-of never pushes into the QR column.
  */
 export const scoreCellWidth = (cellCount: number): number => {
-  const usable = SCORE_COLUMN_WIDTH - 2 * SCORE_GRID_BORDER;
-  return Math.min(SCORE_CELL_MAX_WIDTH, usable / Math.max(cellCount, 1));
+  const count = Math.max(cellCount, 1);
+  return Math.min(SCORE_CELL_MAX_WIDTH, (SCORE_BOX_AREA_WIDTH - SCORE_BOX_GAP * (count - 1)) / count);
 };
 
 /**

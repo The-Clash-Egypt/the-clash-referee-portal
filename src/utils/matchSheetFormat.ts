@@ -1,4 +1,5 @@
-import { Match } from "../features/matches/types/match";
+import { Match, isFixedPointsFormat } from "../features/matches/types/match";
+import { UNASSIGNED_VENUE_LABEL } from "./venueGrouping";
 
 /**
  * Formatting shared by the two renderings of the match sheet — the PDF
@@ -106,3 +107,46 @@ export const sheetMeta = (
   matchCount: number
 ): string[] =>
   [tournamentName, categoryName, formatName].filter(Boolean).concat(matchCountLabel(matchCount)) as string[];
+
+/** "Sat 12 Sep" — the card's date, shown only when a report spans several days. */
+export const formatShortDay = (startTime?: string): string => {
+  if (!startTime) return "Date TBC";
+  const date = new Date(startTime);
+  return Number.isNaN(date.getTime()) ? "Date TBC" : shortDay(date);
+};
+
+export const reportSpansMultipleDays = (matches: Match[]): boolean => new Set(matches.map(dayKey)).size > 1;
+
+/** Which optional parts a card's meta line needs; decided once per report. */
+export interface CardMetaOptions {
+  showDate: boolean;
+  showCategory: boolean;
+  showCourt: boolean;
+}
+
+/** "#3 · Sat 12 Sep · 10:30 AM · Round 1 · Women · Court 2", minus what the report doesn't need. */
+export const cardMetaItems = (match: Match, position: number, options: CardMetaOptions): string[] => {
+  const items = [`#${position}`];
+  if (options.showDate) items.push(formatShortDay(match.startTime));
+  items.push(formatClock(match.startTime));
+  if (match.round) items.push(match.round);
+  if (options.showCategory && match.categoryName) items.push(match.categoryName);
+  if (options.showCourt) items.push(match.venue?.trim() || UNASSIGNED_VENUE_LABEL);
+  return items;
+};
+
+/** Top-right of a card: the final result once complete, otherwise the scoring rule. */
+export const cardRuleLabel = (match: Match): string => {
+  if (isFixedPointsFormat(match.formatType)) {
+    const game = match.gameScores?.[0];
+    if (match.isCompleted && game) return `Final · ${game.homeScore}–${game.awayScore}`;
+    return match.pointsPerMatch ? `${match.formatType} · to ${match.pointsPerMatch} pts` : `${match.formatType}`;
+  }
+  if (match.isCompleted && match.homeScore !== undefined && match.awayScore !== undefined) {
+    return `Final · ${match.homeScore}–${match.awayScore}`;
+  }
+  return `Best of ${Math.max(match.bestOf || 1, 1)}`;
+};
+
+/** What scanning the card's QR will do. */
+export const qrCaption = (match: Match): string => (match.isCompleted ? "Scan to view result" : "Scan to enter score");
