@@ -503,13 +503,14 @@ $score-card-inset: 13px; // a set card's border (1px) + side padding (12px)
 
 /* Fullscreen Scoreboard (Mobile Only) */
 .fullscreen-scoreboard {
+  // Sized by its four insets, never by 100vw/100vh: iOS Safari measures 100vh with its toolbars
+  // retracted, so a 100vh box runs under the bottom tab bar and takes Save with it. Pinned to all
+  // four edges, a fixed box fills exactly the visible area in every browser (as the Drawer does).
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  width: 100vw;
-  height: 100vh;
   background: #000;
   z-index: 1000;
   display: flex;
@@ -945,7 +946,6 @@ $score-card-inset: 13px; // a set card's border (1px) + side padding (12px)
     /* Save Section */
     .save-section {
       padding: 14px 20px !important;
-      padding-bottom: 64px !important;
       text-align: center;
       background: rgba(0, 0, 0, 0.1);
       display: flex;
@@ -1145,9 +1145,6 @@ $score-card-inset: 13px; // a set card's border (1px) + side padding (12px)
 /* Landscape Mode for Fullscreen Scoreboard */
 @media (max-height: 500px) and (orientation: landscape) {
   .fullscreen-scoreboard {
-    width: 100vw;
-    height: 100vh;
-
     .scoreboard-content {
       width: 100%;
       height: 100%;
@@ -1364,9 +1361,6 @@ $score-card-inset: 13px; // a set card's border (1px) + side padding (12px)
 /* Larger landscape screens (like tablets in landscape) */
 @media (min-height: 501px) and (max-height: 800px) and (orientation: landscape) {
   .fullscreen-scoreboard {
-    width: 100vw;
-    height: 100vh;
-
     .scoreboard-content {
       width: 100%;
       height: 100%;
