@@ -14,6 +14,7 @@ import Navbar from "./components/Navbar";
 import Tournaments from "./features/tournaments/pages";
 import MatchesManagement from "./features/matches/pages/MatchesManagement";
 import PrintableViewPage from "./features/matches/pages/PrintableViewPage";
+import MexicanoPage from "./features/mexicano/pages/MexicanoPage";
 import GuestVenuePage from "./features/venue/pages/GuestVenuePage";
 import GuestMatchPage from "./features/matches/pages/GuestMatchPage";
 
@@ -69,6 +70,14 @@ const App: React.FC = () => {
                     element={
                       <ProtectedRoute>
                         <PrintableViewPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="tournaments/:id/mexicano/:formatId"
+                    element={
+                      <ProtectedRoute>
+                        <MexicanoPage />
                       </ProtectedRoute>
                     }
                   />
