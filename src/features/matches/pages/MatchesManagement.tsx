@@ -28,7 +28,8 @@ import SearchableDropdown from "../components/SearchableDropdown";
 import VolleyballLoading from "../../../components/VolleyballLoading";
 import { VenueManagement } from "../../venue/pages";
 import MultiSelectDropdown from "../components/MultiSelectDropdown";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import MexicanoStageCards from "../../mexicano/components/MexicanoStageCards";
 import { useSelector } from "react-redux";
 import { useQueryClient } from "@tanstack/react-query";
 import { RootState } from "../../../store";
@@ -51,6 +52,7 @@ const MatchesManagement: React.FC = () => {
   const [searchParams] = useSearchParams();
   const tournamentName = searchParams.get("name");
   const user = useSelector((state: RootState) => state.user.user);
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // Scroll to top when component mounts (navigating to tournament page)
@@ -1340,6 +1342,18 @@ const MatchesManagement: React.FC = () => {
               <p>Manage all matches, referee assignments and scores for this tournament</p>
             </div>
           </div>
+
+          {/* Mexicano stages are run round by round from their own page (spec 2026-09-29 §4.1) */}
+          {id && (
+            <MexicanoStageCards
+              tournamentId={id}
+              onOpen={(formatId) =>
+                navigate(
+                  `/tournaments/${id}/mexicano/${formatId}${tournamentName ? `?name=${encodeURIComponent(tournamentName)}` : ""}`
+                )
+              }
+            />
+          )}
 
           {/* Loading State */}
           {loading && (

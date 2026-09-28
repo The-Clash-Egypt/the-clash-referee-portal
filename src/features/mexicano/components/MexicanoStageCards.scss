@@ -1,0 +1,56 @@
+@import "../../../styles/colors.scss";
+
+.mexicano-stage-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.mexicano-stage-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 44px 14px 16px;
+  border: 1px solid var(--border-primary);
+  border-left: 4px solid $primary-color;
+  border-radius: 12px;
+  background: $white;
+  box-shadow: var(--shadow-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+  }
+
+  &__eyebrow {
+    color: $primary-color;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &__title {
+    color: $text-primary;
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  &__meta {
+    color: $text-secondary;
+    font-size: 14px;
+  }
+
+  &__arrow {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: $primary-color;
+    font-size: 20px;
+  }
+}
