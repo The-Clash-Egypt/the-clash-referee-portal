@@ -246,3 +246,94 @@ it("Update Score opens the score dialog for that court", async () => {
   expect(await screen.findByRole("dialog")).toBeInTheDocument();
   expect(load).toHaveBeenCalledTimes(1);
 });
+
+// ── review follow-ups ──
+
+it("lists players by name so rows don't move when scores change mid-round", async () => {
+  load.mockResolvedValue(
+    session({
+      players: [
+        player("Zed", MexicanoStatus.Playing, 1, 40),
+        player("Ali", MexicanoStatus.Playing, 2, 30),
+        player("Mo", MexicanoStatus.NotHere, 3, 0),
+      ],
+    })
+  );
+  renderRunner();
+  await screen.findByRole("heading", { name: "Men's Open" });
+
+  const groups = screen.getAllByRole("group").map((g) => g.getAttribute("aria-label"));
+  expect(groups).toEqual(["Ali status", "Mo status", "Zed status"]);
+});
+
+it("holds Start while a status change is still saving", async () => {
+  load.mockResolvedValue(session({ canStartNextRound: true, nextRoundBlockedReason: null }));
+  let finishSave: (s: MexicanoSession) => void = () => {};
+  updatePlayers.mockReturnValue(new Promise<MexicanoSession>((resolve) => (finishSave = resolve)));
+  renderRunner();
+  await screen.findByRole("heading", { name: "Men's Open" });
+
+  fireEvent.click(statusButton("Dee", "Playing"));
+  expect(screen.getByRole("button", { name: "Start round 1" })).toBeDisabled();
+
+  finishSave(session({ canStartNextRound: true, nextRoundBlockedReason: null }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Start round 1" })).toBeEnabled());
+});
+
+it("never lets an older reply overwrite a newer one", async () => {
+  load.mockResolvedValue(session());
+  let finishFirst: (s: MexicanoSession) => void = () => {};
+  updatePlayers
+    .mockReturnValueOnce(new Promise<MexicanoSession>((resolve) => (finishFirst = resolve)))
+    .mockResolvedValueOnce(
+      session({
+        players: session().players.map((p) =>
+          p.name === "Cy" ? { ...p, status: MexicanoStatus.SitOut } : p.name === "Dee" ? { ...p, status: MexicanoStatus.Playing } : p
+        ),
+      })
+    );
+  renderRunner();
+  await screen.findByRole("heading", { name: "Men's Open" });
+
+  fireEvent.click(statusButton("Dee", "Playing")); // slow
+  fireEvent.click(statusButton("Cy", "Sit out")); // fast, answered first
+  await waitFor(() => expect(statusButton("Cy", "Sit out")).toHaveAttribute("aria-pressed", "true"));
+
+  finishFirst(session()); // the stale answer arrives last
+  await waitFor(() => expect(updatePlayers).toHaveBeenCalledTimes(2));
+  expect(statusButton("Cy", "Sit out")).toHaveAttribute("aria-pressed", "true");
+});
+
+it("closes the ⋯ menu when a round starts, so Undo can't target the new round by mistake", async () => {
+  load.mockResolvedValue(roundOne({ canStartNextRound: true, nextRoundBlockedReason: null, canUndoRound: false, canFinish: true }));
+  start.mockResolvedValue(roundOne({ currentRound: 2, canFinish: false }));
+  renderRunner();
+  await screen.findByRole("heading", { name: "Men's Open" });
+
+  fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+  expect(screen.getByRole("button", { name: "Finish early" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Start round 2" }));
+
+  expect(screen.queryByRole("button", { name: "Finish early" })).not.toBeInTheDocument();
+  await waitFor(() => expect(start).toHaveBeenCalled());
+});
+
+it("warns before Undo that sit-out marks cleared by the round aren't restored", async () => {
+  load.mockResolvedValue(roundOne());
+  (window.confirm as jest.Mock).mockReturnValue(false);
+  renderRunner();
+  await screen.findByRole("heading", { name: "Men's Open" });
+
+  fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+  fireEvent.click(screen.getByRole("button", { name: "Undo round" }));
+
+  expect((window.confirm as jest.Mock).mock.calls[0][0]).toMatch(/Sit out/);
+});
+
+it("a stage with no players says it isn't set up yet", async () => {
+  load.mockResolvedValue(session({ players: [] }));
+  renderRunner();
+
+  expect(await screen.findByText("No players yet. Set up this stage in the dashboard first.")).toBeInTheDocument();
+  expect(screen.queryByText(/No one matches/)).not.toBeInTheDocument();
+});

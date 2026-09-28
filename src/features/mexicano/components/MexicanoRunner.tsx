@@ -49,16 +49,22 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
   const [search, setSearch] = useState("");
   const [scoreMatch, setScoreMatch] = useState<Match | null>(null);
   const [savingScore, setSavingScore] = useState(false);
+  const [savingStatuses, setSavingStatuses] = useState(0);
   // A save or action in flight: polling must not overwrite its optimistic state.
   const pending = useRef(0);
-  const saveSeq = useRef(0);
+  // Every request that returns a session takes a number; only the newest one's answer is applied,
+  // so a slow poll or save can never put back an older view.
+  const requestSeq = useRef(0);
 
   const refresh = useCallback(async () => {
+    const seq = ++requestSeq.current;
     try {
-      setSession(await getMexicanoSession(formatId));
+      const next = await getMexicanoSession(formatId);
+      if (seq !== requestSeq.current) return;
+      setSession(next);
       setLoadError(null);
     } catch (error) {
-      setLoadError(mexicanoErrorMessage(error, "Couldn't load this Mexicano stage."));
+      if (seq === requestSeq.current) setLoadError(mexicanoErrorMessage(error, "Couldn't load this Mexicano stage."));
     }
   }, [formatId]);
 
@@ -83,8 +89,11 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
   const runAction = async (action: () => Promise<MexicanoSession>, fallback: string, after?: () => void) => {
     pending.current += 1;
     setBusy(true);
+    setMenuOpen(false);
+    const seq = ++requestSeq.current;
     try {
-      setSession(await action());
+      const next = await action();
+      if (seq === requestSeq.current) setSession(next);
       after?.();
     } catch (error) {
       window.alert(mexicanoErrorMessage(error, fallback));
@@ -108,16 +117,18 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
       );
 
     apply(new Map(updates.map((u) => [u.teamId, u.status])));
-    const seq = ++saveSeq.current;
+    const seq = ++requestSeq.current;
     pending.current += 1;
+    setSavingStatuses((n) => n + 1); // Start waits: the round must see this change
     try {
       const next = await updateMexicanoPlayers(formatId, updates);
-      if (seq === saveSeq.current) setSession(next); // a later tap's answer wins
+      if (seq === requestSeq.current) setSession(next); // a later tap's answer wins
     } catch (error) {
       apply(new Map(updates.map((u) => [u.teamId, previous.get(u.teamId)!])));
       window.alert(mexicanoErrorMessage(error, "Couldn't save that change."));
     } finally {
       pending.current -= 1;
+      setSavingStatuses((n) => n - 1);
     }
   };
 
@@ -130,7 +141,13 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
   const undoRound = () => {
     setMenuOpen(false);
     if (!session) return;
-    if (!window.confirm(`Undo Round ${session.currentRound}? Its matches are deleted, and you can start it again.`)) return;
+    if (
+      !window.confirm(
+        `Undo Round ${session.currentRound}? Its matches are deleted and you can start it again. ` +
+          "Anyone who was on Sit out for it is back to Playing, so mark them again if needed."
+      )
+    )
+      return;
     runAction(() => undoMexicanoRound(formatId), "Couldn't undo the round.", () => setViewedRound(null));
   };
 
@@ -194,9 +211,14 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
     session.rounds.find((r) => r.number === (viewedRound ?? session.currentRound)) ??
     session.rounds[session.rounds.length - 1];
   const query = search.trim().toLowerCase();
-  const visiblePlayers = query
-    ? session.players.filter((p) => [p.name, ...p.members].some((n) => n.toLowerCase().includes(query)))
-    : session.players;
+  // By name, not rank: rows must not move under the organizer's thumb when scores come in.
+  const visiblePlayers = (
+    query
+      ? session.players.filter((p) => [p.name, ...p.members].some((n) => n.toLowerCase().includes(query)))
+      : session.players
+  )
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name));
   const statusesLocked = !canRun || session.ended;
   const pillTone = session.ended
     ? "done"
@@ -350,7 +372,11 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
                 </div>
               </li>
             ))}
-            {visiblePlayers.length === 0 && <li className="mexicano-runner__none">No one matches "{search}".</li>}
+            {session.players.length === 0 ? (
+              <li className="mexicano-runner__none">No players yet. Set up this stage in the dashboard first.</li>
+            ) : (
+              visiblePlayers.length === 0 && <li className="mexicano-runner__none">No one matches "{search}".</li>
+            )}
           </ul>
         </section>
       )}
@@ -388,13 +414,15 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
             <button
               type="button"
               className="mexicano-runner__start"
-              disabled={busy || !session.canStartNextRound}
+              disabled={busy || savingStatuses > 0 || !session.canStartNextRound}
               onClick={startRound}
             >
               {busy ? "Working..." : `Start round ${session.currentRound + 1}`}
             </button>
             {session.nextRoundBlockedReason && (
-              <p className="mexicano-runner__reason">{session.nextRoundBlockedReason}</p>
+              <p className="mexicano-runner__reason" title={session.nextRoundBlockedReason}>
+                {session.nextRoundBlockedReason}
+              </p>
             )}
           </div>
           {(session.canUndoRound || session.canFinish) && (
@@ -412,12 +440,12 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
               {menuOpen && (
                 <div className="mexicano-runner__menu">
                   {session.canUndoRound && (
-                    <button type="button" onClick={undoRound}>
+                    <button type="button" onClick={undoRound} disabled={busy}>
                       Undo round
                     </button>
                   )}
                   {session.canFinish && (
-                    <button type="button" onClick={finishEarly}>
+                    <button type="button" onClick={finishEarly} disabled={busy}>
                       Finish early
                     </button>
                   )}

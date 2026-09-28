@@ -1,5 +1,5 @@
 import React from "react";
-import { Match, sideDisplayName } from "../../matches/types/match";
+import { Match, isFixedPointsFormat, sideDisplayName } from "../../matches/types/match";
 import "./MatchCard.scss";
 import moment from "moment";
 import { getMatchDuration } from "../../../utils/durationUtils";
@@ -56,6 +56,12 @@ const MatchCard: React.FC<MatchCardProps> = ({
   };
 
   const matchWinner = getMatchWinner();
+  // Americano/Mexicano: one game to a points total, so the points are the score (games won is just 1/0).
+  const fixedPoints = isFixedPointsFormat(match.formatType);
+  const pointsGame = match.gameScores?.find((g) => g.gameNumber === 1) ?? match.gameScores?.[0];
+  const homeMain = fixedPoints ? pointsGame?.homeScore ?? 0 : match.homeScore || "0";
+  const awayMain = fixedPoints ? pointsGame?.awayScore ?? 0 : match.awayScore || "0";
+  const gamesShown = fixedPoints ? [] : match.gameScores;
   const matchDuration = getMatchDuration(match);
 
   const handleUpdateScore = () => {
@@ -211,7 +217,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
               )}
             </div>
             <div className="team-game-scores">
-              {match.gameScores
+              {gamesShown
                 ?.sort((a, b) => a.gameNumber - b.gameNumber)
                 .map((game, id) => (
                   <span key={id} className={`team-game-score ${game.homeScore > game.awayScore ? "winner" : ""}`}>
@@ -219,7 +225,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
                   </span>
                 ))}
             </div>
-            {match.isCompleted && <span className="team-score">{match.homeScore || "0"}</span>}
+            {match.isCompleted && <span className="team-score">{homeMain}</span>}
           </div>
         </div>
 
@@ -242,7 +248,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
               )}
             </div>
             <div className="team-game-scores">
-              {match.gameScores
+              {gamesShown
                 ?.sort((a, b) => a.gameNumber - b.gameNumber)
                 .map((game, id) => (
                   <span key={id} className={`team-game-score ${game.awayScore > game.homeScore ? "winner" : ""}`}>
@@ -250,7 +256,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
                   </span>
                 ))}
             </div>
-            {match.isCompleted && <span className="team-score">{match.awayScore || "0"}</span>}
+            {match.isCompleted && <span className="team-score">{awayMain}</span>}
           </div>
         </div>
       </div>
