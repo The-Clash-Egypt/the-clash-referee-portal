@@ -2,7 +2,7 @@ import React, { useState, useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Match, MatchGameScore, TeamMember, isFixedPointsFormat, sideDisplayName } from "../types/match";
 import { updateLiveScore } from "../api/matches";
-import { cellsFromGameScores, hasAnyScore, validateGameScores } from "../../../utils/scoreValidation";
+import { cellsFromGameScores, hasAnyScore, otherSideScore, validateGameScores } from "../../../utils/scoreValidation";
 import Drawer from "../../shared/components/Drawer";
 import "./UpdateScoreDialog.scss";
 
@@ -269,6 +269,14 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
 
       return updatedScores;
     });
+  };
+
+  // A typed Americano/Mexicano score fills in the other side. The scoreboard's +/- buttons count
+  // points one at a time, so they go straight to updateGameScore.
+  const typeGameScore = (gameNumber: number, field: "homeScore" | "awayScore", value: string) => {
+    updateGameScore(gameNumber, field, value);
+    const other = match ? otherSideScore(match, value === "" ? null : Math.max(0, parseInt(value) || 0)) : null;
+    if (other !== null) updateGameScore(gameNumber, field === "homeScore" ? "awayScore" : "homeScore", String(other));
   };
 
   const quickUpdateScore = (team: "home" | "away", action: "add" | "subtract") => {
@@ -803,7 +811,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                           type="number"
                           min="0"
                           value={score.homeScore === 0 ? "" : score.homeScore}
-                          onChange={(e) => updateGameScore(score.gameNumber, "homeScore", e.target.value)}
+                          onChange={(e) => typeGameScore(score.gameNumber, "homeScore", e.target.value)}
+                          onFocus={(e) => e.currentTarget.select()}
                           onClick={(e) => e.stopPropagation()}
                           className="score-input"
                           placeholder="0"
@@ -817,7 +826,8 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
                           type="number"
                           min="0"
                           value={score.awayScore === 0 ? "" : score.awayScore}
-                          onChange={(e) => updateGameScore(score.gameNumber, "awayScore", e.target.value)}
+                          onChange={(e) => typeGameScore(score.gameNumber, "awayScore", e.target.value)}
+                          onFocus={(e) => e.currentTarget.select()}
                           onClick={(e) => e.stopPropagation()}
                           className="score-input"
                           placeholder="0"

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Match, MatchGameScore, isFixedPointsFormat, sideDisplayName } from "../types/match";
 import { ScoreCell, ScoreDrafts, scoreCellsFor } from "../../../utils/matchScoreCells";
-import { filledCells, gameScoresFromCells, sameCells, validateGameScores } from "../../../utils/scoreValidation";
+import { filledCells, gameScoresFromCells, otherSideScore, sameCells, validateGameScores } from "../../../utils/scoreValidation";
 import { groupMatchesByVenue } from "../../../utils/venueGrouping";
 import { formatClock, shouldLabelCategories } from "../../../utils/matchSheetFormat";
 import Drawer from "../../shared/components/Drawer";
@@ -90,12 +90,17 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
   const updateCell = (match: Match, gameNumber: number, side: "home" | "away", raw: string) => {
     const digits = raw.replace(/[^0-9]/g, "").slice(0, 3);
     const value = digits === "" ? null : parseInt(digits, 10);
+    const other = otherSideScore(match, value);
+    const otherSide = side === "home" ? "away" : "home";
 
     setEntries((previous) => {
       const base = previous[match.id] ?? scoreCellsFor(match);
       return {
         ...previous,
-        [match.id]: base.map((cell) => (cell.gameNumber === gameNumber ? { ...cell, [side]: value } : cell)),
+        [match.id]: base.map((cell) => {
+          if (cell.gameNumber !== gameNumber) return cell;
+          return other === null ? { ...cell, [side]: value } : { ...cell, [side]: value, [otherSide]: other };
+        }),
       };
     });
     setFailures((previous) => (previous[match.id] ? withoutKey(previous, match.id) : previous));

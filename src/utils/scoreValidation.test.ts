@@ -3,6 +3,7 @@ import {
   cellsFromGameScores,
   gameScoresFromCells,
   hasAnyScore,
+  otherSideScore,
   sameCells,
   validateGameScores,
 } from "./scoreValidation";
@@ -89,5 +90,22 @@ describe("conversions", () => {
     expect(sameCells(cells([21, 17]), cells([21, 17]))).toBe(true);
     expect(sameCells(cells([21, 17]), cells([21, 18]))).toBe(false);
     expect(sameCells(cells([21, 17]), cells([21, 17], [null, null]))).toBe(false);
+  });
+});
+
+describe("otherSideScore", () => {
+  const mexicano = match({ formatType: "Mexicano", bestOf: 1, pointsPerMatch: 16 });
+
+  it("gives the rest of the match's points", () => {
+    expect(otherSideScore(mexicano, 10)).toBe(6);
+    expect(otherSideScore(mexicano, 16)).toBe(0);
+    expect(otherSideScore(mexicano, 0)).toBe(16);
+  });
+
+  it("fills nothing for a blank, a score above the total, or a format without a points total", () => {
+    expect(otherSideScore(mexicano, null)).toBeNull();
+    expect(otherSideScore(mexicano, 17)).toBeNull();
+    expect(otherSideScore(match(), 10)).toBeNull();
+    expect(otherSideScore(match({ formatType: "Americano", pointsPerMatch: null }), 10)).toBeNull();
   });
 });
