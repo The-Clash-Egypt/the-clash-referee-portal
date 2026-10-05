@@ -117,11 +117,24 @@ it("checks an Americano total", () => {
   const { onSave } = setup();
 
   type("Aly game 1", "12");
-  type("Karim game 1", "8");
+  type("Karim game 1", "30"); // above the total: nothing is filled in
   fireEvent.click(screen.getByRole("button", { name: "Save 1 match" }));
 
   expect(onSave).not.toHaveBeenCalled();
-  expect(screen.getByText("Total points must equal 21 (currently 20).")).toBeInTheDocument();
+  expect(screen.getByText("Total points must equal 21 (currently 42).")).toBeInTheDocument();
+});
+
+it("fills in the other side of an Americano score", () => {
+  setup();
+
+  type("Aly game 1", "12");
+  expect(screen.getByLabelText("Karim game 1")).toHaveValue("9");
+
+  type("Karim game 1", "5");
+  expect(screen.getByLabelText("Aly game 1")).toHaveValue("16");
+
+  type("Falcons game 1", "21"); // not a fixed-points match
+  expect(screen.getByLabelText("Sharks game 1")).toHaveValue("");
 });
 
 it("removes a mistakenly ticked match", () => {

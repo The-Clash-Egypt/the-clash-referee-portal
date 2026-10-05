@@ -63,6 +63,18 @@ export const validateGameScores = (match: Match, cells: ScoreCell[]): string[] =
   return errors;
 };
 
+/**
+ * Americano/Mexicano: the two sides always add up to the match's points, so a score typed for one
+ * side gives the other. Null when there's nothing to fill in: another format, no points total, a
+ * blank, or a score above the total (left for validation to flag).
+ */
+export const otherSideScore = (match: Match, typed: number | null): number | null => {
+  const target = match.pointsPerMatch;
+  if (!isFixedPointsFormat(match.formatType) || typeof target !== "number" || target <= 0) return null;
+  if (typed === null || typed > target) return null;
+  return target - typed;
+};
+
 /** The dialog stores "not played" as 0–0. Anything else keeps both sides, so a 21–0 game survives. */
 export const cellsFromGameScores = (gameScores: MatchGameScore[]): ScoreCell[] =>
   gameScores.map((score, index) => {

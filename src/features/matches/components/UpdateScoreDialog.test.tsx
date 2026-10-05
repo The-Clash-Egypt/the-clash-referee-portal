@@ -242,6 +242,26 @@ it("stays open with the typed scores when the save is rejected", async () => {
   expect(errorSpy).toHaveBeenCalledWith("Error updating scores:", expect.any(Error));
 });
 
+it("fills in the other side of a typed Mexicano score", () => {
+  useDesktopViewport();
+  render(
+    <UpdateScoreDialog
+      isOpen
+      match={match({ formatType: "Mexicano", bestOf: 1, pointsPerMatch: 16 })}
+      onClose={jest.fn()}
+      onSubmit={jest.fn()}
+      loading={false}
+      openInFullscreen={false}
+    />
+  );
+
+  const [home, away] = screen.getAllByRole("spinbutton");
+  fireEvent.change(home, { target: { value: "10" } });
+  expect(away).toHaveValue(6);
+  fireEvent.change(away, { target: { value: "3" } });
+  expect(home).toHaveValue(13);
+});
+
 describe("modal mode: the right-side drawer", () => {
   beforeEach(useDesktopViewport);
 
