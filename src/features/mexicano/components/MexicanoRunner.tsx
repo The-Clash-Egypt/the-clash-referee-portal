@@ -16,7 +16,7 @@ import {
 } from "../api/mexicano";
 import { roundLabel, statusLine } from "../sessionText";
 import { MexicanoSession, MexicanoStatus } from "../types";
-import FormTeamsPanel from "./FormTeamsPanel";
+import { NewTeamTray, UnpairedList } from "./TeamFormation";
 import "./MexicanoRunner.scss";
 
 type Tab = "round" | "players" | "leaderboard";
@@ -38,6 +38,9 @@ const STATUS_OPTIONS: { status: MexicanoStatus; label: string }[] = [
 
 type StatusUpdate = { teamId: string; status: MexicanoStatus };
 
+/** How long a just-made team keeps its Undo button. */
+const UNDO_MS = 6000;
+
 /**
  * One Mexicano stage, run live (spec 2026-09-29 §4): check players in, start / undo / finish
  * rounds, and enter each court's score. Router-free so it can be tested on its own.
@@ -53,6 +56,11 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
   const [scoreMatch, setScoreMatch] = useState<Match | null>(null);
   const [savingScore, setSavingScore] = useState(false);
   const [savingStatuses, setSavingStatuses] = useState(0);
+  // Team forming (unit size 2+). Picks live here so they survive tab switches and polls.
+  const [picked, setPicked] = useState<string[]>([]);
+  const [pairing, setPairing] = useState<string[]>([]); // members hidden while their team is being made
+  const [justMade, setJustMade] = useState<string | null>(null); // the team that gets Undo for a moment
+  const searchInput = useRef<HTMLInputElement>(null);
   // A save or action in flight: polling must not overwrite its optimistic state.
   const pending = useRef(0);
   // Every request that returns a session takes a number; only the newest one's answer is applied,
@@ -74,6 +82,21 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // A pick that left the pool (paired on another device, or by this one) is dropped.
+  useEffect(() => {
+    if (!session) return;
+    setPicked((current) => {
+      const next = current.filter((id) => session.unpaired.some((u) => u.memberId === id));
+      return next.length === current.length ? current : next;
+    });
+  }, [session]);
+
+  useEffect(() => {
+    if (!justMade) return;
+    const timer = window.setTimeout(() => setJustMade(null), UNDO_MS);
+    return () => window.clearTimeout(timer);
+  }, [justMade]);
 
   // Scores come in from several courts: keep the page current while it's on screen.
   useEffect(() => {
@@ -141,8 +164,53 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
       setTab("round");
     });
 
-  const makeTeam = (memberIds: string[]) =>
-    runAction(() => createMexicanoUnit(formatId, memberIds), "Couldn't make that team.");
+  /** Optimistic: the players leave the pool at once and come back if the server refuses. */
+  const makeTeam = async (memberIds: string[]) => {
+    if (!session) return;
+    const names = memberIds.map((id) => session.unpaired.find((u) => u.memberId === id)?.name ?? "");
+    const before = new Set(session.players.map((p) => p.teamId));
+    setPairing((current) => [...current, ...memberIds]);
+    const seq = ++requestSeq.current;
+    pending.current += 1;
+    try {
+      const next = await createMexicanoUnit(formatId, memberIds);
+      const made = next.players.filter((p) => !before.has(p.teamId));
+      const mine = made.find((p) => [...p.members].sort().join("|") === [...names].sort().join("|")) ?? made[0];
+      if (seq === requestSeq.current) setSession(next);
+      else await refresh(); // a later pairing's answer may predate this team
+      if (mine) setJustMade(mine.teamId);
+    } catch (error) {
+      window.alert(mexicanoErrorMessage(error, "Couldn't make that team."));
+    } finally {
+      setPairing((current) => current.filter((id) => !memberIds.includes(id)));
+      pending.current -= 1;
+    }
+  };
+
+  /** Tapping the last player a team needs makes the team; no extra button. */
+  const togglePick = (memberId: string) => {
+    if (!session) return;
+    if (picked.includes(memberId)) {
+      setPicked(picked.filter((id) => id !== memberId));
+      return;
+    }
+    const next = [...picked, memberId];
+    if (next.length < session.unitSize) {
+      setPicked(next);
+      return;
+    }
+    setPicked([]);
+    if (search) {
+      setSearch("");
+      searchInput.current?.focus();
+    }
+    makeTeam(next);
+  };
+
+  const undoTeam = (teamId: string) => {
+    setJustMade(null);
+    runAction(() => dissolveMexicanoUnit(formatId, teamId), "Couldn't undo that team.");
+  };
 
   const breakUpTeam = (teamId: string, name: string) => {
     if (!window.confirm(`Break up ${name}? The players go back to the unpaired list.`)) return;
@@ -178,7 +246,9 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
     if (!scoreMatch) return;
     setSavingScore(true);
     try {
-      await updateMatchByFormat(scoreMatch.formatType, scoreMatch.id, { gameScores });
+      await updateMatchByFormat(scoreMatch.formatType, scoreMatch.id, {
+        gameScores,
+      });
       setScoreMatch(null);
       await refresh();
     } catch (error) {
@@ -229,21 +299,39 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
       : session.players
   )
     .slice()
-    .sort((a, b) => a.name.localeCompare(b.name));
+    // The team just made goes on top, so its Undo is where the organizer is looking.
+    .sort((a, b) => Number(b.teamId === justMade) - Number(a.teamId === justMade) || a.name.localeCompare(b.name));
   const statusesLocked = !canRun || session.ended;
   // Teams of 2+ are paired here, just before play (spec 2026-10-10).
   const canFormTeams = canRun && !session.ended && session.unitSize > 1;
+  const waiting = canFormTeams ? session.unpaired.filter((u) => !pairing.includes(u.memberId)) : [];
+  const visibleWaiting = query ? waiting.filter((u) => u.name.toLowerCase().includes(query)) : waiting;
+  const pickedPlayers = picked
+    .map((id) => session.unpaired.find((u) => u.memberId === id))
+    .filter((u): u is NonNullable<typeof u> => !!u);
+  // Fewer left than a team needs: say who, so nobody is forgotten.
+  const leftover =
+    waiting.length > 0 && waiting.length < session.unitSize && picked.length === 0
+      ? `${waiting.map((u) => u.name).join(" and ")} ${waiting.length === 1 ? "still needs" : "still need"} ${
+          session.unitSize === 2 ? "a partner" : "a team"
+        }.`
+      : null;
   const pillTone = session.ended
     ? "done"
     : session.currentRound > 0 && session.currentRoundScored < session.currentRoundTotal
       ? "waiting"
       : "ready";
   const unitLabel = session.unitSize === 1 ? "Player" : "Team";
+  const searchLabel = canFormTeams ? "Search players and teams" : `Search ${unitLabel.toLowerCase()}s`;
   // Until someone picks a tab: Players before round 1 (check-in), the Round afterwards.
   const activeTab: Tab = tab ?? (session.currentRound > 0 ? "round" : "players");
 
   return (
-    <div className={`mexicano-runner ${canRun && !session.ended ? "mexicano-runner--with-bar" : ""}`}>
+    <div
+      className={`mexicano-runner ${canRun && !session.ended ? "mexicano-runner--with-bar" : ""} ${
+        canFormTeams && pickedPlayers.length > 0 ? "mexicano-runner--with-tray" : ""
+      }`}
+    >
       <button type="button" className="mexicano-runner__back" onClick={onBack}>
         ← Back to matches
       </button>
@@ -342,66 +430,103 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
                 type="button"
                 className="mexicano-runner__secondary"
                 disabled={notHere.length === 0}
-                onClick={() => saveStatuses(notHere.map((p) => ({ teamId: p.teamId, status: MexicanoStatus.Playing })))}
+                onClick={() =>
+                  saveStatuses(
+                    notHere.map((p) => ({
+                      teamId: p.teamId,
+                      status: MexicanoStatus.Playing,
+                    }))
+                  )
+                }
               >
                 Mark everyone playing
               </button>
             )}
           </div>
-          {canFormTeams && (
-            <FormTeamsPanel unitSize={session.unitSize} unpaired={session.unpaired} busy={busy} onCreate={makeTeam} />
-          )}
           <input
+            ref={searchInput}
             type="search"
             className="mexicano-runner__search"
-            placeholder={`Search ${unitLabel.toLowerCase()}s`}
-            aria-label={`Search ${unitLabel.toLowerCase()}s`}
+            placeholder={searchLabel}
+            aria-label={searchLabel}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          {waiting.length > 0 && (
+            <UnpairedList
+              unitSize={session.unitSize}
+              players={visibleWaiting}
+              total={waiting.length}
+              picked={picked}
+              disabled={busy}
+              search={search}
+              onToggle={togglePick}
+            />
+          )}
+          {leftover && <p className="mexicano-runner__leftover">{leftover}</p>}
+          {canFormTeams && <h2 className="mexicano-runner__section">Teams · {session.players.length}</h2>}
           <ul className="mexicano-runner__players">
             {visiblePlayers.map((p) => (
-              <li key={p.teamId} className="mexicano-runner__player">
+              <li
+                key={p.teamId}
+                className={`mexicano-runner__player ${p.teamId === justMade ? "mexicano-runner__player--new" : ""}`}
+              >
                 <div className="mexicano-runner__player-name">
                   <span>{p.name}</span>
-                  {session.unitSize > 1 && p.members.length > 0 && (
+                  {/* Teams formed here are named after their players; don't say it twice. */}
+                  {session.unitSize > 1 && p.members.length > 0 && p.members.join(" / ") !== p.name && (
                     <span className="mexicano-runner__player-members">{p.members.join(", ")}</span>
                   )}
                 </div>
-                <div className="mexicano-runner__segmented" role="group" aria-label={`${p.name} status`}>
-                  {STATUS_OPTIONS.map((option) => (
+                <div className="mexicano-runner__player-actions">
+                  <div className="mexicano-runner__segmented" role="group" aria-label={`${p.name} status`}>
+                    {STATUS_OPTIONS.map((option) => (
+                      <button
+                        key={option.status}
+                        type="button"
+                        aria-pressed={p.status === option.status}
+                        className={`mexicano-runner__segment mexicano-runner__segment--${option.status} ${
+                          p.status === option.status ? "active" : ""
+                        }`}
+                        disabled={statusesLocked}
+                        onClick={() =>
+                          p.status !== option.status && saveStatuses([{ teamId: p.teamId, status: option.status }])
+                        }
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  {canFormTeams && !p.hasMatches && p.teamId === justMade && (
                     <button
-                      key={option.status}
                       type="button"
-                      aria-pressed={p.status === option.status}
-                      className={`mexicano-runner__segment mexicano-runner__segment--${option.status} ${
-                        p.status === option.status ? "active" : ""
-                      }`}
-                      disabled={statusesLocked}
-                      onClick={() =>
-                        p.status !== option.status && saveStatuses([{ teamId: p.teamId, status: option.status }])
-                      }
+                      className="mexicano-runner__secondary"
+                      aria-label={`Undo ${p.name}`}
+                      disabled={busy}
+                      onClick={() => undoTeam(p.teamId)}
                     >
-                      {option.label}
+                      Undo
                     </button>
-                  ))}
+                  )}
+                  {canFormTeams && !p.hasMatches && p.teamId !== justMade && (
+                    <button
+                      type="button"
+                      className="mexicano-runner__quiet"
+                      aria-label={`Break up ${p.name}`}
+                      disabled={busy}
+                      onClick={() => breakUpTeam(p.teamId, p.name)}
+                    >
+                      Break up
+                    </button>
+                  )}
                 </div>
-                {canFormTeams && !p.hasMatches && (
-                  <button
-                    type="button"
-                    className="mexicano-runner__secondary"
-                    aria-label={`Break up ${p.name}`}
-                    disabled={busy}
-                    onClick={() => breakUpTeam(p.teamId, p.name)}
-                  >
-                    Break up
-                  </button>
-                )}
               </li>
             ))}
             {session.players.length === 0 ? (
               <li className="mexicano-runner__none">
-                {canFormTeams ? "No teams yet. Make teams above." : "No players yet. Set up this stage in the dashboard first."}
+                {canFormTeams
+                  ? "No teams yet. Tap players above to pair them."
+                  : "No players yet. Set up this stage in the dashboard first."}
               </li>
             ) : (
               visiblePlayers.length === 0 && <li className="mexicano-runner__none">No one matches "{search}".</li>
@@ -439,6 +564,13 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
 
       {canRun && !session.ended && (
         <div className="mexicano-runner__bar">
+          {canFormTeams && pickedPlayers.length > 0 && (
+            <NewTeamTray
+              unitSize={session.unitSize}
+              picked={pickedPlayers}
+              onRemove={(id) => setPicked((current) => current.filter((x) => x !== id))}
+            />
+          )}
           <div className="mexicano-runner__bar-main">
             <button
               type="button"
