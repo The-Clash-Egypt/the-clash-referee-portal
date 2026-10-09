@@ -356,41 +356,150 @@ const pairSession = (over: Partial<MexicanoSession> = {}) =>
     unpaired: [
       { memberId: "m5", name: "Eve" },
       { memberId: "m6", name: "Fay" },
+      { memberId: "m7", name: "Gus" },
     ],
     ...over,
   });
 
-it("shows Form teams for organizers when teams have 2+ players, and makes a team", async () => {
+/** The server's answer once Eve and Fay are a team. */
+const afterPairing = () =>
+  pairSession({
+    players: [
+      ...pairSession().players,
+      { ...player("Eve / Fay", MexicanoStatus.Playing, 3), teamId: "t-new", members: ["Eve", "Fay"] },
+    ],
+    unpaired: [{ memberId: "m7", name: "Gus" }],
+  });
+
+const deferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
+
+const pool = () => screen.getByRole("list", { name: "Needs a partner" });
+const tray = () => screen.queryByRole("region", { name: "New team" });
+
+it("pairs two players with two taps: they leave the list at once and the team comes back with Undo", async () => {
   load.mockResolvedValue(pairSession());
-  create.mockResolvedValue(pairSession({ unpaired: [] }));
+  const reply = deferred<MexicanoSession>();
+  create.mockReturnValue(reply.promise);
   renderRunner();
 
-  await screen.findByText(/Form teams/);
-  fireEvent.click(screen.getByRole("button", { name: "Eve" }));
-  fireEvent.click(screen.getByRole("button", { name: "Fay" }));
-  fireEvent.click(screen.getByRole("button", { name: "Make team" }));
+  await screen.findByText("Needs a partner · 3");
+  fireEvent.click(within(pool()).getByRole("button", { name: "Eve" }));
+  expect(within(tray()!).getByRole("button", { name: "Remove Eve" })).toBeInTheDocument();
+  expect(within(tray()!).getByText("+ 1 more")).toBeInTheDocument();
 
-  await waitFor(() => expect(create).toHaveBeenCalledWith("f1", ["m5", "m6"]));
-  await waitFor(() => expect(screen.getByText("Everyone is in a team.")).toBeInTheDocument());
+  fireEvent.click(within(pool()).getByRole("button", { name: "Fay" }));
+  expect(create).toHaveBeenCalledWith("f1", ["m5", "m6"]);
+  expect(tray()).not.toBeInTheDocument();
+  expect(within(pool()).queryByRole("button", { name: "Eve" })).not.toBeInTheDocument();
+  expect(within(pool()).queryByRole("button", { name: "Fay" })).not.toBeInTheDocument();
+
+  reply.resolve(afterPairing());
+  expect(await screen.findByRole("button", { name: "Undo Eve / Fay" })).toBeInTheDocument();
+  expect(screen.getByText("Gus still needs a partner.")).toBeInTheDocument();
 });
 
-it("hides Form teams for single-player stages, non-organizers and finished events", async () => {
+it("a pick can be taken back from the tray", async () => {
+  load.mockResolvedValue(pairSession());
+  renderRunner();
+
+  await screen.findByText("Needs a partner · 3");
+  fireEvent.click(within(pool()).getByRole("button", { name: "Eve" }));
+  fireEvent.click(within(tray()!).getByRole("button", { name: "Remove Eve" }));
+
+  expect(tray()).not.toBeInTheDocument();
+  expect(within(pool()).getByRole("button", { name: "Eve" })).toHaveAttribute("aria-pressed", "false");
+  expect(create).not.toHaveBeenCalled();
+});
+
+it("a refused pairing puts the players back and says why", async () => {
+  load.mockResolvedValue(pairSession());
+  create.mockRejectedValue({ response: { data: { message: "One of those players is already in a team." } } });
+  renderRunner();
+
+  await screen.findByText("Needs a partner · 3");
+  fireEvent.click(within(pool()).getByRole("button", { name: "Eve" }));
+  fireEvent.click(within(pool()).getByRole("button", { name: "Fay" }));
+
+  await waitFor(() => expect(window.alert).toHaveBeenCalledWith("One of those players is already in a team."));
+  expect(within(pool()).getByRole("button", { name: "Eve" })).toBeInTheDocument();
+  expect(within(pool()).getByRole("button", { name: "Fay" })).toBeInTheDocument();
+});
+
+it("Undo breaks the new team up without asking", async () => {
+  load.mockResolvedValue(pairSession());
+  create.mockResolvedValue(afterPairing());
+  dissolve.mockResolvedValue(pairSession());
+  renderRunner();
+
+  await screen.findByText("Needs a partner · 3");
+  fireEvent.click(within(pool()).getByRole("button", { name: "Eve" }));
+  fireEvent.click(within(pool()).getByRole("button", { name: "Fay" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Undo Eve / Fay" }));
+
+  await waitFor(() => expect(dissolve).toHaveBeenCalledWith("f1", "t-new"));
+  expect(window.confirm).not.toHaveBeenCalled();
+  expect(await within(pool()).findByRole("button", { name: "Eve" })).toBeInTheDocument();
+});
+
+it("one search finds players and teams, and clears after a pairing", async () => {
+  load.mockResolvedValue(pairSession());
+  create.mockResolvedValue(afterPairing());
+  renderRunner();
+
+  await screen.findByText("Needs a partner · 3");
+  const search = screen.getByRole("searchbox", { name: "Search players and teams" });
+  fireEvent.change(search, { target: { value: "bea" } });
+  expect(screen.getByText("Ali / Bea")).toBeInTheDocument();
+  expect(screen.queryByText("Cy / Dee")).not.toBeInTheDocument();
+  expect(within(pool()).queryByRole("button", { name: "Eve" })).not.toBeInTheDocument();
+
+  fireEvent.change(search, { target: { value: "eve" } });
+  fireEvent.click(within(pool()).getByRole("button", { name: "Eve" }));
+  fireEvent.change(search, { target: { value: "fay" } });
+  fireEvent.click(within(pool()).getByRole("button", { name: "Fay" }));
+
+  expect(search).toHaveValue("");
+  await screen.findByRole("button", { name: "Undo Eve / Fay" });
+});
+
+it("picks survive switching tabs", async () => {
+  load.mockResolvedValue(pairSession());
+  renderRunner();
+
+  await screen.findByText("Needs a partner · 3");
+  fireEvent.click(within(pool()).getByRole("button", { name: "Eve" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Leaderboard" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Players" }));
+
+  expect(within(tray()!).getByRole("button", { name: "Remove Eve" })).toBeInTheDocument();
+  expect(within(pool()).getByRole("button", { name: "Eve" })).toHaveAttribute("aria-pressed", "true");
+});
+
+it("hides pairing for single-player stages, non-organizers and finished events", async () => {
   load.mockResolvedValue(session());
   const { unmount } = renderRunner();
   await screen.findByRole("heading", { name: "Men's Open" });
-  expect(screen.queryByText(/Form teams/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Needs a partner/)).not.toBeInTheDocument();
   unmount();
 
   load.mockResolvedValue(pairSession());
   const second = renderRunner(false);
   await screen.findByRole("heading", { name: "Men's Open" });
-  expect(screen.queryByText(/Form teams/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Needs a partner/)).not.toBeInTheDocument();
   second.unmount();
 
   load.mockResolvedValue(pairSession({ ended: true }));
   renderRunner();
   await screen.findByRole("heading", { name: "Men's Open" });
-  expect(screen.queryByText(/Form teams/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Needs a partner/)).not.toBeInTheDocument();
 });
 
 it("offers Break up only on teams that have not been drawn yet", async () => {
@@ -398,7 +507,7 @@ it("offers Break up only on teams that have not been drawn yet", async () => {
   dissolve.mockResolvedValue(pairSession({ players: [pairSession().players[1]] }));
   renderRunner();
 
-  await screen.findByText(/Form teams/);
+  await screen.findByText("Needs a partner · 3");
   expect(screen.getAllByRole("button", { name: /Break up/ })).toHaveLength(1);
   fireEvent.click(screen.getByRole("button", { name: "Break up Ali / Bea" }));
 
