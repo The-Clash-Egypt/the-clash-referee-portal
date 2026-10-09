@@ -33,6 +33,15 @@ export const undoMexicanoRound = async (formatId: string): Promise<MexicanoSessi
 export const finishMexicano = async (formatId: string): Promise<MexicanoSession> =>
   (await api.post<ApiEnvelope<MexicanoSession>>(`/Mexicano/finish?${byFormat(formatId)}`)).data.data;
 
+/** Pair `unitSize` unpaired players (TeamMember ids) into one Playing team. */
+export const createMexicanoUnit = async (formatId: string, memberIds: string[]): Promise<MexicanoSession> =>
+  (await api.post<ApiEnvelope<MexicanoSession>>(`/Mexicano/units?${byFormat(formatId)}`, { memberIds })).data.data;
+
+/** Break up a team that hasn't been drawn yet; its players go back to the unpaired list. */
+export const dissolveMexicanoUnit = async (formatId: string, teamId: string): Promise<MexicanoSession> =>
+  (await api.delete<ApiEnvelope<MexicanoSession>>(`/Mexicano/units/${encodeURIComponent(teamId)}?${byFormat(formatId)}`))
+    .data.data;
+
 /** The tournament's Mexicano stages (GET Tournament/{id}/formats; formatName is the block type). */
 export const getMexicanoStages = async (tournamentId: string): Promise<MexicanoStage[]> => {
   const response = await api.get<ApiEnvelope<TournamentFormats | null>>(

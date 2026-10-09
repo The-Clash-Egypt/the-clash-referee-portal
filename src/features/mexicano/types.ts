@@ -18,6 +18,8 @@ export interface MexicanoPlayer {
   points: number;
   played: number;
   sitOuts: number;
+  /** In any match (or refereeing one): the unit can no longer be broken up. */
+  hasMatches: boolean;
 }
 
 export interface MexicanoRound {
@@ -26,6 +28,12 @@ export interface MexicanoRound {
   matches: Match[];
   /** Units checked in now that are in no match of this round. */
   sittingOut: string[];
+}
+
+/** An individually registered player not in a unit yet (unit size ≥ 2). memberId is the TeamMember id. */
+export interface UnpairedPlayer {
+  memberId: string;
+  name: string;
 }
 
 /** GET Mexicano/session: everything the Mexicano page shows. */
@@ -50,6 +58,8 @@ export interface MexicanoSession {
   /** Leaderboard order. */
   players: MexicanoPlayer[];
   rounds: MexicanoRound[];
+  /** Individually registered players not in a unit yet. Empty when unitSize is 1. */
+  unpaired: UnpairedPlayer[];
 }
 
 /** A Mexicano stage of a tournament, as listed on the matches page. */
