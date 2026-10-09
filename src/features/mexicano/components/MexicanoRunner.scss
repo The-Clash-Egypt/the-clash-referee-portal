@@ -324,6 +324,36 @@
     font-weight: 600;
   }
 
+  &__form-teams {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  &__pick {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-secondary);
+    border-radius: 8px;
+    background: $white;
+    color: $text-primary;
+    font-size: 15px;
+    text-align: left;
+    cursor: pointer;
+
+    &.active {
+      background: $primary-color;
+      border-color: $primary-color;
+      color: $white;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+
   &__secondary {
     padding: 8px 14px;
     border: 1px solid $primary-color;

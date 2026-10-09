@@ -1,5 +1,7 @@
 import api from "../../../api/axios";
 import {
+  createMexicanoUnit,
+  dissolveMexicanoUnit,
   finishMexicano,
   getMexicanoSession,
   getMexicanoStages,
@@ -56,6 +58,20 @@ describe("Mexicano session actions", () => {
     expect(post).toHaveBeenNthCalledWith(1, "/Mexicano/next-round?formatId=f1");
     expect(del).toHaveBeenCalledWith("/Mexicano/round?formatId=f1");
     expect(post).toHaveBeenNthCalledWith(2, "/Mexicano/finish?formatId=f1");
+  });
+
+  it("makes a team from the picked members", async () => {
+    post.mockResolvedValue(envelope(session));
+
+    await expect(createMexicanoUnit("f1", ["m1", "m2"])).resolves.toEqual(session);
+    expect(post).toHaveBeenCalledWith("/Mexicano/units?formatId=f1", { memberIds: ["m1", "m2"] });
+  });
+
+  it("breaks a team up by its team id", async () => {
+    del.mockResolvedValue(envelope(session));
+
+    await expect(dissolveMexicanoUnit("f1", "t 1")).resolves.toEqual(session);
+    expect(del).toHaveBeenCalledWith("/Mexicano/units/t%201?formatId=f1");
   });
 });
 
