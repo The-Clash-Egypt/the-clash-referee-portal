@@ -5,6 +5,8 @@ import { UnknownMatchFormatError, updateMatchByFormat } from "../../matches/api/
 import { Match, MatchGameScore } from "../../matches/types/match";
 import VolleyballLoading from "../../../components/VolleyballLoading";
 import {
+  createMexicanoUnit,
+  dissolveMexicanoUnit,
   finishMexicano,
   getMexicanoSession,
   mexicanoErrorMessage,
@@ -14,6 +16,7 @@ import {
 } from "../api/mexicano";
 import { roundLabel, statusLine } from "../sessionText";
 import { MexicanoSession, MexicanoStatus } from "../types";
+import FormTeamsPanel from "./FormTeamsPanel";
 import "./MexicanoRunner.scss";
 
 type Tab = "round" | "players" | "leaderboard";
@@ -138,6 +141,14 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
       setTab("round");
     });
 
+  const makeTeam = (memberIds: string[]) =>
+    runAction(() => createMexicanoUnit(formatId, memberIds), "Couldn't make that team.");
+
+  const breakUpTeam = (teamId: string, name: string) => {
+    if (!window.confirm(`Break up ${name}? The players go back to the unpaired list.`)) return;
+    runAction(() => dissolveMexicanoUnit(formatId, teamId), "Couldn't break up that team.");
+  };
+
   const undoRound = () => {
     setMenuOpen(false);
     if (!session) return;
@@ -220,6 +231,8 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
   const statusesLocked = !canRun || session.ended;
+  // Teams of 2+ are paired here, just before play (spec 2026-10-10).
+  const canFormTeams = canRun && !session.ended && session.unitSize > 1;
   const pillTone = session.ended
     ? "done"
     : session.currentRound > 0 && session.currentRoundScored < session.currentRoundTotal
@@ -335,6 +348,9 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
               </button>
             )}
           </div>
+          {canFormTeams && (
+            <FormTeamsPanel unitSize={session.unitSize} unpaired={session.unpaired} busy={busy} onCreate={makeTeam} />
+          )}
           <input
             type="search"
             className="mexicano-runner__search"
@@ -370,10 +386,23 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
                     </button>
                   ))}
                 </div>
+                {canFormTeams && !p.hasMatches && (
+                  <button
+                    type="button"
+                    className="mexicano-runner__secondary"
+                    aria-label={`Break up ${p.name}`}
+                    disabled={busy}
+                    onClick={() => breakUpTeam(p.teamId, p.name)}
+                  >
+                    Break up
+                  </button>
+                )}
               </li>
             ))}
             {session.players.length === 0 ? (
-              <li className="mexicano-runner__none">No players yet. Set up this stage in the dashboard first.</li>
+              <li className="mexicano-runner__none">
+                {canFormTeams ? "No teams yet. Make teams above." : "No players yet. Set up this stage in the dashboard first."}
+              </li>
             ) : (
               visiblePlayers.length === 0 && <li className="mexicano-runner__none">No one matches "{search}".</li>
             )}

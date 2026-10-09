@@ -3,6 +3,8 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import "@testing-library/jest-dom";
 import MexicanoRunner from "./MexicanoRunner";
 import {
+  createMexicanoUnit,
+  dissolveMexicanoUnit,
   finishMexicano,
   getMexicanoSession,
   startNextMexicanoRound,
@@ -20,6 +22,8 @@ jest.mock("../../../api/axios", () => ({
 jest.mock("../api/mexicano", () => ({
   ...jest.requireActual("../api/mexicano"),
   getMexicanoSession: jest.fn(),
+  createMexicanoUnit: jest.fn(),
+  dissolveMexicanoUnit: jest.fn(),
   updateMexicanoPlayers: jest.fn(),
   startNextMexicanoRound: jest.fn(),
   undoMexicanoRound: jest.fn(),
@@ -36,6 +40,8 @@ const start = startNextMexicanoRound as jest.Mock;
 const undo = undoMexicanoRound as jest.Mock;
 const finish = finishMexicano as jest.Mock;
 const saveScore = updateMatchByFormat as jest.Mock;
+const create = createMexicanoUnit as jest.Mock;
+const dissolve = dissolveMexicanoUnit as jest.Mock;
 
 const player = (name: string, status: MexicanoStatus, rank = 1, points = 0): MexicanoPlayer => ({
   teamId: `t-${name}`,
@@ -46,6 +52,7 @@ const player = (name: string, status: MexicanoStatus, rank = 1, points = 0): Mex
   points,
   played: 0,
   sitOuts: 0,
+  hasMatches: false,
 });
 
 const court = (id: string, venue: string, over: Partial<Match> = {}): Match => ({
@@ -90,6 +97,7 @@ const session = (over: Partial<MexicanoSession> = {}): MexicanoSession => ({
     player("Dee", MexicanoStatus.NotHere),
   ],
   rounds: [],
+  unpaired: [],
   ...over,
 });
 
@@ -336,4 +344,64 @@ it("a stage with no players says it isn't set up yet", async () => {
 
   expect(await screen.findByText("No players yet. Set up this stage in the dashboard first.")).toBeInTheDocument();
   expect(screen.queryByText(/No one matches/)).not.toBeInTheDocument();
+});
+
+const pairSession = (over: Partial<MexicanoSession> = {}) =>
+  session({
+    unitSize: 2,
+    players: [
+      { ...player("Ali / Bea", MexicanoStatus.Playing), members: ["Ali", "Bea"] },
+      { ...player("Cy / Dee", MexicanoStatus.Playing, 2), members: ["Cy", "Dee"], hasMatches: true },
+    ],
+    unpaired: [
+      { memberId: "m5", name: "Eve" },
+      { memberId: "m6", name: "Fay" },
+    ],
+    ...over,
+  });
+
+it("shows Form teams for organizers when teams have 2+ players, and makes a team", async () => {
+  load.mockResolvedValue(pairSession());
+  create.mockResolvedValue(pairSession({ unpaired: [] }));
+  renderRunner();
+
+  await screen.findByText(/Form teams/);
+  fireEvent.click(screen.getByRole("button", { name: "Eve" }));
+  fireEvent.click(screen.getByRole("button", { name: "Fay" }));
+  fireEvent.click(screen.getByRole("button", { name: "Make team" }));
+
+  await waitFor(() => expect(create).toHaveBeenCalledWith("f1", ["m5", "m6"]));
+  await waitFor(() => expect(screen.getByText("Everyone is in a team.")).toBeInTheDocument());
+});
+
+it("hides Form teams for single-player stages, non-organizers and finished events", async () => {
+  load.mockResolvedValue(session());
+  const { unmount } = renderRunner();
+  await screen.findByRole("heading", { name: "Men's Open" });
+  expect(screen.queryByText(/Form teams/)).not.toBeInTheDocument();
+  unmount();
+
+  load.mockResolvedValue(pairSession());
+  const second = renderRunner(false);
+  await screen.findByRole("heading", { name: "Men's Open" });
+  expect(screen.queryByText(/Form teams/)).not.toBeInTheDocument();
+  second.unmount();
+
+  load.mockResolvedValue(pairSession({ ended: true }));
+  renderRunner();
+  await screen.findByRole("heading", { name: "Men's Open" });
+  expect(screen.queryByText(/Form teams/)).not.toBeInTheDocument();
+});
+
+it("offers Break up only on teams that have not been drawn yet", async () => {
+  load.mockResolvedValue(pairSession());
+  dissolve.mockResolvedValue(pairSession({ players: [pairSession().players[1]] }));
+  renderRunner();
+
+  await screen.findByText(/Form teams/);
+  expect(screen.getAllByRole("button", { name: /Break up/ })).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Break up Ali / Bea" }));
+
+  await waitFor(() => expect(dissolve).toHaveBeenCalledWith("f1", "t-Ali / Bea"));
+  await waitFor(() => expect(screen.queryByRole("button", { name: /Break up/ })).not.toBeInTheDocument());
 });
