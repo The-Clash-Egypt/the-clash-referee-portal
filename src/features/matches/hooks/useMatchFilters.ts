@@ -18,7 +18,7 @@ export interface MatchFilterState {
 /** How long typing waits before the search reaches the URL (and the API). */
 export const SEARCH_DEBOUNCE_MS = 300;
 
-const TAB_OF_STATUS: Record<string, MatchTab> = { "in-progress": "live", upcoming: "next", completed: "done" };
+const TAB_OF_STATUS: Record<string, MatchTab> = { all: "all", "in-progress": "live", upcoming: "next", completed: "done" };
 
 // Single-value filters and their URL params ("all" = param absent). The tab lives in `status` (the API value), the
 // day in `date` ("all" is written out so the "today" default doesn't come back), courts repeat `venues`.

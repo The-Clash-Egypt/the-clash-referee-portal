@@ -4,9 +4,11 @@ import {
   defaultTab,
   defaultDate,
   doneRequestPages,
-  courtLabels,
+  courtName,
   courtShort,
   isLive,
+  isTournamentOver,
+  sortByStartTime,
   TAB_STATUS,
 } from "./timeline";
 
@@ -25,8 +27,8 @@ test("date labels only when showDates, descending reverses", () => {
 });
 
 test("defaults", () => {
-  expect(defaultTab({ live: 0, next: 4, done: 9 })).toBe("next");
-  expect(defaultTab({ live: 2, next: 4, done: 9 })).toBe("live");
+  expect(defaultTab({ counts: { live: 0, next: 4, done: 9 } })).toBe("next");
+  expect(defaultTab({ counts: { live: 2, next: 4, done: 9 } })).toBe("live");
   expect(defaultDate(["2026-10-11", "2026-10-12"], new Date(2026, 9, 12, 10))).toBe("2026-10-12");
   expect(defaultDate(["2026-10-11"], new Date(2026, 9, 12, 10))).toBe("all");
 });
@@ -100,7 +102,7 @@ test("live means started and not completed; tabs map to the API statuses", () =>
   expect(isLive(m("a", undefined, { startedAt: "2026-10-12T15:00:00" }))).toBe(true);
   expect(isLive(m("a", undefined, { startedAt: "2026-10-12T15:00:00", isCompleted: true }))).toBe(false);
   expect(isLive(m("a", "2026-10-12T15:00:00"))).toBe(false);
-  expect(TAB_STATUS).toEqual({ live: "in-progress", next: "upcoming", done: "completed" });
+  expect(TAB_STATUS).toEqual({ all: "all", live: "in-progress", next: "upcoming", done: "completed" });
 });
 
 // Review M1: with every day shown, Live also lists matches from earlier days that were never closed.
@@ -133,14 +135,84 @@ test("Live: one Now group when a single day is shown, or when every match is tod
   expect(groupLiveMatches([matches[0]], { showDates: true, now }).map((x) => [x.label, x.dateLabel])).toEqual([["09:00", "Sun 11 Oct"]]);
 });
 
-// Review M6: "Court 1" and "Beach Court 1" both read "C1".
-test("court labels keep the full name only for courts whose short names clash", () => {
-  const label = courtLabels(["Court 1", "Beach Court 1", "Court 2", "Centre Court", null]);
-  expect(label("Court 1")).toBe("Court 1");
-  expect(label("Beach Court 1")).toBe("Beach Court 1");
-  expect(label("Court 2")).toBe("C2");
-  expect(label("Centre Court")).toBe("Centre");
-  expect(label(undefined)).toBe("—");
-  // The same court twice isn't a clash.
-  expect(courtLabels(["Court 1", "Court 1 "])("Court 1")).toBe("C1");
+// Task 10 (owner): rows show the court as stored ("Court 2", not "C2"); the Filters sheet's chips keep courtShort.
+test("court names for the rows: the name as stored, a dash without one", () => {
+  expect(courtName("Court 2")).toBe("Court 2");
+  expect(courtName("  Centre Court ")).toBe("Centre Court");
+  expect(courtName("Beach Court 1")).toBe("Beach Court 1");
+  expect(courtName(null)).toBe("—");
+  expect(courtName(undefined)).toBe("—");
+  expect(courtName("   ")).toBe("—");
+});
+
+// Task 10 (owner): an All tab next to Live · Up next · Done.
+test("All: the server's upcoming-then-played order comes out in time order, matches without a time last", () => {
+  // Status "all" lists the matches without a start time first, then the upcoming ones, then the played ones.
+  const serverOrder = [
+    m("untimed"),
+    m("next1", "2026-10-12T16:00:00"),
+    m("next2", "2026-10-12T17:00:00"),
+    m("played1", "2026-10-11T09:00:00", { isCompleted: true }),
+    m("played2", "2026-10-12T10:00:00", { startedAt: "2026-10-12T10:02:00" }),
+  ];
+  const sorted = sortByStartTime(serverOrder);
+  expect(sorted.map((x) => x.id)).toEqual(["played1", "played2", "next1", "next2", "untimed"]);
+  // The input is left as it was.
+  expect(serverOrder.map((x) => x.id)).toEqual(["untimed", "next1", "next2", "played1", "played2"]);
+
+  // Grouped like Up next: time headers (a date header on each day's first slot when every day shows), "No time" last.
+  const groups = groupMatchesBySlot(sorted, { showDates: true, descending: false });
+  expect(groups.map((x) => [x.label, x.dateLabel, x.matches.map((match) => match.id)])).toEqual([
+    ["09:00", "Sun 11 Oct", ["played1"]],
+    ["10:00", "Mon 12 Oct", ["played2"]],
+    ["16:00", undefined, ["next1"]],
+    ["17:00", undefined, ["next2"]],
+    ["No time", undefined, ["untimed"]],
+  ]);
+});
+
+test("sorting by start time keeps the order of matches that start together, unreadable times count as none", () => {
+  const sorted = sortByStartTime([m("b", "2026-10-12T15:00:00"), m("bad", "soon"), m("a", "2026-10-12T15:00:00"), m("x")]);
+  expect(sorted.map((x) => x.id)).toEqual(["b", "a", "bad", "x"]);
+});
+
+// Task 10 (owner): "when a tournament is done, open the matches tab on the done filter instead of up next with no
+// matches". All is never where a tournament opens.
+test("the tab a tournament opens on: Done once it is over, else Live, Up next, Done in that order", () => {
+  // The page passes all four counts (useMatchList's MatchCounts).
+  const counts = (live: number, next: number, done: number) => ({ all: live + next + done, live, next, done });
+
+  // Over, with finished matches: Done, even beside a match nobody closed (it would still count as live).
+  expect(defaultTab({ counts: counts(1, 2, 26), tournamentOver: true })).toBe("done");
+  expect(defaultTab({ counts: counts(0, 0, 26), tournamentOver: true })).toBe("done");
+  // Over with nothing finished: the usual order.
+  expect(defaultTab({ counts: counts(0, 3, 0), tournamentOver: true })).toBe("next");
+
+  // During the event: Live while anything is live, then Up next, then Done (only finished matches left).
+  expect(defaultTab({ counts: counts(2, 4, 26) })).toBe("live");
+  expect(defaultTab({ counts: counts(2, 4, 26), tournamentOver: false })).toBe("live");
+  expect(defaultTab({ counts: counts(0, 4, 26) })).toBe("next");
+  expect(defaultTab({ counts: counts(0, 0, 26) })).toBe("done");
+
+  // Nothing at all: Up next.
+  expect(defaultTab({ counts: counts(0, 0, 0) })).toBe("next");
+  expect(defaultTab({ counts: counts(0, 0, 0), tournamentOver: true })).toBe("next");
+});
+
+test("a tournament is over once its end date is before today (local days)", () => {
+  const today = new Date(2026, 9, 12, 10, 0);
+  expect(isTournamentOver("2026-10-11T00:00:00", today)).toBe(true);
+  expect(isTournamentOver("2026-10-11", today)).toBe(true);
+  expect(isTournamentOver("2026-09-30T00:00:00", today)).toBe(true);
+  // Its last day isn't over yet.
+  expect(isTournamentOver("2026-10-12T00:00:00", today)).toBe(false);
+  expect(isTournamentOver("2026-10-12", new Date(2026, 9, 12, 23, 59))).toBe(false);
+  expect(isTournamentOver("2026-10-13T00:00:00", today)).toBe(false);
+  // Just after midnight, yesterday's tournament is over.
+  expect(isTournamentOver("2026-10-11T00:00:00", new Date(2026, 9, 12, 0, 5))).toBe(true);
+  // Unknown: not over.
+  expect(isTournamentOver(undefined, today)).toBe(false);
+  expect(isTournamentOver(null, today)).toBe(false);
+  expect(isTournamentOver("", today)).toBe(false);
+  expect(isTournamentOver("not a date", today)).toBe(false);
 });
