@@ -9,11 +9,21 @@ interface SearchInputProps {
   /** Defaults to the placeholder. */
   ariaLabel?: string;
   autoFocus?: boolean;
+  /** The input element, for a caller that moves focus back to the search. */
+  inputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 /** A white search field with a magnifier and, once it has text, a clear button (mockup `.search .in` / `.sin`). */
-export function SearchInput({ value, onChange, placeholder, ariaLabel, autoFocus }: SearchInputProps): React.JSX.Element {
-  const input = useRef<HTMLInputElement>(null);
+export function SearchInput({
+  value,
+  onChange,
+  placeholder,
+  ariaLabel,
+  autoFocus,
+  inputRef,
+}: SearchInputProps): React.JSX.Element {
+  const ownRef = useRef<HTMLInputElement>(null);
+  const input = inputRef ?? ownRef;
   return (
     <div className="ui-search">
       <Icon name="search" size={16} className="ui-search__icon" />

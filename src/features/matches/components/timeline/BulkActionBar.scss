@@ -1,0 +1,76 @@
+// Select mode's bulk actions (mockup match-flow-v2.html phone 5, `.actbar`): fixed at the bottom in the tab bar's
+// place, on a laptop too. Under the sheets (1100), like the tab bar.
+.bulk-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 900;
+  box-sizing: border-box; // --bulkbar-h is the whole bar (border and padding included) without the safe area
+  min-height: var(--bulkbar-h);
+  padding: 10px 12px max(12px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--line);
+  background: var(--card);
+}
+
+.bulk-bar__actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.bulk-bar__action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  height: 58px;
+  margin: 0;
+  padding: 0 4px;
+  border: 0;
+  clip-path: var(--clip-cut);
+  background: var(--spark-tint);
+  color: var(--spark-text);
+  font-family: var(--font-label);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, color 0.15s ease;
+
+  .ui-icon {
+    stroke-width: 2;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--spark);
+    color: var(--on-spark);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px currentColor;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Referee leads, in solid orange.
+.bulk-bar__action--main {
+  background: var(--spark);
+  color: var(--on-spark);
+
+  &:hover:not(:disabled) {
+    background: var(--spark-strong);
+  }
+}

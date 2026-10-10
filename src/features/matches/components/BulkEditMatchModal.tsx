@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Match } from "../types/match";
 import Drawer from "../../shared/components/Drawer";
+import { Button } from "../../../ui/Button";
+import { Checkbox } from "../../../ui/Checkbox";
+import { Icon } from "../../../ui/Icon";
+import "./SheetForm.scss";
 import "./BulkEditMatchModal.scss";
 
 interface BulkEditMatchModalProps {
@@ -102,15 +106,15 @@ const BulkEditMatchModal: React.FC<BulkEditMatchModalProps> = ({
       onClose={handleClose}
       title="Bulk Edit Matches"
       size="md"
-      className="bulk-edit-match-drawer"
+      className="bulk-edit-match-drawer sheet-form"
       footer={
-        <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={handleClose} disabled={loading}>
+        <div className="drawer__actions">
+          <Button variant="ghost" size="lg" onClick={handleClose} disabled={loading}>
             Cancel
-          </button>
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
+          </Button>
+          <Button size="lg" onClick={handleSubmit} loading={loading}>
             {loading ? "Updating..." : `Update ${selectedMatches.length} Match${selectedMatches.length !== 1 ? "es" : ""}`}
-          </button>
+          </Button>
         </div>
       }
     >
@@ -125,14 +129,11 @@ const BulkEditMatchModal: React.FC<BulkEditMatchModalProps> = ({
 
       <div className="form-group">
         <div className="checkbox-group">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={applyToAll.venue}
-              onChange={(e) => setApplyToAll({ ...applyToAll, venue: e.target.checked })}
-            />
-            <span>Update Venue</span>
-          </label>
+          <Checkbox
+            checked={applyToAll.venue}
+            onChange={(checked) => setApplyToAll({ ...applyToAll, venue: checked })}
+            label="Update Venue"
+          />
         </div>
         {applyToAll.venue && (
           <div className="field-input">
@@ -143,6 +144,7 @@ const BulkEditMatchModal: React.FC<BulkEditMatchModalProps> = ({
               onChange={(e) => setVenue(e.target.value)}
               placeholder="Enter venue name"
               className="form-input"
+              aria-label="Venue"
             />
             <datalist id="venue-list">
               {availableVenues.map((v) => (
@@ -156,28 +158,29 @@ const BulkEditMatchModal: React.FC<BulkEditMatchModalProps> = ({
 
       <div className="form-group">
         <div className="checkbox-group">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={applyToAll.bestOf}
-              onChange={(e) => setApplyToAll({ ...applyToAll, bestOf: e.target.checked })}
-            />
-            <span>Update Best Of</span>
-          </label>
+          <Checkbox
+            checked={applyToAll.bestOf}
+            onChange={(checked) => setApplyToAll({ ...applyToAll, bestOf: checked })}
+            label="Update Best Of"
+          />
         </div>
         {applyToAll.bestOf && (
           <div className="field-input">
-            <select
-              value={bestOf || ""}
-              onChange={(e) => setBestOf(e.target.value ? Number(e.target.value) : null)}
-              className="form-input"
-            >
-              <option value="">Select Best Of</option>
-              <option value={1}>Best of 1</option>
-              <option value={3}>Best of 3</option>
-              <option value={5}>Best of 5</option>
-              <option value={7}>Best of 7</option>
-            </select>
+            <div className="sheet-select">
+              <select
+                value={bestOf || ""}
+                onChange={(e) => setBestOf(e.target.value ? Number(e.target.value) : null)}
+                className="form-input"
+                aria-label="Best Of"
+              >
+                <option value="">Select Best Of</option>
+                <option value={1}>Best of 1</option>
+                <option value={3}>Best of 3</option>
+                <option value={5}>Best of 5</option>
+                <option value={7}>Best of 7</option>
+              </select>
+              <Icon name="chevron-down" size={14} className="sheet-select__icon" />
+            </div>
             <small className="form-hint">Number of games in the match</small>
           </div>
         )}

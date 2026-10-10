@@ -55,3 +55,16 @@
 .ui-check__label {
   min-width: 0;
 }
+
+// Already decided elsewhere (e.g. a referee who is assigned): shown, not changeable here.
+.ui-check--disabled {
+  cursor: default;
+
+  .ui-check__input {
+    cursor: default;
+  }
+
+  .ui-check__box {
+    opacity: 0.45;
+  }
+}

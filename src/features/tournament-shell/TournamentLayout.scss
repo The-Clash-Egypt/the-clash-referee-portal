@@ -27,6 +27,11 @@
   }
 }
 
+// A tab's own bar and bottom bar while it takes the frame over (select mode); nothing otherwise.
+.tournament-layout__takeover:empty {
+  display: none;
+}
+
 // From 900px the tabs sit in the bar, their orange underline on its bottom edge.
 .tournament-layout__topnav {
   margin: 10px -12px -14px;
@@ -49,4 +54,9 @@
     margin: 0 auto;
     padding-bottom: 40px;
   }
+}
+
+// Select mode's bulk bar replaces the tab bar, on a laptop too: room for it under the last match.
+.tournament-layout--takeover .tournament-layout__content {
+  padding-bottom: calc(var(--bulkbar-h) + env(safe-area-inset-bottom, 0px) + 24px);
 }

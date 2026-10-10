@@ -182,3 +182,32 @@
     stroke-width: 2.4;
   }
 }
+
+// Full access: a held row starts select mode, so the phone's own long-press callout and text selection stay away.
+.match-row--pressable {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+// Select mode (mockup match-flow-v2.html phone 5: `.mrow .ck`, `.mrow.sel`): the whole row is a checkbox (the
+// Checkbox's label), its tick in a column on the left; no chevron.
+.match-row.match-row--select {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  font-size: inherit;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+
+  > .ui-check__box {
+    align-self: center;
+    margin-left: 12px;
+  }
+}
+
+.match-row.match-row--selected,
+.match-row.match-row--selected:hover {
+  box-shadow: inset 0 0 0 2px var(--spark);
+}

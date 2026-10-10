@@ -1,15 +1,18 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Match, PlayerSuggestion, RefereeTeamAssignResult, RefereeTeamOption } from "../types/match";
 import { usePlayerSuggestions, useDebounce, useRefereeTeamOptions } from "../hooks";
 import Drawer from "../../shared/components/Drawer";
+import { Button } from "../../../ui/Button";
+import { SearchInput } from "../../../ui/SearchInput";
 import RefereeTeamsSection from "./RefereeTeamsSection";
+import { RefereeChips, RefereePeopleSection } from "./RefereeSheetParts";
 import {
   assignButtonLabel,
   describeRefereeAssignment,
   summarizeTeamAssignment,
 } from "../../../utils/refereeAssignText";
 import { shouldLabelCategories } from "../../../utils/matchSheetFormat";
-import "./BulkAssignRefereeModal.scss";
+import "./RefereeSheet.scss";
 
 interface BulkAssignRefereeModalProps {
   isOpen: boolean;
@@ -25,6 +28,13 @@ interface BulkAssignRefereeModalProps {
   loading: boolean;
 }
 
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
+/**
+ * The referee sheet for the matches picked in select mode (mockup match-flow-v2.html phone 4, "same sheet for one
+ * match or many"): one search for people and for the teams allowed to referee them, ticked rows, the Assign button.
+ * Teams go in one request for every match and the sheet stays open on the outcome (who was skipped and why).
+ */
 const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
   isOpen,
   selectedMatches,
@@ -33,18 +43,15 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
   onAssignTeams,
   loading,
 }) => {
-  const [searchInputs, setSearchInputs] = useState<{ id: string; value: string }[]>([{ id: "1", value: "" }]);
-  const [selectedRefereesData, setSelectedRefereesData] = useState<PlayerSuggestion[]>([]);
-  const [activeInputId, setActiveInputId] = useState<string>("1");
-  const [selectedTeams, setSelectedTeams] = useState<RefereeTeamOption[]>([]);
+  const [term, setTerm] = useState("");
+  const [people, setPeople] = useState<PlayerSuggestion[]>([]);
+  const [teams, setTeams] = useState<RefereeTeamOption[]>([]);
   const [teamOutcome, setTeamOutcome] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
-  // Get the current search term from the active input
-  const currentSearchTerm = searchInputs.find((input) => input.id === activeInputId)?.value || "";
-  const debouncedSearchTerm = useDebounce(currentSearchTerm, 300);
-
-  const { data: playerSuggestions = [], isLoading: suggestionsLoading } = usePlayerSuggestions(debouncedSearchTerm);
+  const debouncedTerm = useDebounce(term.trim(), 300);
+  const { data: suggestions = [], isLoading: suggestionsLoading } = usePlayerSuggestions(debouncedTerm);
 
   const matchIds = selectedMatches.map((match) => match.id);
   const {
@@ -53,12 +60,13 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
     isError: teamOptionsFailed,
   } = useRefereeTeamOptions(matchIds, isOpen && matchIds.length > 0);
 
-  const pickCount = selectedTeams.length + selectedRefereesData.length;
+  const pickCount = teams.length + people.length;
+  const busy = loading || submitting;
 
   // A team only fits the matches of its own category, so a selection that spans categories
   // shows each team's category and how many of the matches it can take.
-  const labelCategories =
-    shouldLabelCategories(selectedMatches) || new Set(teamOptions.map((team) => team.categoryName)).size > 1;
+  const categories = Array.from(new Set(teamOptions.map((team) => team.categoryName)));
+  const labelCategories = shouldLabelCategories(selectedMatches) || categories.length > 1;
   const eligibleCount = (team: RefereeTeamOption) => team.eligibleMatchIds.filter((id) => matchIds.includes(id)).length;
   const describeTeam = (team: RefereeTeamOption): string => {
     const eligible = eligibleCount(team);
@@ -71,63 +79,46 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
   };
 
   // The footer promises every match to the teams only when each picked team can take them all.
-  const teamsFitEveryMatch = selectedTeams.every((team) => eligibleCount(team) === matchIds.length);
+  const teamsFitEveryMatch = teams.every((team) => eligibleCount(team) === matchIds.length);
 
-  // A skipped match is named by its teams: the drawer lists only the first few matches, unnumbered.
+  // A skipped match is named by its teams: the sheet doesn't list the matches.
   const matchName = (matchId: string) => {
     const match = selectedMatches.find((selected) => selected.id === matchId);
     return match && [match.homeTeamName, match.awayTeamName].filter(Boolean).join(" vs ");
   };
 
-  const formatDateTime = (dateTimeString: string) => {
-    const date = new Date(dateTimeString);
-    return date.toLocaleString();
+  // After a keyboard pick or remove, back to the search for the next name.
+  const focusSearch = (fromKeyboard: boolean) => {
+    if (fromKeyboard) searchRef.current?.focus();
   };
 
-  const handleInputChange = (inputId: string, value: string) => {
-    setSearchInputs((prev) => prev.map((input) => (input.id === inputId ? { ...input, value } : input)));
-    setActiveInputId(inputId);
+  const togglePerson = (person: PlayerSuggestion, fromKeyboard: boolean) => {
+    setPeople((previous) =>
+      previous.some((picked) => picked.userId === person.userId)
+        ? previous.filter((picked) => picked.userId !== person.userId)
+        : [...previous, person]
+    );
+    focusSearch(fromKeyboard);
   };
 
-  const handleRefereeSelect = (referee: PlayerSuggestion) => {
-    // Add referee to selected list
-    setSelectedRefereesData((prev) => [...prev, referee]);
-
-    // Clear the current input
-    setSearchInputs((prev) => prev.map((input) => (input.id === activeInputId ? { ...input, value: "" } : input)));
+  const removePerson = (userId: string, fromKeyboard: boolean) => {
+    setPeople((previous) => previous.filter((picked) => picked.userId !== userId));
+    focusSearch(fromKeyboard);
   };
 
-  const handleRefereeRemove = (userId: string) => {
-    setSelectedRefereesData((prev) => prev.filter((ref) => ref.userId !== userId));
+  const selectTeam = (team: RefereeTeamOption, fromKeyboard: boolean) => {
+    setTeams((previous) => (previous.some((picked) => picked.teamId === team.teamId) ? previous : [...previous, team]));
+    focusSearch(fromKeyboard);
   };
 
-  const handleAddRefereeInput = () => {
-    const newId = Date.now().toString();
-    setSearchInputs((prev) => [...prev, { id: newId, value: "" }]);
-    setActiveInputId(newId);
+  const removeTeam = (teamId: string, fromKeyboard: boolean) => {
+    setTeams((previous) => previous.filter((team) => team.teamId !== teamId));
+    focusSearch(fromKeyboard);
   };
 
-  const handleRemoveInput = (inputId: string) => {
-    if (searchInputs.length > 1) {
-      setSearchInputs((prev) => prev.filter((input) => input.id !== inputId));
-      if (activeInputId === inputId) {
-        setActiveInputId(searchInputs[0].id);
-      }
-    }
-  };
-
-  const handleTeamSelect = (team: RefereeTeamOption) => {
-    setSelectedTeams((prev) => (prev.some((picked) => picked.teamId === team.teamId) ? prev : [...prev, team]));
-  };
-
-  const handleTeamRemove = (teamId: string) => {
-    setSelectedTeams((prev) => prev.filter((team) => team.teamId !== teamId));
-  };
-
-  const resetReferees = () => {
-    setSelectedRefereesData([]);
-    setSearchInputs([{ id: "1", value: "" }]);
-    setActiveInputId("1");
+  const resetPeople = () => {
+    setPeople([]);
+    setTerm("");
   };
 
   // Teams go in one request for every selected match, and the drawer stays open on the outcome, which
@@ -135,26 +126,26 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
   // the list and closes the drawer. Picks that failed stay for another try (the page has said why).
   const handleAssign = async () => {
     if (pickCount === 0 || submitting) return;
-    const teams = selectedTeams;
-    const refereeIds = selectedRefereesData.map((ref) => ref.userId);
+    const pickedTeams = teams;
+    const refereeIds = people.map((person) => person.userId);
     setSubmitting(true);
     setTeamOutcome(null);
     try {
       let outcome = "";
-      if (teams.length > 0) {
-        const results = await onAssignTeams(teams.map((team) => team.teamId), matchIds);
+      if (pickedTeams.length > 0) {
+        const results = await onAssignTeams(pickedTeams.map((team) => team.teamId), matchIds);
         if (!results) return; // The page has said why; the picks stay for another try.
         outcome = summarizeTeamAssignment(
           results,
-          (teamId) => teams.find((team) => team.teamId === teamId)?.teamName ?? "A team",
+          (teamId) => pickedTeams.find((team) => team.teamId === teamId)?.teamName ?? "A team",
           matchName
         );
         setTeamOutcome(outcome);
-        setSelectedTeams([]);
+        setTeams([]);
       }
-      if (refereeIds.length > 0 && (await onAssign(refereeIds, matchIds, teams.length > 0))) {
+      if (refereeIds.length > 0 && (await onAssign(refereeIds, matchIds, pickedTeams.length > 0))) {
         if (outcome) setTeamOutcome(`${outcome} · ${describeRefereeAssignment(refereeIds.length, matchIds.length)}`);
-        resetReferees();
+        resetPeople();
       }
     } finally {
       setSubmitting(false);
@@ -162,192 +153,88 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
   };
 
   const handleClose = () => {
-    resetReferees();
-    setSelectedTeams([]);
+    resetPeople();
+    setTeams([]);
     setTeamOutcome(null);
     onClose();
   };
 
-  const getUniqueVenues = () => {
-    const venues = selectedMatches.map((match) => match.venue).filter(Boolean);
-    return Array.from(new Set(venues));
-  };
+  const courts = Array.from(new Set(selectedMatches.map((match) => match.venue).filter(Boolean)));
 
-  const getUniqueTournaments = () => {
-    const tournaments = selectedMatches.map((match) => match.tournamentName).filter(Boolean);
-    return Array.from(new Set(tournaments));
-  };
+  // Searching puts the people found first (mockup); otherwise the teams, which need no search, lead.
+  const searching = term.trim() !== "";
+  const peopleSection = (
+    <RefereePeopleSection
+      term={debouncedTerm}
+      results={suggestions}
+      loading={suggestionsLoading}
+      picked={people}
+      onToggle={togglePerson}
+    />
+  );
+  const teamsSection = (
+    <RefereeTeamsSection
+      options={teamOptions}
+      loading={teamOptionsLoading}
+      failed={teamOptionsFailed}
+      selected={teams}
+      onSelect={selectTeam}
+      onRemove={removeTeam}
+      term={term}
+      category={categories.length === 1 && !labelCategories ? categories[0] : undefined}
+      detailFor={describeTeam}
+      emptyText="No team can referee the selected matches."
+    />
+  );
 
   // The drawer supplies the header, close button, Escape, backdrop click and scroll lock.
   return (
     <Drawer
       isOpen={isOpen}
       onClose={handleClose}
-      title="Bulk Assign Referees"
+      title={`Referees · ${plural(selectedMatches.length, "match", "matches")}`}
+      subtitle={courts.length > 0 ? courts.join(" · ") : undefined}
+      headerAction={
+        <button type="button" className="drawer__link" onClick={handleClose}>
+          Done
+        </button>
+      }
       size="md"
-      className="bulk-assign-referee-drawer"
+      className="bulk-assign-referee-drawer ref-sheet"
       footer={
         pickCount > 0 ? (
-          <div className="assign-actions">
-            <button
-              className="btn-base btn-primary assign-button"
-              onClick={handleAssign}
-              disabled={loading || submitting}
-            >
-              {loading || submitting
-                ? "Assigning..."
-                : assignButtonLabel(
-                    selectedTeams.length,
-                    selectedRefereesData.length,
-                    selectedMatches.length,
-                    teamsFitEveryMatch
-                  )}
-            </button>
-          </div>
+          <Button size="lg" block loading={busy} onClick={handleAssign} className="assign-button">
+            {busy
+              ? "Assigning..."
+              : assignButtonLabel(teams.length, people.length, selectedMatches.length, teamsFitEveryMatch)}
+          </Button>
         ) : null
       }
     >
-      <div className="selected-matches-info">
-        <h4>Selected Matches ({selectedMatches.length})</h4>
-        <div className="matches-summary">
-          <div className="summary-item">
-            <strong>Tournaments:</strong> {getUniqueTournaments().join(", ")}
-          </div>
-          <div className="summary-item">
-            <strong>Venues:</strong> {getUniqueVenues().join(", ")}
-          </div>
-        </div>
-
-        <div className="matches-list">
-          {selectedMatches.slice(0, 5).map((match) => (
-            <div key={match.id} className="match-item">
-              <span className="teams">
-                {match.homeTeamName} vs {match.awayTeamName}
-              </span>
-              <span className="venue">{match.venue}</span>
-              <span className="time">{match.startTime ? formatDateTime(match.startTime) : "TBD"}</span>
-            </div>
-          ))}
-          {selectedMatches.length > 5 && (
-            <div className="more-matches">... and {selectedMatches.length - 5} more matches</div>
-          )}
-        </div>
-      </div>
-
-      <RefereeTeamsSection
-        options={teamOptions}
-        loading={teamOptionsLoading}
-        failed={teamOptionsFailed}
-        selected={selectedTeams}
-        onSelect={handleTeamSelect}
-        onRemove={handleTeamRemove}
-        detailFor={describeTeam}
-        emptyText="No team can referee the selected matches."
-        outcome={teamOutcome}
+      <RefereeChips
+        pickedPeople={people}
+        pickedTeams={teams}
+        onRemovePerson={removePerson}
+        onRemoveTeam={removeTeam}
+        teamDetail={describeTeam}
+        focusSearch={focusSearch}
       />
-
-      <div className="referees-section">
-        {/* Selected referees to be assigned */}
-        {selectedRefereesData.length > 0 && (
-          <div className="selected-referees-section">
-            <h4>Referees to Assign ({selectedRefereesData.length})</h4>
-            <div className="selected-referees-list">
-              {selectedRefereesData.map((referee) => (
-                <div key={referee.userId} className="selected-referee-item">
-                  <div className="referee-info">
-                    <h5>
-                      {referee.firstName} {referee.lastName}
-                    </h5>
-                    <p>{referee.email}</p>
-                  </div>
-                  <button
-                    className="remove-button"
-                    onClick={() => handleRefereeRemove(referee.userId)}
-                    title="Remove referee"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Search inputs */}
-        <div className="search-inputs-section">
-          <h4>Add Referees</h4>
-          {searchInputs.map((input, index) => (
-            <div key={input.id} className="search-input-row">
-              <div className="input-container">
-                <input
-                  type="text"
-                  placeholder="Search by name or email..."
-                  value={input.value}
-                  onChange={(e) => handleInputChange(input.id, e.target.value)}
-                  onFocus={() => setActiveInputId(input.id)}
-                  className="referee-search-input"
-                />
-                {searchInputs.length > 1 && (
-                  <button
-                    className="remove-input-button"
-                    onClick={() => handleRemoveInput(input.id)}
-                    title="Remove search input"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-
-              {/* Show suggestions only for the active input */}
-              {activeInputId === input.id && (
-                <div className="suggestions-container">
-                  {suggestionsLoading ? (
-                    <div className="loading-suggestions">
-                      <p>Searching...</p>
-                    </div>
-                  ) : playerSuggestions.length === 0 ? (
-                    debouncedSearchTerm && (
-                      <div className="no-suggestions">
-                        <p>No referees found matching "{debouncedSearchTerm}"</p>
-                      </div>
-                    )
-                  ) : (
-                    <div className="suggestions-list">
-                      {playerSuggestions
-                        .filter(
-                          (referee) => !selectedRefereesData.some((selected) => selected.userId === referee.userId)
-                        )
-                        .map((referee) => (
-                          <div
-                            key={referee.id}
-                            className="suggestion-item"
-                            onClick={() => handleRefereeSelect(referee)}
-                          >
-                            <div className="referee-info">
-                              <h5>
-                                {referee.firstName} {referee.lastName}
-                              </h5>
-                              <p>{referee.email}</p>
-                              <p className="nationality">
-                                {referee.nationality} • {referee.gender}
-                              </p>
-                            </div>
-                            <div className="add-icon">+</div>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* Add another referee button */}
-          <button className="add-referee-button" onClick={handleAddRefereeInput}>
-            + Add Another Referee
-          </button>
-        </div>
+      {/* Mounted while empty, so the outcome is announced when it arrives. */}
+      <div role="status">{teamOutcome ? <p className="ref-sheet__outcome">{teamOutcome}</p> : null}</div>
+      <div className="ref-sheet__search">
+        <SearchInput value={term} onChange={setTerm} placeholder="Search name, email or team" inputRef={searchRef} />
       </div>
+      {searching ? (
+        <>
+          {peopleSection}
+          {teamsSection}
+        </>
+      ) : (
+        <>
+          {teamsSection}
+          {peopleSection}
+        </>
+      )}
     </Drawer>
   );
 };

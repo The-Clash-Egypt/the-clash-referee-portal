@@ -194,6 +194,13 @@ export function formatTime(startTime?: string | null): string {
 }
 
 /** Whether a start time falls on the given day (local). */
+/** "15:00", or "Sun 11 Oct 15:00" when the match isn't today; empty without a start time. */
+export function formatWhen(startTime?: string | null, now: Date = new Date()): string {
+  const time = formatTime(startTime);
+  if (!time || !startTime) return "";
+  return isSameLocalDay(startTime, now) ? time : `${formatDayLabel(startTime)} ${time}`;
+}
+
 export function isSameLocalDay(startTime: string | undefined | null, day: Date): boolean {
   if (!startTime) return false;
   const at = Date.parse(startTime);

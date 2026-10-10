@@ -1,80 +1,44 @@
-@import "../../../styles/colors.scss";
-
-// The bulk score sheet inside its drawer. The Drawer supplies the panel, header, close button and
-// footer bar; court headers and rows run edge to edge, so the drawer body has no padding here.
+// The bulk score sheet: every selected match on one screen, grouped by court. The Drawer supplies the sheet / panel,
+// its header and the footer bar; court headers and rows run edge to edge, so the body has no padding here.
 .bulk-score-drawer {
   .drawer__body {
     padding: 0;
   }
 
   .bulk-sheet {
-    // Laid out inside the drawer footer, which draws the separator and padding.
     &__footer {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 12px 16px;
+      gap: 10px 16px;
     }
 
     &__summary {
-      font-size: 0.875rem;
-      color: $text-secondary;
+      color: var(--muted);
+      font-family: var(--font-label);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
     }
 
     &__blocked {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 12px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: $error-color;
+      gap: 8px 10px;
+      color: var(--live-badge);
+      font-size: 14px;
+      font-weight: 700;
     }
 
     &__actions {
-      display: flex;
-      gap: 12px;
       margin-left: auto;
     }
   }
 
-  // Button look carried over from the previous bulk modal.
-  .btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    &.btn-secondary {
-      border: 1px solid $gray-300;
-      background: $gray-100;
-      color: $gray-700;
-
-      &:hover:not(:disabled) {
-        background: $gray-200;
-      }
-    }
-
-    &.btn-primary {
-      background: $primary-color;
-      color: $white;
-
-      &:hover:not(:disabled) {
-        background: $primary-color-hover;
-      }
-    }
-  }
-
+  // A court's header (the timeline's slot header, on the page grey), sticky while its rows scroll.
   .bulk-court__header {
     position: sticky;
     top: 0;
@@ -82,20 +46,27 @@
     display: flex;
     align-items: baseline;
     gap: 8px;
-    padding: 10px 24px;
-    border-bottom: 1px solid $border-primary;
-    background: $gray-50;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--line);
+    background: var(--page);
 
     h4 {
       margin: 0;
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: $primary-color;
+      color: var(--ink);
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-style: italic;
+      font-weight: 800;
+      text-transform: uppercase;
     }
 
     span {
-      font-size: 0.8rem;
-      color: $text-secondary;
+      color: var(--muted);
+      font-family: var(--font-label);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
     }
   }
 
@@ -104,15 +75,15 @@
     grid-template-columns: 88px minmax(0, 1fr) auto;
     align-items: center;
     column-gap: 16px;
-    padding: 12px 24px;
-    border-bottom: 1px solid $border-primary;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--line);
 
     &--error {
-      background: $error-color-light;
+      box-shadow: inset 4px 0 0 var(--live);
     }
 
     &--saved {
-      background: $success-color-light;
+      background: var(--ok-tint);
     }
 
     &__rail {
@@ -122,15 +93,21 @@
     }
 
     &__time {
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: $text-primary;
+      color: var(--ink);
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-style: italic;
+      font-weight: 800;
     }
 
     &__round,
     &__category {
-      font-size: 0.75rem;
-      color: $text-secondary;
+      color: var(--muted);
+      font-family: var(--font-label);
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
     }
 
     // A long best-of row scrolls inside itself on a phone instead of widening the drawer. The 3px
@@ -150,77 +127,99 @@
     &__team {
       overflow: hidden;
       padding-right: 8px;
-      font-size: 0.9rem;
+      color: var(--ink);
+      font-size: 14px;
       font-weight: 600;
-      color: $text-primary;
-      white-space: nowrap;
       text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     &__label {
-      font-size: 0.7rem;
-      color: $text-tertiary;
+      color: var(--muted);
+      font-family: var(--font-label);
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
       text-align: center;
+      text-transform: uppercase;
     }
 
+    // A score box: square, 44px tall, the number in the display face; the orange ring while typing.
     &__input {
-      width: 48px;
-      height: 34px;
       box-sizing: border-box;
-      border: 1px solid $border-secondary;
-      border-radius: 6px;
-      background: $white;
-      color: $text-primary;
-      font-family: inherit;
-      font-size: 1rem;
-      font-weight: 600;
+      width: 48px;
+      height: 44px;
+      margin: 0;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 0;
+      background: var(--card);
+      color: var(--ink);
+      font-family: var(--font-display);
+      font-size: 19px;
+      font-style: italic;
+      font-weight: 800;
       text-align: center;
+      -webkit-appearance: none;
+      appearance: none;
 
       &:focus {
         outline: none;
-        border-color: $primary-color;
-        box-shadow: 0 0 0 3px $primary-color-light;
+        border-color: var(--spark);
+        box-shadow: inset 0 0 0 1px var(--spark);
       }
 
       &:disabled {
-        background: $gray-100;
-        color: $text-secondary;
+        background: var(--alt);
+        color: var(--muted);
       }
     }
 
     &__total {
       padding-left: 8px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: $text-secondary;
+      color: var(--muted);
+      font-family: var(--font-label);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
       white-space: nowrap;
     }
 
     &__side {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     &__remove {
-      width: 28px;
-      height: 28px;
-      border: none;
-      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      margin: 0;
+      padding: 0;
+      border: 0;
       background: transparent;
-      color: $text-tertiary;
-      font-size: 1.25rem;
-      line-height: 1;
+      color: var(--muted);
       cursor: pointer;
 
       &:hover:not(:disabled) {
-        background: $gray-100;
-        color: $text-primary;
+        color: var(--ink);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--spark);
+        outline-offset: -2px;
       }
 
       &:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+      }
+
+      .ui-icon {
+        stroke-width: 2.4;
       }
     }
 
@@ -228,41 +227,52 @@
       grid-column: 2 / -1;
       margin: 8px 0 0;
       padding-left: 18px;
-      font-size: 0.8rem;
-      color: $error-color;
+      color: var(--live-badge);
+      font-size: 13px;
+      font-weight: 600;
     }
   }
 
+  // A row's state, as a small slanted tag.
   .bulk-status {
-    padding: 3px 10px;
-    border-radius: 1000px;
-    background: $gray-100;
-    color: $text-secondary;
-    font-size: 0.75rem;
-    font-weight: 600;
+    padding: 4px 8px;
+    clip-path: var(--clip-slant-sm);
+    background: var(--alt);
+    color: var(--muted);
+    font-family: var(--font-label);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     white-space: nowrap;
 
     &--ready {
-      background: $success-color-light;
-      color: $success-color-hover;
+      background: var(--ok-tint);
+      color: var(--ok);
     }
 
     &--error {
-      background: $error-color-light;
-      color: $error-color-hover;
+      background: var(--live-badge);
+      color: var(--on-spark);
     }
   }
 }
 
 @media (max-width: 640px) {
   .bulk-score-drawer {
+    .bulk-court__header {
+      padding: 10px 16px;
+    }
+
     .bulk-row {
       grid-template-columns: minmax(0, 1fr) auto;
       row-gap: 8px;
+      padding: 12px 16px;
 
       &__rail {
         grid-column: 1 / -1;
         flex-direction: row;
+        align-items: baseline;
         gap: 8px;
       }
 
@@ -273,10 +283,6 @@
 
     .bulk-sheet__actions {
       width: 100%;
-
-      .btn {
-        flex: 1;
-      }
     }
   }
 }

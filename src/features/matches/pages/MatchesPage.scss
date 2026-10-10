@@ -31,8 +31,43 @@
   }
 }
 
+// The Live · Up next · Done tabs, and (full access) "Select", which starts select mode.
 .matches-page__tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding: 10px 14px 4px;
+}
+
+.matches-page__seg {
+  flex: 1;
+  min-width: 0;
+}
+
+.matches-page__select {
+  flex: none;
+  margin: 0;
+  padding: 8px 2px 8px 8px;
+  border: 0;
+  background: none;
+  color: var(--spark-text);
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--spark);
+    outline-offset: 2px;
+  }
 }
 
 .matches-page__list {
@@ -50,56 +85,99 @@
   padding: 14px 14px 4px;
 }
 
-// Bulk WhatsApp: pick one referee of the selected matches.
-.bulk-whatsapp-drawer {
-  p {
-    margin: 0;
-    color: var(--muted);
-    font-size: 14px;
-    line-height: 1.45;
+// Bulk WhatsApp: pick one referee of the selected matches (rows like the referee sheet's: radio, avatar, name, phone).
+.bulk-whatsapp__intro {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.bulk-whatsapp__list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bulk-whatsapp__row {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 10px;
+  min-height: 51px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+// A round brand radio: a ring, filled orange round a white dot when chosen.
+.bulk-whatsapp__radio {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 2px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--card);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+
+  &::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
   }
 
-  .referees-list {
-    margin-top: 12px;
-  }
+  &:checked {
+    border-color: var(--spark);
+    background: var(--spark);
 
-  .referee-item {
-    padding: 12px 0;
-    border-top: 1px solid var(--line);
-  }
-
-  .referee-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-
-    input[type="radio"] {
-      width: 18px;
-      height: 18px;
-      margin: 0;
-      accent-color: var(--spark);
-      cursor: pointer;
+    &::after {
+      background: var(--on-spark);
     }
   }
 
-  .referee-name {
-    flex: 1;
-    min-width: 0;
-    color: var(--ink);
-    font-weight: 600;
-  }
-
-  .referee-phone {
-    color: var(--muted);
-    font-size: 14px;
+  &:focus-visible {
+    outline: 2px solid var(--spark);
+    outline-offset: 2px;
   }
 }
 
-.matches-page__sheet-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+.bulk-whatsapp__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  clip-path: var(--clip-slant-sm);
+  background: var(--alt);
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 800;
+}
+
+.bulk-whatsapp__who {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+
+  small {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 400;
+  }
 }
 
 // Laptop: the bar's search keeps a sensible width; the tabs too.
@@ -109,11 +187,12 @@
   }
 
   .matches-page__tabs {
+    gap: 12px;
     padding: 16px 0 4px;
+  }
 
-    .ui-seg {
-      max-width: 480px;
-    }
+  .matches-page__seg {
+    flex: 0 1 480px;
   }
 
   .matches-page__list {

@@ -10,13 +10,28 @@ interface MatchesTimelineProps {
   /** Day = all: a date header on the first slot of each day. */
   showDates: boolean;
   onOpen: (match: Match) => void;
+  /** Full access: holding a row starts select mode with it. */
+  onLongPress?: (match: Match) => void;
+  /** Select mode: rows are checkboxes; tapping one toggles it. */
+  selecting?: boolean;
+  selectedIds?: Set<string>;
+  onToggle?: (match: Match) => void;
 }
 
 /**
  * The matches under time headers (mockup `.slot`): Up next in time order, Done newest first, each with date headers
  * when every day is shown. Live is one "Now" group, court by court.
  */
-const MatchesTimeline: React.FC<MatchesTimelineProps> = ({ matches, tab, showDates, onOpen }) => {
+const MatchesTimeline: React.FC<MatchesTimelineProps> = ({
+  matches,
+  tab,
+  showDates,
+  onOpen,
+  onLongPress,
+  selecting = false,
+  selectedIds,
+  onToggle,
+}) => {
   const groups: TimelineGroup[] = useMemo(
     () =>
       tab === "live"
@@ -36,7 +51,14 @@ const MatchesTimeline: React.FC<MatchesTimelineProps> = ({ matches, tab, showDat
           <ul className="matches-timeline__rows">
             {group.matches.map((match) => (
               <li key={match.id} className="matches-timeline__item">
-                <MatchRow match={match} onOpen={onOpen} />
+                <MatchRow
+                  match={match}
+                  onOpen={onOpen}
+                  onLongPress={onLongPress}
+                  selecting={selecting}
+                  selected={selectedIds?.has(match.id) ?? false}
+                  onToggle={onToggle}
+                />
               </li>
             ))}
           </ul>

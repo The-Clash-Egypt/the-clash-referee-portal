@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useParams, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../store";
@@ -8,7 +8,7 @@ import { SearchInput } from "../../../ui/SearchInput";
 import { Segmented } from "../../../ui/Segmented";
 import { SkeletonRows } from "../../../ui/Spinner";
 import { hasFullAccess } from "../../auth/permissions";
-import { AppBarSlot } from "../../tournament-shell/AppBarSlot";
+import { AppBarSlot, AppBarTakeover } from "../../tournament-shell/AppBarSlot";
 import Drawer from "../../shared/components/Drawer";
 import AssignRefereeModal from "../components/AssignRefereeModal";
 import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
@@ -18,13 +18,17 @@ import EditMatchModal from "../components/EditMatchModal";
 import MatchQRCodeModal from "../components/MatchQRCodeModal";
 import UpdateScoreDialog from "../components/UpdateScoreDialog";
 import ActiveFilterChips from "../components/timeline/ActiveFilterChips";
+import BulkActionBar from "../components/timeline/BulkActionBar";
 import FiltersSheet from "../components/timeline/FiltersSheet";
 import MatchesTimeline from "../components/timeline/MatchesTimeline";
 import MatchSheet from "../components/timeline/MatchSheet";
+import SelectModeBar from "../components/timeline/SelectModeBar";
 import { refereesWithPhones, useMatchActions } from "../hooks/useMatchActions";
 import { useMatchFilters } from "../hooks/useMatchFilters";
 import { useMatchList } from "../hooks/useMatchList";
+import { useSelection } from "../hooks/useSelection";
 import { Match, MatchGameScore } from "../types/match";
+import { initials } from "../utils/matchDisplay";
 import { defaultDate, defaultTab, MatchTab } from "../utils/timeline";
 import "./MatchesPage.scss";
 
@@ -37,7 +41,9 @@ const TABS: { value: MatchTab; label: string }[] = [
 /**
  * A tournament's matches (mockup matches-layout.html option B "Timeline"): search and Filters in the app bar, the
  * active filters as chips, Live · Up next · Done with counts, then the matches under time headers, 30 at a time.
- * Tapping a match opens its sheet; Score, Referee, Edit and QR open today's dialogs from there.
+ * Tapping a match opens its sheet; Score, Referee, Edit and QR open today's dialogs from there. With full access,
+ * holding a match (or "Select") starts select mode: the bar turns orange, rows get ticks, and the bulk actions take the
+ * tab bar's place (mockup match-flow-v2.html phone 5).
  */
 const MatchesPage: React.FC = () => {
   const { id = "" } = useParams();
@@ -72,8 +78,10 @@ const MatchesPage: React.FC = () => {
   const [editMatch, setEditMatch] = useState<Match | null>(null);
   const [qrMatch, setQrMatch] = useState<Match | null>(null);
 
-  // Bulk actions work on the selected matches. Select mode (long-press, the bulk bar) fills `selectedIds`.
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  // Select mode (full access): bulk actions work on the selected matches of the list on screen.
+  const ids = useMemo(() => matches.map((match) => match.id), [matches]);
+  const selection = useSelection(ids);
+  const { selected: selectedIds, active: selecting, exit: exitSelectMode, deselect } = selection;
   const selectedMatches = useMemo(() => matches.filter((match) => selectedIds.has(match.id)), [matches, selectedIds]);
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
@@ -91,6 +99,15 @@ const MatchesPage: React.FC = () => {
     setSheetOpen(false);
     open(match);
   };
+
+  // Another tab, any filter or the search leaves select mode.
+  const filtersKey = JSON.stringify(filters);
+  const lastFiltersKey = useRef(filtersKey);
+  useEffect(() => {
+    if (lastFiltersKey.current === filtersKey) return;
+    lastFiltersKey.current = filtersKey;
+    if (selecting) exitSelectMode();
+  }, [filtersKey, selecting, exitSelectMode]);
 
   const changeTab = (tab: string) => {
     setFilter("tab", tab as MatchTab);
@@ -112,19 +129,12 @@ const MatchesPage: React.FC = () => {
 
   // ---- bulk (select mode) ----
 
-  const clearSelection = () => setSelectedIds(new Set());
-  const unselect = (matchIds: string[]) =>
-    setSelectedIds((previous) => {
-      const next = new Set(previous);
-      matchIds.forEach((matchId) => next.delete(matchId));
-      return next;
-    });
-
+  // A finished bulk assign or edit ends select mode (the old page cleared the selection, which hid its bulk bar).
   const bulkAssign = async (refereeIds: string[], matchIds: string[], keepOpen = false) => {
     const done = await actions.bulkAssignReferees(refereeIds, matchIds);
     if (done && !keepOpen) {
       setBulkAssignOpen(false);
-      clearSelection();
+      exitSelectMode();
     }
     return done;
   };
@@ -132,7 +142,7 @@ const MatchesPage: React.FC = () => {
   const bulkEdit = async (updates: { matchId: string; venue?: string | null; bestOf?: number | null }[]) => {
     if (await actions.bulkEditMatches(updates, matches)) {
       setBulkEditOpen(false);
-      clearSelection();
+      exitSelectMode();
     }
   };
 
@@ -144,13 +154,13 @@ const MatchesPage: React.FC = () => {
   const removeFromBulkScoreSheet = (matchId: string) => {
     const remaining = bulkScoreMatches.filter((match) => match.id !== matchId);
     setBulkScoreMatches(remaining);
-    unselect([matchId]);
+    deselect([matchId]);
     if (remaining.length === 0) setBulkScoreOpen(false);
   };
   const closeBulkScoreSheet = (savedMatchIds: string[]) => {
     setBulkScoreOpen(false);
     setBulkScoreMatches([]);
-    if (savedMatchIds.length > 0) unselect(savedMatchIds);
+    if (savedMatchIds.length > 0) deselect(savedMatchIds);
   };
 
   const openBulkWhatsApp = () => {
@@ -166,11 +176,6 @@ const MatchesPage: React.FC = () => {
   };
   // Worked out only while the drawer is open (it keeps its last content to slide out).
   const bulkWhatsAppReferees = bulkWhatsAppOpen ? refereesWithPhones(selectedMatches) : [];
-
-  // Select mode's bulk bar (Referee · Scores · Edit · WhatsApp) opens the bulk sheets with these and with
-  // setBulkAssignOpen / setBulkEditOpen; it lands with the select mode.
-  void openBulkScoreSheet;
-  void openBulkWhatsApp;
 
   // ---- the list ----
 
@@ -216,7 +221,16 @@ const MatchesPage: React.FC = () => {
   } else {
     content = (
       <>
-        <MatchesTimeline matches={matches} tab={filters.tab} showDates={filters.date === "all"} onOpen={openSheet} />
+        <MatchesTimeline
+          matches={matches}
+          tab={filters.tab}
+          showDates={filters.date === "all"}
+          onOpen={openSheet}
+          onLongPress={fullAccess ? (match) => selection.start(match.id) : undefined}
+          selecting={selecting}
+          selectedIds={selectedIds}
+          onToggle={(match) => selection.toggle(match.id)}
+        />
         {list.hasMore ? (
           <div className="matches-page__more">
             <Button variant="tint" loading={list.isFetchingMore} onClick={list.loadMore}>
@@ -230,6 +244,29 @@ const MatchesPage: React.FC = () => {
 
   return (
     <div className="matches-page">
+      {selecting ? (
+        <AppBarTakeover
+          bar={
+            <SelectModeBar
+              count={selectedIds.size}
+              total={ids.length}
+              onExit={exitSelectMode}
+              onSelectAll={selection.selectAll}
+              onClear={selection.clear}
+            />
+          }
+          bottom={
+            <BulkActionBar
+              disabled={selectedIds.size === 0}
+              onReferee={() => setBulkAssignOpen(true)}
+              onScores={openBulkScoreSheet}
+              onEdit={() => setBulkEditOpen(true)}
+              onWhatsApp={openBulkWhatsApp}
+            />
+          }
+        />
+      ) : null}
+
       <AppBarSlot>
         <div className="matches-page__searchbar">
           <div className="matches-page__search">
@@ -255,12 +292,19 @@ const MatchesPage: React.FC = () => {
 
       <div className="matches-page__body">
         <div className="matches-page__tabs">
-          <Segmented
-            ariaLabel="Matches"
-            value={hasExplicitTab ? filters.tab : ""}
-            onChange={changeTab}
-            options={TABS.map((tab) => ({ ...tab, count: list.countsReady || total > 0 ? counts[tab.value] : undefined }))}
-          />
+          <div className="matches-page__seg">
+            <Segmented
+              ariaLabel="Matches"
+              value={hasExplicitTab ? filters.tab : ""}
+              onChange={changeTab}
+              options={TABS.map((tab) => ({ ...tab, count: list.countsReady || total > 0 ? counts[tab.value] : undefined }))}
+            />
+          </div>
+          {fullAccess && !selecting && matches.length > 0 ? (
+            <button type="button" className="matches-page__select" onClick={() => selection.start()}>
+              Select
+            </button>
+          ) : null}
         </div>
         <div className="matches-page__list">{content}</div>
       </div>
@@ -303,6 +347,7 @@ const MatchesPage: React.FC = () => {
         }}
         onAssignTeams={actions.assignTeams}
         onUnassignTeam={actions.unassignTeam}
+        onUnassignReferee={actions.unassignReferee}
         loading={actions.assigningReferee}
       />
 
@@ -360,33 +405,39 @@ const MatchesPage: React.FC = () => {
         title="Share matches on WhatsApp"
         className="bulk-whatsapp-drawer"
         footer={
-          <div className="matches-page__sheet-actions">
-            <Button variant="ghost" onClick={() => setBulkWhatsAppOpen(false)}>
+          <div className="drawer__actions">
+            <Button variant="ghost" size="lg" onClick={() => setBulkWhatsAppOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={sendBulkWhatsApp} disabled={whatsAppPhone === ""}>
+            <Button size="lg" icon="whatsapp" onClick={sendBulkWhatsApp} disabled={whatsAppPhone === ""}>
               Send Message
             </Button>
           </div>
         }
       >
-        <p>Select one of the assigned referees to share matches on WhatsApp</p>
-        <div className="referees-list">
+        <p className="bulk-whatsapp__intro">Select one of the assigned referees to share matches on WhatsApp</p>
+        <ul className="bulk-whatsapp__list">
           {bulkWhatsAppReferees.map((referee) => (
-            <div key={referee.phoneNumber} className="referee-item">
-              <label className="referee-checkbox">
+            <li key={referee.phoneNumber}>
+              <label className="bulk-whatsapp__row">
                 <input
                   type="radio"
+                  className="bulk-whatsapp__radio"
                   name="selectedReferee"
                   checked={whatsAppPhone === referee.phoneNumber}
                   onChange={() => setWhatsAppPhone(referee.phoneNumber)}
                 />
-                <span className="referee-name">{referee.fullName}</span>
-                <span className="referee-phone">{referee.phoneNumber}</span>
+                <span className="bulk-whatsapp__avatar" aria-hidden="true">
+                  {initials(referee.fullName)}
+                </span>
+                <span className="bulk-whatsapp__who">
+                  <span className="referee-name">{referee.fullName}</span>
+                  <small className="referee-phone">{referee.phoneNumber}</small>
+                </span>
               </label>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       </Drawer>
     </div>
   );

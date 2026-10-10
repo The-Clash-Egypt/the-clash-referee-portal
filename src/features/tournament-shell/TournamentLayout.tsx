@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { Outlet, useLocation, useMatch, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -35,8 +35,16 @@ const TournamentLayout: React.FC = () => {
   const user = useSelector((state: RootState) => state.user.user);
   const info = useTournamentInfo(id);
   const tabMatch = useMatch({ path: "/tournaments/:id/:tab", end: false });
-  // Where a tab puts its own controls in the bar (AppBarSlot): the matches search and filters, for one.
+  // Where a tab puts its own controls (AppBarSlot): the matches search and filters under the title, for one; and
+  // while it takes the frame over (select mode), its own bar and bottom bar in place of the app bar and the tabs.
   const [slot, setSlot] = useState<HTMLDivElement | null>(null);
+  const [barSlot, setBarSlot] = useState<HTMLDivElement | null>(null);
+  const [bottomSlot, setBottomSlot] = useState<HTMLDivElement | null>(null);
+  const [takeover, setTakeover] = useState(false);
+  const slots = useMemo(
+    () => ({ below: slot, bar: barSlot, bottom: bottomSlot, setTakeover }),
+    [slot, barSlot, bottomSlot]
+  );
 
   const { data: stages } = useQuery({
     queryKey: ["mexicano-stages", id],
@@ -66,29 +74,35 @@ const TournamentLayout: React.FC = () => {
   }, [current]);
 
   return (
-    <div className="tournament-layout">
+    <div className={`tournament-layout${takeover ? " tournament-layout--takeover" : ""}`}>
       <div className="tournament-layout__bar">
-        <AppBar
-          eyebrow={eyebrow || undefined}
-          title={info.name}
-          onBack={() => navigate("/")}
-          backLabel="Back to tournaments"
-          right={<BrandLogo />}
-        >
-          <div ref={setSlot} className="tournament-layout__slot" />
-          <div className="tournament-layout__topnav">
-            <TabBar items={items} placement="top" />
-          </div>
-        </AppBar>
+        <div ref={setBarSlot} className="tournament-layout__takeover" />
+        <div hidden={takeover}>
+          <AppBar
+            eyebrow={eyebrow || undefined}
+            title={info.name}
+            onBack={() => navigate("/")}
+            backLabel="Back to tournaments"
+            right={<BrandLogo />}
+          >
+            <div ref={setSlot} className="tournament-layout__slot" />
+            <div className="tournament-layout__topnav">
+              <TabBar items={items} placement="top" />
+            </div>
+          </AppBar>
+        </div>
       </div>
 
       <main className="tournament-layout__content">
-        <AppBarSlotProvider value={slot}>
+        <AppBarSlotProvider value={slots}>
           <Outlet />
         </AppBarSlotProvider>
       </main>
 
-      <TabBar items={items} placement="bottom" />
+      <div hidden={takeover}>
+        <TabBar items={items} placement="bottom" />
+      </div>
+      <div ref={setBottomSlot} className="tournament-layout__takeover" />
     </div>
   );
 };

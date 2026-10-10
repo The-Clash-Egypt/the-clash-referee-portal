@@ -1,200 +1,57 @@
-/* Content of the Edit Match drawer. The Drawer supplies the panel, header, close button and body
-   padding; the Cancel / Save row sits in its footer. */
+// The edit match sheet: the two sides on top, then the fields (SheetForm.scss) and Cancel · Save in the footer.
 .edit-match-drawer {
-  // Carried over from the old modal body: nothing inside scrolls sideways.
-  .drawer__body {
-    overflow-x: hidden;
-  }
-
-  /* Teams Section */
   .teams-section {
-    margin-bottom: 20px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 18px;
+  }
 
-    .teams-row {
-      display: flex;
-      align-items: stretch;
-      gap: 10px;
-      margin-bottom: 12px;
+  // Home and away stacked in one box (as on the match sheet), each with its edge colour.
+  .teams-row {
+    border: 1px solid var(--line);
+  }
 
-      .team-card {
-        flex: 1;
-        text-align: left;
-        padding: 10px 12px;
-        border-radius: 10px;
+  .team-card {
+    display: block;
+    padding: 10px 12px 10px 14px;
 
-        &.home {
-          background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-          border: 1px solid #fecaca;
-
-          .team-name {
-            color: #b91c1c;
-          }
-        }
-
-        &.away {
-          background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-          border: 1px solid #bfdbfe;
-
-          .team-name {
-            color: #1d4ed8;
-          }
-        }
-
-        .team-name {
-          display: block;
-          font-size: 13px;
-          font-weight: 600;
-          margin-bottom: 4px;
-        }
-
-        .team-members-display {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-
-          .member-name {
-            color: #64748b;
-            font-size: 10px;
-            font-weight: 400;
-            line-height: 1.3;
-
-            .captain-badge {
-              color: #3b82f6;
-              font-weight: 600;
-              margin-left: 3px;
-            }
-          }
-        }
-      }
-
-      .vs-text {
-        display: flex;
-        align-items: center;
-        color: #94a3b8;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-      }
+    &.home {
+      box-shadow: inset 4px 0 0 var(--spark);
     }
 
-    .match-info-badges {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-
-      .format-badge {
-        display: inline-block;
-        padding: 4px 12px;
-        background-color: #f3f4f6;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        color: #6b7280;
-      }
-
-      .round-badge {
-        display: inline-block;
-        padding: 4px 12px;
-        background-color: #dbeafe;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        color: var(--primary-color);
-      }
+    &.away {
+      border-top: 1px solid var(--line);
+      box-shadow: inset 4px 0 0 var(--clash-blue);
     }
   }
 
-  .form-group {
-    margin-bottom: 20px;
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 500;
-      color: #374151;
-      font-size: 0.875rem;
-    }
-
-    .form-input {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      font-size: 13px;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      box-sizing: border-box;
-      max-width: 100%;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-
-      &:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-      }
-    }
-
-    .form-hint {
-      display: block;
-      margin-top: 4px;
-      font-size: 0.75rem;
-      color: #6b7280;
-    }
+  .team-name {
+    display: block;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
   }
 
-  .error-messages {
-    margin-bottom: 20px;
-    padding: 12px;
-    background-color: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 6px;
-
-    .error-message {
-      margin: 0;
-      color: #dc2626;
-      font-size: 0.875rem;
-    }
+  .team-members-display {
+    display: block;
+    margin-top: 1px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.35;
   }
 
-  // In the drawer footer, which draws the separator and padding.
-  .modal-actions {
+  .member-name + .member-name::before {
+    content: " · ";
+  }
+
+  .captain-badge {
+    margin-left: 3px;
+  }
+
+  .match-info-badges {
     display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-
-    .btn {
-      padding: 10px 20px;
-      border-radius: 6px;
-      font-size: 0.875rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-    }
-
-    .btn-secondary {
-      background-color: white;
-      color: #374151;
-      border: 1px solid #d1d5db;
-
-      &:hover:not(:disabled) {
-        background-color: #f9fafb;
-        color: #111827;
-      }
-    }
-
-    .btn-primary {
-      background-color: var(--primary-color);
-      color: white;
-      border: none;
-
-      &:hover:not(:disabled) {
-        background-color: color-mix(in srgb, var(--primary-color) 90%, black);
-      }
-    }
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
   }
 }

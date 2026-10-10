@@ -1,5 +1,5 @@
 import React from "react";
-import { Icon } from "./Icon";
+import { Icon, IconName } from "./Icon";
 import "./AppBar.scss";
 
 interface AppBarProps {
@@ -9,6 +9,8 @@ interface AppBarProps {
   /** Shows the back button. */
   onBack?: () => void;
   backLabel?: string;
+  /** The back button's icon: the back chevron, or ✕ (leaving select mode). */
+  backIcon?: IconName;
   /** The right end of the title row: the wordmark, a status tag, a link. */
   right?: React.ReactNode;
   /** brand = solid blue; spark = orange (select mode). */
@@ -23,6 +25,7 @@ export function AppBar({
   title,
   onBack,
   backLabel = "Back",
+  backIcon = "back",
   right,
   tone = "brand",
   children,
@@ -33,7 +36,7 @@ export function AppBar({
         <div className="ui-appbar__top">
           {onBack ? (
             <button type="button" className="ui-appbar__back" aria-label={backLabel} onClick={onBack}>
-              <Icon name="back" size={17} />
+              <Icon name={backIcon} size={17} />
             </button>
           ) : null}
           <div className="ui-appbar__titles">

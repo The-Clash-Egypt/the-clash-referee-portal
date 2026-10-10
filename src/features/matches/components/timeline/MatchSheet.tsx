@@ -4,7 +4,7 @@ import { Button } from "../../../../ui/Button";
 import { Icon, IconName } from "../../../../ui/Icon";
 import { Tag } from "../../../../ui/Tag";
 import { Match, Referee, sideDisplayName } from "../../types/match";
-import { formatDayLabel, formatTime, isLive, isSameLocalDay } from "../../utils/timeline";
+import { formatTime, formatWhen, isLive } from "../../utils/timeline";
 import { initials, liveTagLabel, matchWinner, playersLine, scoreCells, ScoreCell, setsWon } from "../../utils/matchDisplay";
 import { getMatchDuration } from "../../../../utils/durationUtils";
 import "./MatchSheet.scss";
@@ -25,13 +25,6 @@ interface MatchSheetProps {
   onUnassignReferee: (refereeId: string, matchId: string) => void | Promise<void>;
   onUnassignTeam: (matchId: string, teamId: string) => void | Promise<void>;
 }
-
-/** "15:00", or "Sun 11 Oct 15:00" when the match isn't today. */
-const whenOf = (match: Match): string => {
-  const time = formatTime(match.startTime);
-  if (!time || !match.startTime) return "";
-  return isSameLocalDay(match.startTime, new Date()) ? time : `${formatDayLabel(match.startTime)} ${time}`;
-};
 
 const timeOf = (iso?: string) => (iso ? formatTime(iso) : "");
 
@@ -76,7 +69,7 @@ const MatchSheet: React.FC<MatchSheetProps> = ({
   const cells = scoreCells(match);
   const winner = matchWinner(match);
   const won = match.isCompleted ? setsWon(match) : null;
-  const where = [match.venue, whenOf(match), match.categoryName, match.round].filter(Boolean).join(" · ");
+  const where = [match.venue, formatWhen(match.startTime), match.categoryName, match.round].filter(Boolean).join(" · ");
   const referees = match.referees ?? [];
   const teams = match.refereeTeams ?? [];
   const duration = fullAccess && match.startedAt && match.endedAt ? getMatchDuration(match) : null;

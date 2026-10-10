@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Provider } from "react-redux";
@@ -10,6 +10,7 @@ import { AdminRole } from "../../auth/types/adminRoles";
 import { getMexicanoStages } from "../../mexicano/api/mexicano";
 import { getTournaments } from "../../tournaments/api";
 import { getRefereeMatches } from "../api/matches";
+import { getRefereeTeamOptions } from "../api/refereeTeams";
 import { MatchFilters } from "../types/match";
 import TournamentLayout from "../../tournament-shell/TournamentLayout";
 import MatchesPage from "./MatchesPage";
@@ -34,6 +35,7 @@ jest.mock("../../mexicano/api/mexicano", () => ({
 }));
 jest.mock("../../tournaments/api", () => ({ getTournaments: jest.fn() }));
 jest.mock("../api/matches", () => ({ ...jest.requireActual("../api/matches"), getRefereeMatches: jest.fn() }));
+jest.mock("../api/refereeTeams", () => ({ ...jest.requireActual("../api/refereeTeams"), getRefereeTeamOptions: jest.fn() }));
 
 const api = getRefereeMatches as jest.Mock;
 
@@ -130,6 +132,7 @@ beforeEach(() => {
   jest.resetAllMocks();
   (getTournaments as jest.Mock).mockResolvedValue({ data: { data: [] } });
   (getMexicanoStages as jest.Mock).mockResolvedValue([]);
+  (getRefereeTeamOptions as jest.Mock).mockResolvedValue([]);
   api.mockImplementation((f: MatchFilters) =>
     Promise.resolve(respond(f.status === "in-progress" ? [liveMatch] : f.status === "all" ? [liveMatch] : [], f))
   );
@@ -171,7 +174,7 @@ test("full access: the sheet's Referee opens today's assign drawer in its place"
   fireEvent.click(await screen.findByText("Sand Sharks"));
   fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Referee" }));
 
-  expect(await screen.findByText("Assign Referees to Match")).toBeInTheDocument();
+  expect(await screen.findByRole("dialog", { name: "Referees" })).toBeInTheDocument();
 });
 
 test("filters: a court chip writes the URL; Clear filters on an empty result clears them", async () => {
@@ -199,4 +202,80 @@ test("filters: a court chip writes the URL; Clear filters on an empty result cle
 test("old ?tab=venues links still open the Courts tab", async () => {
   renderMatches("/tournaments/t1/matches?tab=venues&name=X", superadmin);
   expect(await screen.findByText("Courts page")).toBeInTheDocument();
+});
+
+// ---- Select mode (full access) ----
+
+const LONG_PRESS_WAIT = { timeout: 1500 };
+
+test("long-pressing a row as an admin starts select mode: 1 selected, and the bulk bar replaces the tabs", async () => {
+  renderMatches("/tournaments/t1/matches?status=in-progress&date=all", superadmin);
+
+  fireEvent.pointerDown(await screen.findByText("Sand Sharks"));
+
+  expect(await screen.findByText("1 selected", {}, LONG_PRESS_WAIT)).toBeInTheDocument();
+  const bar = screen.getByRole("group", { name: "Bulk actions" });
+  ["Referee", "Scores", "Edit", "WhatsApp"].forEach((name) =>
+    expect(within(bar).getByRole("button", { name })).toBeEnabled()
+  );
+  // The bar takes the tab bar's place (and the app bar's, with the tabs in it).
+  expect(screen.queryByRole("navigation", { name: "Sections" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("searchbox", { name: "Search matches" })).not.toBeInTheDocument();
+
+  // Rows are checkboxes now: a tap toggles instead of opening the match sheet.
+  const row = screen.getByRole("checkbox", { name: /Sand Sharks/ });
+  expect(row).toBeChecked();
+  fireEvent.pointerDown(row);
+  fireEvent.pointerUp(row);
+  fireEvent.click(row);
+  expect(screen.getByText("0 selected")).toBeInTheDocument();
+  expect(within(bar).getByRole("button", { name: "Referee" })).toBeDisabled();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+  // ✕ leaves select mode and gives the tabs back.
+  fireEvent.click(screen.getByRole("button", { name: "Exit select mode" }));
+  expect(screen.queryByRole("group", { name: "Bulk actions" })).not.toBeInTheDocument();
+  expect(screen.getAllByRole("navigation", { name: "Sections" })).toHaveLength(2);
+  expect(screen.getByRole("searchbox", { name: "Search matches" })).toBeInTheDocument();
+});
+
+test("a plain referee has no select mode: no Select button, and a long-press does nothing", async () => {
+  renderMatches("/tournaments/t1/matches?status=in-progress&date=all", referee);
+
+  const name = await screen.findByText("Sand Sharks");
+  expect(screen.queryByRole("button", { name: "Select" })).not.toBeInTheDocument();
+  fireEvent.pointerDown(name);
+  await act(() => new Promise((resolve) => setTimeout(resolve, 700)));
+  fireEvent.pointerUp(name);
+
+  expect(screen.queryByText(/selected$/)).not.toBeInTheDocument();
+  expect(screen.queryByRole("group", { name: "Bulk actions" })).not.toBeInTheDocument();
+  expect(screen.getAllByRole("navigation", { name: "Sections" })).toHaveLength(2);
+});
+
+test("Select, then Select all, then the bulk bar's Referee opens the referee sheet for the selection", async () => {
+  renderMatches("/tournaments/t1/matches?status=in-progress&date=all", superadmin);
+  await screen.findByText("Sand Sharks");
+
+  fireEvent.click(screen.getByRole("button", { name: "Select" }));
+  expect(screen.getByText("0 selected")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Select all 1" }));
+  expect(screen.getByText("1 selected")).toBeInTheDocument();
+
+  fireEvent.click(within(screen.getByRole("group", { name: "Bulk actions" })).getByRole("button", { name: "Referee" }));
+  expect(await screen.findByRole("dialog", { name: "Referees · 1 match" })).toBeInTheDocument();
+  expect(getRefereeTeamOptions).toHaveBeenCalledWith(["m1"]);
+});
+
+test("changing the tab leaves select mode", async () => {
+  renderMatches("/tournaments/t1/matches?status=in-progress&date=all", superadmin);
+  await screen.findByText("Sand Sharks");
+
+  fireEvent.click(screen.getByRole("button", { name: "Select" }));
+  expect(screen.getByRole("group", { name: "Bulk actions" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("tab", { name: /up next/i }));
+
+  await waitFor(() => expect(urlParams().get("status")).toBe("upcoming"));
+  expect(screen.queryByRole("group", { name: "Bulk actions" })).not.toBeInTheDocument();
+  expect(screen.getAllByRole("navigation", { name: "Sections" })).toHaveLength(2);
 });

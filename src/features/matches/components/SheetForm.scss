@@ -1,0 +1,108 @@
+// Fields in a sheet (edit match, bulk edit): labels in Clash Label, 48px square inputs with the orange focus ring
+// (as the search fields), hints and errors under them. The Drawer supplies the sheet, its header and the footer.
+.sheet-form {
+  .drawer__body {
+    overflow-x: hidden;
+  }
+
+  .form-group {
+    margin-bottom: 18px;
+
+    > label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-family: var(--font-label);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      line-height: 1.4;
+      text-transform: uppercase;
+    }
+  }
+
+  .form-input {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    height: 48px;
+    margin: 0;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--card);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px; // no zoom on iOS
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &::placeholder {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    &:hover {
+      border-color: var(--line-strong);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: var(--spark);
+      box-shadow: inset 0 0 0 1px var(--spark);
+    }
+  }
+
+  input[type="text"].form-input {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .form-hint {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .error-messages {
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--live);
+    background: var(--alt);
+  }
+
+  .error-message {
+    margin: 0;
+    color: var(--live-badge);
+    font-size: 13.5px;
+    font-weight: 600;
+
+    & + & {
+      margin-top: 4px;
+    }
+  }
+}
+
+// A select drawn like the inputs, with the brand chevron.
+.sheet-select {
+  position: relative;
+
+  .form-input {
+    padding-right: 36px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
+.sheet-select__icon {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  margin-top: -7px;
+  color: var(--muted);
+  pointer-events: none;
+  stroke-width: 2.4;
+}

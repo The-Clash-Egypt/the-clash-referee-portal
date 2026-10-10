@@ -179,6 +179,14 @@ $drawer-ease-out: cubic-bezier(0.4, 0, 1, 1);
   background: var(--card);
 }
 
+// A sheet's footer buttons (Cancel · Save): side by side at the right of the panel; sharing the width on a phone,
+// the main one wider.
+.drawer__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 // ---- Phones: the bottom sheet ----
 
 .drawer-root--sheet {
@@ -213,6 +221,15 @@ $drawer-ease-out: cubic-bezier(0.4, 0, 1, 1);
 
   .drawer__footer {
     padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .drawer__actions .ui-btn {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .drawer__actions .ui-btn--ghost {
+    flex: 0.55;
   }
 }
 

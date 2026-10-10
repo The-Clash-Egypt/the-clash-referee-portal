@@ -5,7 +5,7 @@ export type IconName =
   | "back" | "chevron-right" | "chevron-down" | "search" | "filter" | "close" | "plus" | "minus" | "check"
   | "person" | "team" | "share" | "qr" | "edit" | "whatsapp" | "lock" | "unlock" | "calendar" | "clock"
   | "matches" | "courts" | "mexicano" | "more" | "rotate" | "upright" | "swap" | "keyboard" | "print"
-  | "list" | "logout" | "switch" | "trash" | "eye" | "eye-off" | "link" | "refresh" | "copy" | "alert";
+  | "list" | "logout" | "switch" | "trash" | "eye" | "eye-off" | "link" | "refresh" | "copy" | "alert" | "download";
 
 // Line icons on a 24 x 24 grid, drawn like the approved mockups: a currentColor stroke, no fill, square ends.
 const PATHS: Record<IconName, React.ReactNode> = {
@@ -140,6 +140,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   alert: <path d="M12 3.5L2.5 20h19L12 3.5zM12 10v4.5M12 16.5v2" />,
+  download: <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />,
 };
 
 interface IconProps {
