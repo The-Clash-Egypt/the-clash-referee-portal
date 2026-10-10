@@ -4,25 +4,17 @@ import { Tournament } from "../types";
 import TournamentCard from "../components/TournamentCard";
 import AccountMenu from "../components/AccountMenu";
 import { useTournaments } from "../hooks";
+import { tournamentGroup, TournamentGroup } from "../utils/grouping";
 import { BrandLogo, Button, Chip, EmptyState, PhotoHeader, SearchInput, Segmented, SkeletonRows, Tag } from "../../../ui";
 import "./styles.scss";
 
-type Group = "active" | "upcoming" | "past";
+type Group = TournamentGroup;
 
 const GROUPS: { value: Group; label: string }[] = [
   { value: "active", label: "Live" },
   { value: "upcoming", label: "Upcoming" },
   { value: "past", label: "Past" },
 ];
-
-// Live · Upcoming · Past; completed and inactive tournaments are past.
-const GROUP_OF: Partial<Record<string, Group>> = {
-  active: "active",
-  upcoming: "upcoming",
-  past: "past",
-  completed: "past",
-  inactive: "past",
-};
 
 const sportOf = (tournament: Tournament): string | undefined => tournament.sport || tournament.type || undefined;
 
@@ -64,7 +56,7 @@ const Tournaments = () => {
 
   const grouped: Record<Group, Tournament[]> = { active: [], upcoming: [], past: [] };
   filteredTournaments.forEach((tournament) => {
-    const group = GROUP_OF[tournament.status];
+    const group = tournamentGroup(tournament.status);
     if (group) grouped[group].push(tournament);
   });
   GROUPS.forEach(({ value }) => grouped[value].sort(byDate(value)));

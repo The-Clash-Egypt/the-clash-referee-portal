@@ -16,7 +16,7 @@ import TournamentLayout from "./features/tournament-shell/TournamentLayout";
 import MorePage from "./features/tournament-shell/MorePage";
 import { CourtsTab, MexicanoTab } from "./features/tournament-shell/TournamentTabs";
 import { FullAccessOnly, TabRedirect } from "./features/tournament-shell/guards";
-import MatchesManagement from "./features/matches/pages/MatchesManagement";
+import MatchesPage from "./features/matches/pages/MatchesPage";
 import PrintableViewPage from "./features/matches/pages/PrintableViewPage";
 import MexicanoPage from "./features/mexicano/pages/MexicanoPage";
 import GuestVenuePage from "./features/venue/pages/GuestVenuePage";
@@ -71,7 +71,7 @@ const App: React.FC = () => {
                       }
                     >
                       <Route index element={<TabRedirect to="matches" />} />
-                      <Route path="matches" element={<MatchesManagement />} />
+                      <Route path="matches" element={<MatchesPage />} />
                       <Route
                         path="courts"
                         element={

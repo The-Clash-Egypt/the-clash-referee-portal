@@ -52,16 +52,15 @@ const LoginPage: React.FC = () => {
         dispatch(setToken(response.data.data.token));
         dispatch(setUser(response.data.data.user));
 
-        // Store user data in localStorage
-        localStorage.setItem("user", JSON.stringify(response.data.data.user));
-
-        // Redirect based on user role
-        const userRole = response.data.data.user.role;
-        if (userRole === "admin") {
-          navigate("/admin");
-        } else {
-          navigate("/matches");
+        // Store user data in localStorage (unavailable in some private modes: the session still works)
+        try {
+          localStorage.setItem("user", JSON.stringify(response.data.data.user));
+        } catch {
+          // ignore
         }
+
+        // Everyone starts on the tournaments home.
+        navigate("/");
       } else {
         // Handle unsuccessful response
         setError(response.data.message || "Login failed. Please try again.");

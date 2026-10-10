@@ -1,0 +1,86 @@
+// The timeline's headers (mockup matches-layout.html option B: `.slot`; the day header borrows the blade header).
+.matches-timeline {
+  padding-bottom: 4px;
+}
+
+.matches-timeline__day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 16px 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+
+  &::before {
+    content: "";
+    flex: none;
+    width: 24px;
+    height: 7px;
+    clip-path: var(--clip-blade);
+    background: var(--spark);
+  }
+}
+
+.matches-timeline__slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 16px 6px;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+
+  b {
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-style: italic;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+}
+
+.matches-timeline__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0 14px;
+  list-style: none;
+}
+
+.matches-timeline__item {
+  display: flex;
+  min-width: 0;
+}
+
+// Laptop: the content column is ~1100px, so each slot's matches sit two to a line.
+@media (min-width: 900px) {
+  .matches-timeline__day,
+  .matches-timeline__slot {
+    margin-right: 0;
+    margin-left: 0;
+  }
+
+  .matches-timeline__rows {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 0;
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { Outlet, useLocation, useMatch, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -8,6 +8,7 @@ import type { IconName, TabItem } from "../../ui";
 import { hasFullAccess } from "../auth/permissions";
 import { getMexicanoStages } from "../mexicano/api/mexicano";
 import { useTournamentInfo } from "./useTournamentInfo";
+import { AppBarSlotProvider } from "./AppBarSlot";
 import "./TournamentLayout.scss";
 
 type TabKey = "matches" | "courts" | "mexicano" | "more";
@@ -34,6 +35,8 @@ const TournamentLayout: React.FC = () => {
   const user = useSelector((state: RootState) => state.user.user);
   const info = useTournamentInfo(id);
   const tabMatch = useMatch({ path: "/tournaments/:id/:tab", end: false });
+  // Where a tab puts its own controls in the bar (AppBarSlot): the matches search and filters, for one.
+  const [slot, setSlot] = useState<HTMLDivElement | null>(null);
 
   const { data: stages } = useQuery({
     queryKey: ["mexicano-stages", id],
@@ -72,6 +75,7 @@ const TournamentLayout: React.FC = () => {
           backLabel="Back to tournaments"
           right={<BrandLogo />}
         >
+          <div ref={setSlot} className="tournament-layout__slot" />
           <div className="tournament-layout__topnav">
             <TabBar items={items} placement="top" />
           </div>
@@ -79,7 +83,9 @@ const TournamentLayout: React.FC = () => {
       </div>
 
       <main className="tournament-layout__content">
-        <Outlet />
+        <AppBarSlotProvider value={slot}>
+          <Outlet />
+        </AppBarSlotProvider>
       </main>
 
       <TabBar items={items} placement="bottom" />

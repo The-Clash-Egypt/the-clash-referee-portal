@@ -18,6 +18,15 @@
   }
 }
 
+// A tab's own controls under the title row (AppBarSlot), e.g. the matches search and Filters button.
+.tournament-layout__slot {
+  margin-top: 12px;
+
+  &:empty {
+    display: none;
+  }
+}
+
 // From 900px the tabs sit in the bar, their orange underline on its bottom edge.
 .tournament-layout__topnav {
   margin: 10px -12px -14px;

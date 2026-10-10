@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import "./PrintableView.scss";
 import QRCode from "react-qr-code";
 import { Match, isFixedPointsFormat, sideDisplayName } from "../types/match";
 import { previewMatchesPDFWithFilename } from "../../../utils/reactPdfExport";

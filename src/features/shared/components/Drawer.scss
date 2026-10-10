@@ -68,7 +68,46 @@ $drawer-ease-out: cubic-bezier(0.4, 0, 1, 1);
 }
 
 .drawer__heading {
+  flex: 1;
   min-width: 0;
+}
+
+// A small text action before the close button (mockup `.sh-head a`: "Clear all", "Done").
+.drawer__header-action {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  align-self: center;
+}
+
+.drawer__link {
+  margin: 0;
+  padding: 8px 2px;
+  border: 0;
+  background: none;
+  color: var(--spark-text);
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  &:disabled {
+    color: var(--muted);
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--spark);
+    outline-offset: 2px;
+  }
 }
 
 .drawer__title {

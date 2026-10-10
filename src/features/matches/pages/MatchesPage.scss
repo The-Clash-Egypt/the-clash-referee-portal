@@ -1,0 +1,131 @@
+// The matches screen (mockup matches-layout.html option B "Timeline").
+
+// In the blue app bar, under the title (mockup `.search`): the search field and the orange Filters button.
+.matches-page__searchbar {
+  display: flex;
+  gap: 8px;
+}
+
+.matches-page__search {
+  flex: 1;
+  min-width: 0;
+
+  // A plain white field on the blue bar.
+  .ui-search {
+    border-color: var(--card);
+  }
+}
+
+.matches-page__filters-btn.ui-btn {
+  flex: none;
+  height: 42px;
+  padding: 0 12px;
+  gap: 6px;
+  clip-path: var(--clip-slant-sm);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+
+  .ui-icon {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+.matches-page__tabs {
+  padding: 10px 14px 4px;
+}
+
+.matches-page__list {
+  padding-bottom: 8px;
+
+  > .ui-empty,
+  > .ui-skel {
+    margin: 12px 14px 0;
+  }
+}
+
+.matches-page__more {
+  display: flex;
+  justify-content: center;
+  padding: 14px 14px 4px;
+}
+
+// Bulk WhatsApp: pick one referee of the selected matches.
+.bulk-whatsapp-drawer {
+  p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .referees-list {
+    margin-top: 12px;
+  }
+
+  .referee-item {
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .referee-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+
+    input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: var(--spark);
+      cursor: pointer;
+    }
+  }
+
+  .referee-name {
+    flex: 1;
+    min-width: 0;
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .referee-phone {
+    color: var(--muted);
+    font-size: 14px;
+  }
+}
+
+.matches-page__sheet-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+// Laptop: the bar's search keeps a sensible width; the tabs too.
+@media (min-width: 900px) {
+  .matches-page__searchbar {
+    max-width: 640px;
+  }
+
+  .matches-page__tabs {
+    padding: 16px 0 4px;
+
+    .ui-seg {
+      max-width: 480px;
+    }
+  }
+
+  .matches-page__list {
+    > .ui-empty,
+    > .ui-skel {
+      margin-right: 0;
+      margin-left: 0;
+    }
+  }
+
+  .matches-page__more {
+    padding-right: 0;
+    padding-left: 0;
+  }
+}

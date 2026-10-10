@@ -12,6 +12,8 @@ interface DrawerProps {
   onClose: () => void;
   title: React.ReactNode;
   subtitle?: React.ReactNode;
+  /** A small action at the end of the header, before the close button (e.g. "Clear all", "Done"). */
+  headerAction?: React.ReactNode;
   footer?: React.ReactNode;
   /** md = 560px (forms, QR), lg = 960px (the bulk score sheet). Phones get a bottom sheet either way. */
   size?: DrawerSize;
@@ -32,6 +34,7 @@ type Phase = "open" | "closing" | "closed";
 interface Frame {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
+  headerAction?: React.ReactNode;
   footer?: React.ReactNode;
   children?: React.ReactNode;
 }
@@ -47,6 +50,7 @@ const Drawer: React.FC<DrawerProps> = ({
   onClose,
   title,
   subtitle,
+  headerAction,
   footer,
   size = "md",
   closeOnOverlayClick = true,
@@ -55,11 +59,11 @@ const Drawer: React.FC<DrawerProps> = ({
 }) => {
   const [phase, setPhase] = useState<Phase>(isOpen ? "open" : "closed");
   const panelRef = useRef<HTMLDivElement>(null);
-  const lastFrame = useRef<Frame>({ title, subtitle, footer, children });
+  const lastFrame = useRef<Frame>({ title, subtitle, headerAction, footer, children });
   const titleId = useId();
   const asSheet = useMediaQuery(SHEET_QUERY);
 
-  if (isOpen) lastFrame.current = { title, subtitle, footer, children };
+  if (isOpen) lastFrame.current = { title, subtitle, headerAction, footer, children };
 
   useEffect(() => {
     if (isOpen) setPhase("open");
@@ -98,7 +102,7 @@ const Drawer: React.FC<DrawerProps> = ({
 
   if (!mounted) return null;
 
-  const frame = isOpen ? { title, subtitle, footer, children } : lastFrame.current;
+  const frame = isOpen ? { title, subtitle, headerAction, footer, children } : lastFrame.current;
   const interactive = phase === "open";
 
   // While sliding out, the last content is frozen: `inert` takes it out of clicks, focus and the
@@ -127,6 +131,7 @@ const Drawer: React.FC<DrawerProps> = ({
             </h2>
             {frame.subtitle ? <p className="drawer__subtitle">{frame.subtitle}</p> : null}
           </div>
+          {frame.headerAction ? <div className="drawer__header-action">{frame.headerAction}</div> : null}
           <button type="button" className="drawer__close" onClick={interactive ? onClose : undefined} aria-label="Close">
             <Icon name="close" size={16} />
           </button>
