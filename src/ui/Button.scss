@@ -1,3 +1,5 @@
+@use "../styles/touch" as *;
+
 // The slanted brand button (mockup `.btn`). Slanted shapes are solid fills: clip-path would cut an outline's
 // slanted sides, so focus is an inner ring in the text colour.
 .ui-btn {
@@ -127,5 +129,12 @@
 @media (prefers-reduced-motion: reduce) {
   .ui-btn__spinner {
     animation-duration: 1.6s;
+  }
+}
+
+// Touch screens: every button is at least 44px tall (sm and md included).
+@include touch {
+  .ui-btn {
+    min-height: $touch-min;
   }
 }

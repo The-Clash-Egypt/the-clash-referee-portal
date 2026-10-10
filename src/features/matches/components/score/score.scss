@@ -1,3 +1,5 @@
+@use "../../../../styles/touch" as *;
+
 // Scoring a match: the scoreboard (mockups scoreboard-landscape-v2.html and match-flow-v2.html phone 3), typed entry
 // (the per-set inputs in the responsive sheet) and the confirmation before the final save.
 
@@ -83,35 +85,37 @@
   margin: 0 auto;
 }
 
-// A quiet slanted icon button (mockup `.ib`).
+// A quiet slanted icon button (mockup `.ib`): a 38 x 36 face in a 44 x 44 tap target (slanted-target).
 .sb-ib {
+  --face: var(--alt);
+  --face-ring: var(--spark);
+
   @include plain-button;
   display: grid;
   flex: none;
   place-items: center;
   width: 38px;
   height: 36px;
-  clip-path: var(--clip-slant-sm);
-  background: var(--alt);
   color: var(--ink);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: color 0.15s ease;
+
+  @include slanted-target(36px, 38px);
 
   &:hover {
-    background: var(--line);
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: inset 0 0 0 2px var(--spark);
+    --face: var(--line);
   }
 }
 
 // ⟳ while landscape is forced (mockup `.ib.hot`).
 .sb-ib--on,
 .sb-ib--on:hover {
-  background: var(--spark-tint);
+  --face: var(--spark-tint);
+
   color: var(--spark-text);
-  box-shadow: inset 0 0 0 2px var(--spark);
+
+  &::before {
+    box-shadow: inset 0 0 0 2px var(--spark);
+  }
 }
 
 // Upright the teams sit one above the other, so ⇄ points up and down.
@@ -210,6 +214,14 @@
   &:focus-visible {
     outline: none;
     box-shadow: inset 0 0 0 2px var(--spark);
+  }
+}
+
+// Touch: 44px set tabs and −.
+@include touch {
+  .sb-sets__tab,
+  .sb-team__minus {
+    min-height: $touch-min;
   }
 }
 
@@ -510,15 +522,15 @@
   }
 
   .sb-ib {
-    background: var(--card);
+    --face: var(--card);
 
     &:hover {
-      background: var(--line);
+      --face: var(--line);
     }
   }
 
   .sb-ib--on {
-    background: var(--spark-tint);
+    --face: var(--spark-tint);
   }
 
   // One strip on top: back, title, sets, the switches and Finish match (mockup `.lhead`).
@@ -693,6 +705,22 @@
 
   .sb-bottom {
     padding-bottom: 8px;
+  }
+}
+
+// Touch: the reminder is 44px tall (upright and sideways) and Done takes its whole height.
+@include touch {
+  .score-board .sb-remind,
+  .score-board--sideways .sb-remind {
+    min-height: $touch-min;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .sb-remind__done {
+    align-self: stretch;
+    margin-right: -8px;
+    padding: 0 8px;
   }
 }
 
@@ -1106,32 +1134,32 @@
   color: var(--clash-blue);
 }
 
+// A 34 x 28 face in a 44 x 44 tap target (slanted-target), on the set's top right.
 .score-typed__remove {
+  --face: var(--alt);
+  --face-ring: var(--spark);
+
   @include plain-button;
-  position: absolute;
-  top: 12px;
-  right: 0;
   display: grid;
   place-items: center;
   width: 34px;
   height: 28px;
-  clip-path: var(--clip-slant-sm);
-  background: var(--alt);
   color: var(--muted);
 
+  @include slanted-target(28px, 34px);
+  position: absolute;
+  top: 12px;
+  right: 0;
+
   &:hover:not(:disabled) {
-    background: var(--line);
+    --face: var(--line);
+
     color: var(--ink);
   }
 
   &:disabled {
     opacity: 0.5;
     cursor: default;
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: inset 0 0 0 2px var(--spark);
   }
 }
 

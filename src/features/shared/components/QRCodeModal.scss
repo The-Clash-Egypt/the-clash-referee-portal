@@ -1,3 +1,5 @@
+@use "../../../styles/touch" as *;
+
 // Content of the QR sheet (match and court QR codes; it keeps its qr-modal__* class names). The Drawer supplies the
 // sheet / panel, its header and the close button.
 .qr-drawer .qr-modal {
@@ -123,7 +125,10 @@
     word-break: break-all;
   }
 
+  // A 36 x 34 face in a 44 x 44 tap target (slanted-target).
   &__copy-btn {
+    --face: var(--spark-tint);
+
     display: grid;
     flex: none;
     place-items: center;
@@ -132,20 +137,16 @@
     margin: 0;
     padding: 0;
     border: 0;
-    clip-path: var(--clip-slant-sm);
-    background: var(--spark-tint);
     color: var(--spark-text);
     cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition: color 0.15s ease;
+
+    @include slanted-target(34px, 36px);
 
     &:hover {
-      background: var(--spark);
-      color: var(--on-spark);
-    }
+      --face: var(--spark);
 
-    &:focus-visible {
-      outline: none;
-      box-shadow: inset 0 0 0 2px currentColor;
+      color: var(--on-spark);
     }
   }
 

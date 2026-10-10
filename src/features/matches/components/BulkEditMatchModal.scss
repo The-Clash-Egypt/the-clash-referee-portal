@@ -1,3 +1,5 @@
+@use "../../../styles/touch" as *;
+
 // The bulk edit sheet: how many matches, a note, then each field behind its own tick (fields: SheetForm.scss).
 .bulk-edit-match-drawer {
   .matches-count {
@@ -42,6 +44,10 @@
     .ui-check {
       min-height: 32px;
       font-weight: 600;
+
+      @include touch {
+        min-height: $touch-min;
+      }
     }
   }
 

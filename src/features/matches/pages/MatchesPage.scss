@@ -1,3 +1,5 @@
+@use "../../../styles/touch" as *;
+
 // The matches screen (mockup matches-layout.html option B "Timeline").
 
 // In the blue app bar, under the title (mockup `.search`): the search field and the orange Filters button.
@@ -45,6 +47,8 @@
 }
 
 .matches-page__select {
+  @include hit-area;
+
   flex: none;
   margin: 0;
   padding: 8px 2px 8px 8px;

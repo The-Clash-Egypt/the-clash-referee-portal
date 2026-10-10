@@ -1,3 +1,5 @@
+@use "../styles/touch" as *;
+
 // A white search field (mockup `.search .in`, `.sin.bord`, focused `.in2`).
 .ui-search {
   display: flex;
@@ -51,6 +53,8 @@
 }
 
 .ui-search__clear {
+  @include hit-area;
+
   display: grid;
   flex: none;
   place-items: center;
@@ -74,5 +78,11 @@
 
   .ui-icon {
     stroke-width: 2.6;
+  }
+}
+
+@include touch {
+  .ui-search {
+    height: $touch-min;
   }
 }

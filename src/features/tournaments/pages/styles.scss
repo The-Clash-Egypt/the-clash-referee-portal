@@ -77,7 +77,10 @@
 .tournaments-page__chips {
   display: flex;
   gap: 6px;
-  padding: 8px 14px 2px;
+  // The chips' 44px tap targets reach 7px past their faces: the bottom padding makes room for them in this sideways
+  // scroller (or it would scroll up and down too), and the negative margin keeps the spacing.
+  padding: 8px 14px 7px;
+  margin-bottom: -5px;
   overflow-x: auto;
   scrollbar-width: none;
 

@@ -1,3 +1,5 @@
+@use "../../../styles/touch" as *;
+
 // The initials avatar on the Tournaments photo top (mockup `.avatar`) and its small account panel.
 .account-menu {
   position: relative;
@@ -5,6 +7,8 @@
 }
 
 .account-menu__avatar {
+  @include hit-area;
+
   display: grid;
   place-items: center;
   width: 36px;

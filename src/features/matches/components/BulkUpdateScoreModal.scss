@@ -1,3 +1,5 @@
+@use "../../../styles/touch" as *;
+
 // The bulk score sheet: every selected match on one screen, grouped by court. The Drawer supplies the sheet / panel,
 // its header and the footer bar; court headers and rows run edge to edge, so the body has no padding here.
 .bulk-score-drawer {
@@ -198,6 +200,12 @@
       place-items: center;
       width: 34px;
       height: 34px;
+
+      @include touch {
+        width: $touch-min;
+        height: $touch-min;
+      }
+
       margin: 0;
       padding: 0;
       border: 0;

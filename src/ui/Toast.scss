@@ -1,3 +1,5 @@
+@use "../styles/touch" as *;
+
 // Toasts float above everything (sheets 1100, the scoreboard 9999), over the phone tab bar.
 .ui-toasts {
   position: fixed;
@@ -105,6 +107,17 @@
 @media (min-width: 900px) {
   .ui-toasts {
     bottom: 24px;
+  }
+}
+
+// Select mode: above the bulk action bar, which takes the tab bar's place (on a laptop too).
+body:has(.bulk-bar) .ui-toasts {
+  bottom: calc(var(--bulkbar-h) + 14px + env(safe-area-inset-bottom, 0px));
+}
+
+@include touch {
+  .ui-toast__action {
+    min-height: $touch-min;
   }
 }
 

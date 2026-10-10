@@ -1,3 +1,5 @@
+@use "../styles/touch" as *;
+
 // A square brand checkbox (mockup `.check`); the real input sits on top, invisible, so taps and focus just work.
 .ui-check {
   position: relative;
@@ -12,8 +14,9 @@
 
 .ui-check__input {
   position: absolute;
-  top: 0;
+  top: 50%;
   left: 0;
+  transform: translateY(-50%);
   width: 22px;
   height: 22px;
   margin: 0;
@@ -66,5 +69,11 @@
 
   .ui-check__box {
     opacity: 0.45;
+  }
+}
+
+@include touch {
+  .ui-check {
+    min-height: $touch-min;
   }
 }

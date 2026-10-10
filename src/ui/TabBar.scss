@@ -1,3 +1,5 @@
+@use "../styles/touch" as *;
+
 // The tournament sections: a fixed bottom bar on phones (mockup `.tabbar`), a nav in the app bar from 900px.
 .ui-tabbar__item {
   position: relative;
@@ -28,7 +30,8 @@
   justify-content: space-around;
   box-sizing: border-box; // --tabbar-h is the whole bar (padding included) without the safe area
   min-height: var(--tabbar-h);
-  padding: 10px 0 max(10px, env(safe-area-inset-bottom, 0px));
+  // The items carry the bar's padding, so each tab is a full-height tap target.
+  padding: 0 0 max(0px, calc(env(safe-area-inset-bottom, 0px) - 10px));
   background: var(--card);
   border-top: 1px solid var(--line);
 
@@ -38,6 +41,7 @@
     justify-content: flex-start;
     gap: 4px;
     max-width: 25%;
+    padding: 10px 0;
     color: var(--muted);
     font-size: 9.5px;
     letter-spacing: 0.1em;
@@ -53,7 +57,7 @@
     &::before {
       content: "";
       position: absolute;
-      top: -10px;
+      top: 0;
       left: 50%;
       width: 34px;
       height: 4px;
@@ -107,5 +111,12 @@
 @media (max-width: 899px) {
   .ui-tabbar--top {
     display: none;
+  }
+}
+
+// A tablet's top nav: 44px tall tabs.
+@include touch {
+  .ui-tabbar--top .ui-tabbar__item {
+    min-height: $touch-min;
   }
 }

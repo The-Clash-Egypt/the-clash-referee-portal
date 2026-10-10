@@ -1,3 +1,5 @@
+@use "../../../styles/touch" as *;
+
 // One court (mockup rest-of-portal.html phone 3: `.court`, `.sw`, `.prog`, `.pw`, `.acts`).
 
 // The cut-corner card is drawn by ::before, so the ⋯ menu can hang out of the card; `isolation` keeps that
@@ -67,9 +69,15 @@
     outline: 2px solid var(--spark);
     outline-offset: 2px;
   }
+
+  // Touch: 44px tall, laid out as before.
+  @include touch {
+    padding: 11px 0;
+    margin: -11px 0;
+  }
 }
 
-// The lock in one tap (mockup `.sw`): orange "Locked", green-tint "Open".
+// The lock in one tap (mockup `.sw`): orange "Locked", green-tint "Open". A 30px face in a 44px target.
 .court-card__lock {
   display: inline-flex;
   flex: none;
@@ -81,7 +89,6 @@
   margin: 0;
   padding: 0 10px;
   border: 0;
-  clip-path: var(--clip-slant-sm);
   font-family: var(--font-label);
   font-size: 9.5px;
   font-weight: 700;
@@ -95,10 +102,7 @@
     stroke-width: 2.4;
   }
 
-  &:focus-visible {
-    outline: none;
-    box-shadow: inset 0 0 0 2px currentColor;
-  }
+  @include slanted-target(30px);
 
   &:disabled {
     opacity: 0.6;
@@ -107,21 +111,24 @@
 }
 
 .court-card__lock--open {
-  background: var(--ok-tint);
+  --face: var(--ok-tint);
+
   color: var(--ok);
 
   &:hover:not(:disabled) {
-    background: var(--ok);
+    --face: var(--ok);
+
     color: var(--on-spark);
   }
 }
 
 .court-card__lock--locked {
-  background: var(--spark);
+  --face: var(--spark);
+
   color: var(--on-spark);
 
   &:hover:not(:disabled) {
-    background: var(--spark-strong);
+    --face: var(--spark-strong);
   }
 }
 
@@ -193,6 +200,12 @@
   background: transparent;
   color: var(--muted);
   cursor: pointer;
+
+  @include touch {
+    width: $touch-min;
+    height: $touch-min;
+    margin: -8px;
+  }
 
   &:hover:not(:disabled) {
     color: var(--ink);
@@ -296,6 +309,17 @@
   }
 }
 
+@include touch {
+  .court-card__input,
+  .court-card__square {
+    height: $touch-min;
+  }
+
+  .court-card__square {
+    width: $touch-min;
+  }
+}
+
 // QR · Share · Password · ⋯ (mockup `.acts`).
 .court-card__actions {
   display: grid;
@@ -328,6 +352,10 @@
 .court-card__more-btn.ui-btn {
   width: 40px;
   padding: 0;
+
+  @include touch {
+    width: $touch-min;
+  }
 }
 
 // The ⋯ menu: Rename, New link. The shadow sits on the wrapper: the card's cut corner would clip its own.

@@ -1,3 +1,5 @@
+@use "../styles/touch" as *;
+
 // A white tab strip with a slanted underline (mockup `.ctabs`).
 .ui-utabs {
   display: flex;
@@ -38,6 +40,12 @@
   &:focus-visible {
     outline: 2px solid var(--spark);
     outline-offset: -4px;
+  }
+}
+
+@include touch {
+  .ui-utabs__tab {
+    min-height: $touch-min;
   }
 }
 

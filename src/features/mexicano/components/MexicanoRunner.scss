@@ -689,10 +689,12 @@
 
 // ---------- Touch screens and wide screens ----------
 
-// Thumb-sized switch options on touch screens.
+// Thumb-sized controls on touch screens: the switch options, the quiet buttons, the round chip and the tray's chips.
 @media (pointer: coarse) {
   .mexicano-runner__tri-option,
-  .mexicano-runner__quiet {
+  .mexicano-runner__quiet,
+  .mexicano-runner__round-pick,
+  .mexicano-runner__chip {
     min-height: 44px;
   }
 }
