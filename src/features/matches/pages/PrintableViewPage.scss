@@ -1,49 +1,26 @@
 .printable-view-page {
   width: 100%;
   min-height: 100vh;
-  background: var(--gray-100);
+  background: var(--page);
 
-  .loading-container,
-  .error-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 40px;
-
-    h2 {
-      margin-bottom: 16px;
-      color: var(--text-primary);
-    }
-
-    p {
-      margin-bottom: 24px;
-      color: var(--text-secondary);
-    }
-
-    .back-btn {
-      background: var(--primary-color);
-      color: var(--white);
-      border: none;
-      padding: 12px 24px;
-      border-radius: 6px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-
-      &:hover {
-        background: var(--primary-color-hover);
-      }
-    }
-  }
-
-  // The toolbar sits below the app's own sticky navbar (64px tall, z-index 1000);
-  // pinning it to top: 0 parks it underneath and it disappears on scroll.
+  // The toolbar stays on top while the preview scrolls (this focused screen has no app bar above it).
   .printable-view .print-controls {
     position: sticky;
-    top: 64px;
+    top: 0;
     z-index: 90;
   }
+}
+
+// Loading, or a failed load: the brand spinner or a state card near the top of the page.
+.printable-view-page--state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 48px 16px;
+}
+
+.printable-view-page__state {
+  width: 100%;
+  max-width: 480px;
 }

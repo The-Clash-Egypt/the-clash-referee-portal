@@ -1,0 +1,128 @@
+// One court of a Mexicano round (rest-of-portal.html phone 6: `.slot` + `.mrow`; same look as the timeline rows).
+.mexicano-court {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+// The court's name as a slot header: display font, then a hairline to the edge.
+.mexicano-court__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 2px 6px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+}
+
+.mexicano-court__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  clip-path: var(--clip-cut);
+  background: var(--card);
+}
+
+// Red while the court still needs its score, green once it's in.
+.mexicano-court__stripe {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: var(--live);
+}
+
+.mexicano-court__row--done .mexicano-court__stripe {
+  background: var(--ok);
+}
+
+.mexicano-court__main {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px 10px 16px;
+}
+
+.mexicano-court__team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.3;
+
+  & + & {
+    margin-top: 4px;
+  }
+}
+
+.mexicano-court__team--win {
+  font-weight: 800;
+}
+
+.mexicano-court__team--lose {
+  color: var(--muted);
+}
+
+// Long names ("A & B" with long names) give way; the points never do.
+.mexicano-court__team-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mexicano-court__points {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+// Points coming in live (the court's scoreboard is open) are red, like a live set on the timeline.
+.mexicano-court__points--current {
+  color: var(--live);
+}
+
+.mexicano-court__points--done {
+  color: var(--muted);
+}
+
+.mexicano-court__referees {
+  margin: 6px 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mexicano-court__act {
+  flex: none;
+  padding-right: 12px;
+}
+
+// Thumb-sized on touch screens (the mockup's 34px chip on a mouse).
+@media (pointer: coarse) {
+  .mexicano-court__score.ui-btn--sm {
+    height: 40px;
+  }
+}

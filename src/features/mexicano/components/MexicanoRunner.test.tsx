@@ -133,7 +133,9 @@ it("opens on Players before round 1 and says why the round can't start yet", asy
   expect(await screen.findByRole("heading", { name: "Men's Open" })).toBeInTheDocument();
   expect(screen.getByRole("tab", { name: "Players" })).toHaveAttribute("aria-selected", "true");
   expect(screen.getByText("Not started")).toBeInTheDocument();
-  expect(screen.getByText("3 playing · 0 sitting out · 1 not here")).toBeInTheDocument();
+  expect(screen.getByText("3 playing")).toBeInTheDocument();
+  expect(screen.getByText("0 sitting out")).toBeInTheDocument();
+  expect(screen.getByText("1 not here")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Start round 1" })).toBeDisabled();
   expect(screen.getByText("Need at least 4 playing — 3 are marked Playing.")).toBeInTheDocument();
 });
@@ -173,7 +175,9 @@ it("marks everyone who isn't here yet as playing in one request", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Mark everyone playing" }));
 
   expect(updatePlayers).toHaveBeenCalledWith("f1", [{ teamId: "t-Dee", status: MexicanoStatus.Playing }]);
-  expect(await screen.findByText("4 playing · 0 sitting out · 0 not here")).toBeInTheDocument();
+  expect(await screen.findByText("4 playing")).toBeInTheDocument();
+  expect(screen.getByText("0 sitting out")).toBeInTheDocument();
+  expect(screen.getByText("0 not here")).toBeInTheDocument();
 });
 
 it("lets plain referees see the players but not change them or run rounds", async () => {
@@ -199,8 +203,10 @@ it("starting a round shows its courts on the Round tab", async () => {
   expect(start).toHaveBeenCalledWith("f1");
   await waitFor(() => expect(screen.getByRole("tab", { name: "Round" })).toHaveAttribute("aria-selected", "true"));
   expect(screen.getByText("Court 1")).toBeInTheDocument();
-  expect(screen.getByText("Sitting out this round: Dee")).toBeInTheDocument();
-  expect(screen.getByText("Waiting for scores (0 of 1 in)")).toBeInTheDocument();
+  expect(screen.getByText(/^Sitting out:/)).toHaveTextContent("Sitting out: Dee");
+  // The status, split as in the mockup: the count in the bar's tag, the words over the courts.
+  expect(screen.getByText("Waiting for scores")).toBeInTheDocument();
+  expect(screen.getByText("0 of 1 in")).toBeInTheDocument();
 });
 
 it("shows the server's reason when a round can't start", async () => {
@@ -243,16 +249,44 @@ it("a finished event shows Finished and no controls", async () => {
   expect(screen.queryByRole("button", { name: "More actions" })).not.toBeInTheDocument();
 });
 
-it("Update Score opens the score dialog for that court", async () => {
+it("Score opens the score dialog for that court", async () => {
   load.mockResolvedValue(roundOne());
   saveScore.mockResolvedValue(undefined);
   renderRunner(false);
   await screen.findByText("Court 1");
 
-  fireEvent.click(screen.getByRole("button", { name: "Update Score" }));
+  fireEvent.click(screen.getByRole("button", { name: "Score" }));
 
   expect(await screen.findByRole("dialog")).toBeInTheDocument();
   expect(load).toHaveBeenCalledTimes(1);
+});
+
+it("offers Score on open courts to everyone, and on finished ones only to organizers", async () => {
+  const finished = court("m2", "Court 2", {
+    isCompleted: true,
+    gameScores: [{ gameNumber: 1, homeScore: 14, awayScore: 10 }],
+  });
+  load.mockResolvedValue(roundOne({ rounds: [{ number: 1, matches: [court("m1", "Court 1"), finished], sittingOut: [] }] }));
+  const referee = renderRunner(false);
+  await screen.findByText("Court 2");
+
+  expect(screen.getAllByRole("button", { name: "Score" })).toHaveLength(1);
+  expect(screen.getByText("14")).toBeInTheDocument(); // a Mexicano court shows its points, not games won
+  expect(screen.getByText("10")).toBeInTheDocument();
+  referee.unmount();
+
+  renderRunner(true);
+  await screen.findByText("Court 2");
+  expect(screen.getAllByRole("button", { name: "Score" })).toHaveLength(2);
+});
+
+it("names the stage and round in the bar, with how many scores are in", async () => {
+  load.mockResolvedValue(roundOne());
+  renderRunner();
+
+  expect(await screen.findByText("Evening Mexicano · Round 1 of 8")).toBeInTheDocument();
+  expect(screen.getByText("0 of 1 in")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Back to Mexicano" })).toBeInTheDocument();
 });
 
 // ── review follow-ups ──

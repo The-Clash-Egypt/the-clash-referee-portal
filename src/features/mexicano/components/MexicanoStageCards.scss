@@ -1,56 +1,86 @@
-@import "../../../styles/colors.scss";
-
+// The Mexicano tab: one white cut-corner card per stage (like the tournament cards, rest-of-portal.html `.tcard`).
 .mexicano-stage-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
 }
 
 .mexicano-stage-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 14px 44px 14px 16px;
-  border: 1px solid var(--border-primary);
-  border-left: 4px solid $primary-color;
-  border-radius: 12px;
-  background: $white;
-  box-shadow: var(--shadow-sm);
+  align-items: flex-start;
+  min-width: 0;
+  margin: 0;
+  padding: 13px 42px 13px 16px;
+  border: 0;
+  clip-path: var(--clip-cut);
+  background: var(--card);
+  color: var(--ink);
+  font-family: var(--font-body);
   text-align: left;
   cursor: pointer;
-  transition: box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  transition: box-shadow 0.15s ease;
 
   &:hover {
-    box-shadow: var(--shadow-md);
+    box-shadow: inset 0 0 0 2px var(--line);
+
+    .mexicano-stage-card__chevron {
+      color: var(--spark-text);
+    }
   }
 
-  &__eyebrow {
-    color: $primary-color;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--spark);
   }
+}
 
-  &__title {
-    color: $text-primary;
-    font-size: 17px;
-    font-weight: 600;
+.mexicano-stage-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 9px;
+}
+
+.mexicano-stage-card__title {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+// "Evening · Round 3 of 8": the parts are separate so each reads on its own.
+.mexicano-stage-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+
+  > span + span::before {
+    content: "·";
+    margin: 0 6px;
   }
+}
 
-  &__meta {
-    color: $text-secondary;
-    font-size: 14px;
-  }
+.mexicano-stage-card__chevron {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  color: var(--muted);
+  stroke-width: 2.4;
+  transform: translateY(-50%);
+  transition: color 0.15s ease;
+}
 
-  &__arrow {
-    position: absolute;
-    right: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: $primary-color;
-    font-size: 20px;
+@media (min-width: 768px) {
+  .mexicano-stage-cards {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 12px;
   }
 }

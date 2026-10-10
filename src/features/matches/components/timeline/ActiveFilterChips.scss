@@ -1,0 +1,42 @@
+// The filters in force, under the app bar (mockup matches-layout.html `.chips`).
+.active-filters {
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+
+.active-filters__row {
+  display: flex;
+  gap: 6px;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 10px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.active-filters__chip {
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+}
+
+// Laptop: the content is a centred column, so the chips sit on the page (white) instead of on a white strip.
+@media (min-width: 900px) {
+  .active-filters {
+    background: transparent;
+    border-bottom: 0;
+  }
+
+  .active-filters__row {
+    flex-wrap: wrap;
+    padding: 16px 0 0;
+    overflow: visible;
+  }
+
+  .active-filters__chip {
+    --face: var(--card);
+  }
+}

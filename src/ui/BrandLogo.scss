@@ -1,0 +1,8 @@
+// The wordmark: set a height, the width follows the logo's proportions.
+.ui-brand-logo {
+  display: block;
+  flex: none;
+  width: auto;
+  height: 30px;
+  aspect-ratio: 545 / 349;
+}

@@ -1,0 +1,27 @@
+@use "../../../../styles/touch" as *;
+
+// Select mode's bar (mockup match-flow-v2.html phone 5, `.selbar`): the orange AppBar, plus its "Select all" link.
+.select-bar__all {
+  @include hit-area;
+
+  margin: 0;
+  padding: 8px 2px;
+  border: 0;
+  background: none;
+  color: var(--on-spark);
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-decoration: underline;
+  text-transform: uppercase;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+}

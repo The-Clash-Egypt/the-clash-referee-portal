@@ -79,6 +79,34 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks());
 
+it("shows the brand spinner while the match loads", () => {
+  load.mockReturnValue(new Promise(() => undefined));
+
+  renderView();
+
+  expect(screen.getByRole("status")).toHaveTextContent("Loading match…");
+});
+
+it("names the court and the tournament in the bar, and the match's teams and players on its card", async () => {
+  load.mockResolvedValue(
+    guest({
+      isCompleted: true,
+      homeTeamSets: 2,
+      awayTeamSets: 0,
+      homeTeamPlayers: [{ firstName: "Ali", lastName: "Hassan", isCaptain: true }],
+    })
+  );
+
+  renderView();
+
+  expect(await screen.findByRole("heading", { level: 1, name: "Court 1" })).toBeInTheDocument();
+  expect(screen.getByText("Summer Open")).toBeInTheDocument();
+  expect(screen.getByText("Falcons")).toBeInTheDocument();
+  expect(screen.getByText("Sharks")).toBeInTheDocument();
+  expect(screen.getByText("Ali Hassan (C)")).toBeInTheDocument();
+  expect(screen.getByText(/Men's Open · Pool A · Round 1 · Best of 3/)).toBeInTheDocument();
+});
+
 it("offers score entry for a match still to be played", async () => {
   load.mockResolvedValue(guest());
 
@@ -144,6 +172,26 @@ it("names the match's referee teams on the card", async () => {
 
   const name = await screen.findByText("Eagles");
   expect(name.closest(".referees-section")?.querySelector(".section-title")).toHaveTextContent("Referee team");
+});
+
+// Ported from the old MatchCard's read-only guest list (MatchCard.test.tsx, deleted with the card).
+it("lists several referee teams read-only, and has no referee section without teams", async () => {
+  load.mockResolvedValueOnce(
+    guest({ isCompleted: true, homeTeamSets: 2, awayTeamSets: 0, refereeTeamNames: ["Eagles", "Hawks"] })
+  );
+  const { unmount } = renderView();
+
+  const section = (await screen.findByText("Eagles")).closest(".referees-section");
+  expect(section?.querySelector(".section-title")).toHaveTextContent(/^Referee teams$/);
+  expect(section).toHaveTextContent("Hawks");
+  expect(section?.querySelectorAll("button")).toHaveLength(0);
+  unmount();
+
+  load.mockResolvedValueOnce(guest({ isCompleted: true, homeTeamSets: 2, awayTeamSets: 0, refereeTeamNames: [] }));
+  const { container } = renderView();
+
+  await screen.findByText(/Scores for this match are final/);
+  expect(container.querySelector(".referees-section")).toBeNull();
 });
 
 it("does not open the scoreboard for a completed match or undecided teams", async () => {

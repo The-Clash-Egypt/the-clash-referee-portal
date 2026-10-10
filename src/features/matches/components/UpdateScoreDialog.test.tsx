@@ -15,10 +15,10 @@ jest.mock("../api/matches", () => ({
   updateLiveScore: jest.fn(),
 }));
 
-// jsdom's default 1024×768 viewport counts as a phone to this dialog, so `openInFullscreen`
-// opens the fullscreen scoreboard exactly as it does on the guest pages.
+// The scoreboard opens for every format but Americano/Mexicano (typed entry), and always on the guest pages
+// (`openInFullscreen`). "Type scores" switches to the per-set inputs in the right-side drawer.
 
-// A desktop, touch-free viewport: the dialog then opens as the right-side drawer only.
+// A desktop, touch-free viewport.
 const useDesktopViewport = () => {
   Object.defineProperty(window, "innerWidth", { configurable: true, value: 1440 });
   Object.defineProperty(window, "innerHeight", { configurable: true, value: 900 });
@@ -101,9 +101,10 @@ const Page: React.FC<{ matches: Match[]; submit: jest.Mock }> = ({ matches, subm
 
 const scoreboard = () =>
   // eslint-disable-next-line testing-library/no-node-access -- the big score digits have no accessible name
-  Array.from(document.querySelectorAll(".fullscreen-scoreboard .score-display")).map((node) => node.textContent);
+  Array.from(document.querySelectorAll(".score-board .sb-team__score")).map((node) => node.textContent);
 const addPoint = (side: "home" | "away") =>
-  fireEvent.click(screen.getAllByRole("button", { name: "+" })[side === "home" ? 0 : 1]);
+  fireEvent.click(screen.getAllByRole("button", { name: /^Add point to / })[side === "home" ? 0 : 1]);
+const typeScores = () => fireEvent.click(screen.getByRole("button", { name: "Type scores" }));
 const pause = (ms: number) => act(() => new Promise<void>((resolve) => setTimeout(resolve, ms)));
 
 beforeEach(() => {
@@ -132,10 +133,10 @@ describe("fullscreen snapshot (back arrow keeps the score for the same match)", 
     expect(scoreboard()).toEqual(["2", "1"]);
 
     addPoint("home");
-    fireEvent.click(screen.getByRole("button", { name: "Save Scores" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish match" }));
     liveScore.mockClear();
-    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-    await waitFor(() => expect(screen.queryByRole("button", { name: "Save Scores" })).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Finish match" })).not.toBeInTheDocument());
     expect(submit).toHaveBeenCalledWith([game(1, 3, 1)]);
 
     // Re-opening after the save shows the saved game, not the 2–1 snapshot from before it.
@@ -180,10 +181,10 @@ describe("fullscreen save", () => {
     fireEvent.click(screen.getByRole("button", { name: "Score Falcons" }));
     addPoint("home");
     addPoint("away");
-    fireEvent.click(screen.getByRole("button", { name: "Save Scores" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish match" }));
 
     expect(screen.getByText("Game 1 cannot end in a tie.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Confirm" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
   });
 });
 
@@ -199,11 +200,12 @@ describe("removing a set", () => {
       match({ gameScores: [game(1, 21, 17), game(2, 18, 21), game(3, 15, 11)] })
     );
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Remove set" })[1]);
+    typeScores();
+    fireEvent.click(screen.getAllByRole("button", { name: /^Remove set/ })[1]);
     expect(setLabels()).toEqual(["Set 1", "Set 2"]);
 
     fireEvent.click(screen.getByRole("button", { name: "Save Scores" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
 
     expect(onSubmit).toHaveBeenCalledWith([game(1, 21, 17), game(2, 15, 11)]);
@@ -212,13 +214,12 @@ describe("removing a set", () => {
   it("keeps the selected set in range", () => {
     renderDialog(match({ gameScores: [game(1, 21, 17), game(2, 18, 21)] }));
 
-    fireEvent.click(screen.getByTitle("Enter fullscreen scoreboard"));
-    fireEvent.click(screen.getByRole("button", { name: "Add Set 3" })); // selects the new set
-    fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Remove set" })[2]);
-    fireEvent.click(screen.getByTitle("Enter fullscreen scoreboard"));
+    fireEvent.click(screen.getByRole("button", { name: "Add set 3" })); // selects the new set
+    typeScores();
+    fireEvent.click(screen.getAllByRole("button", { name: /^Remove set/ })[2]);
+    fireEvent.click(screen.getByRole("button", { name: "Scoreboard" }));
 
-    expect(screen.getByRole("button", { name: "Set 2" })).toHaveClass("active");
+    expect(screen.getByRole("button", { name: /^Set 2\b/ })).toHaveAttribute("aria-current", "true");
     expect(scoreboard()).toEqual(["18", "21"]);
   });
 });
@@ -229,12 +230,13 @@ it("stays open with the typed scores when the save is rejected", async () => {
   const onSubmit = jest.fn().mockRejectedValue(new Error("refused"));
   render(<UpdateScoreDialog isOpen match={match()} onClose={onClose} onSubmit={onSubmit} loading={false} />);
 
+  typeScores();
   const [home, away] = screen.getAllByRole("spinbutton");
   fireEvent.change(home, { target: { value: "21" } });
   fireEvent.change(away, { target: { value: "17" } });
   fireEvent.click(screen.getByRole("button", { name: "Save Scores" }));
-  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-  await waitFor(() => expect(screen.queryByRole("button", { name: "Confirm" })).not.toBeInTheDocument());
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument());
 
   expect(onSubmit).toHaveBeenCalledWith([game(1, 21, 17)]);
   expect(onClose).not.toHaveBeenCalled();
@@ -282,21 +284,23 @@ describe("modal mode: the right-side drawer", () => {
         openInFullscreen={false}
       />
     );
+    typeScores();
 
     const drawer = screen.getByRole("dialog", { name: "Enter Match Scores" });
     expect(drawer).toHaveClass("drawer");
     expect(within(drawer).getAllByRole("spinbutton")).toHaveLength(2);
     expect(within(drawer).getByRole("button", { name: "Save Scores" })).toBeInTheDocument();
-    // A desktop gets no switch to the phone scoreboard.
-    expect(screen.queryByTitle("Enter fullscreen scoreboard")).not.toBeInTheDocument();
+    // The scoreboard is one tap away on a desktop too (a centred overlay there).
+    expect(within(drawer).getByRole("button", { name: "Scoreboard" })).toBeInTheDocument();
   });
 
   it("slides out, then unmounts, when closed", () => {
     jest.useFakeTimers();
     const props = { onClose: jest.fn(), onSubmit: jest.fn(), loading: false, openInFullscreen: false };
     const { rerender } = render(<UpdateScoreDialog isOpen match={match()} {...props} />);
+    typeScores();
 
-    // MatchesManagement clears the match as it closes; the drawer keeps showing it while it slides out.
+    // MatchesPage clears the match as it closes; the drawer keeps showing it while it slides out.
     rerender(<UpdateScoreDialog isOpen={false} match={null} {...props} />);
     expect(screen.getByRole("dialog")).toHaveTextContent("Falcons");
     // eslint-disable-next-line testing-library/no-node-access -- the slide-out is a class on the drawer's root
@@ -325,9 +329,10 @@ describe("modal mode: the right-side drawer", () => {
     };
     render(<Harness />);
 
+    typeScores();
     typeScore("21", "17");
     fireEvent.click(screen.getByRole("button", { name: "Save Scores" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     // eslint-disable-next-line testing-library/no-node-access -- the slide-out is a class on the drawer's root
     await waitFor(() => expect(document.querySelector(".drawer-root--closing")).not.toBeNull());
@@ -337,9 +342,10 @@ describe("modal mode: the right-side drawer", () => {
     expect(screen.queryByText("Are you sure you want to save these scores?")).not.toBeInTheDocument();
   });
 
-  it("asks in a labelled alert dialog with Confirm focused, and hands the focus back to Save", () => {
+  it("asks in a labelled alert dialog with Save focused, and hands the focus back to Save Scores", () => {
     render(<UpdateScoreDialog isOpen match={match()} onClose={jest.fn()} onSubmit={jest.fn()} loading={false} />);
 
+    typeScores();
     typeScore("21", "17");
     const save = screen.getByRole("button", { name: "Save Scores" });
     save.focus(); // a click focuses the button in a browser; fireEvent doesn't
@@ -348,7 +354,7 @@ describe("modal mode: the right-side drawer", () => {
     const prompt = screen.getByRole("alertdialog", { name: "Confirm Save" });
     expect(prompt).toHaveAttribute("aria-modal", "true");
     expect(prompt).toHaveAccessibleDescription("Are you sure you want to save these scores?");
-    expect(within(prompt).getByRole("button", { name: "Confirm" })).toHaveFocus();
+    expect(within(prompt).getByRole("button", { name: "Save" })).toHaveFocus();
 
     fireEvent.click(within(prompt).getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
@@ -360,6 +366,7 @@ describe("modal mode: the right-side drawer", () => {
     const current = match();
     const props = { onClose: jest.fn(), onSubmit: jest.fn(), loading: false };
     const { rerender } = render(<UpdateScoreDialog isOpen match={current} {...props} />);
+    typeScores();
     typeScore("21", "17");
 
     // The page closes the dialog, and a late click lands on the frozen Save as the drawer slides
@@ -372,20 +379,24 @@ describe("modal mode: the right-side drawer", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     rerender(<UpdateScoreDialog isOpen match={current} {...props} />);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+    typeScores();
     expect(screen.getByRole("dialog", { name: "Enter Match Scores" })).toBeInTheDocument();
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Confirm" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
   });
 
   it("Escape backs out of the confirm prompt, not the whole drawer", () => {
     const onClose = jest.fn();
     render(<UpdateScoreDialog isOpen match={match()} onClose={onClose} onSubmit={jest.fn()} loading={false} />);
 
+    typeScores();
     typeScore("21", "17");
     fireEvent.click(screen.getByRole("button", { name: "Save Scores" }));
     fireEvent.keyDown(document, { key: "Escape" });
 
-    expect(screen.queryByRole("button", { name: "Confirm" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getAllByRole("spinbutton").map((input) => (input as HTMLInputElement).value)).toEqual(["21", "17"]);
   });

@@ -1,19 +1,39 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Venue, UpdateVenueDTO, VenueFilters } from "../types/venue";
 import { useVenues, useUpdateVenue } from "../hooks/useVenues";
 import { generateVenueToken } from "../api/venue";
 import { VenueList } from "../components";
 import VenueQRCodeModal from "../components/VenueQRCodeModal";
+import { AppBarSlot } from "../../tournament-shell/AppBarSlot";
+import { RefreshNotice } from "../../shared/components/RefreshNotice";
+import { Button } from "../../../ui/Button";
+import { EmptyState } from "../../../ui/EmptyState";
+import { SearchInput } from "../../../ui/SearchInput";
+import { useToast } from "../../../ui/Toast";
 import "./VenueManagement.scss";
 
 interface VenueManagementProps {
   tournamentId?: string;
 }
 
+/** How long typing waits before the court search reaches the API (as before). */
+const SEARCH_DEBOUNCE_MS = 300;
+
+type LoadingAction = { venueId: string; action: "share" | "regenerate" | "qrCode" } | null;
+
+/** A court's guest link (the public court page). */
+const shareUrlOf = (venue: Venue, token: string) =>
+  `${window.location.origin}/venue/shared?venueId=${venue.id}&token=${token}`;
+
+/**
+ * The Courts tab (mockup rest-of-portal.html phone 3): "Search courts" in the app bar, then the courts. The same API
+ * calls as the old Venues tab; what used to be alerts are toasts now.
+ */
 const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
-  // State management
-  const [searchTerm, setSearchTerm] = useState("");
-  const [loadingAction, setLoadingAction] = useState<{ venueId: string; action: "share" | "regenerate" | "qrCode" } | null>(null);
+  const { show } = useToast();
+  const [searchInput, setSearchInput] = useState("");
+  const searchTimer = useRef<number | undefined>(undefined);
+  const [loadingAction, setLoadingAction] = useState<LoadingAction>(null);
   const [filters, setFilters] = useState<VenueFilters>({
     ...(tournamentId && { tournamentId }),
   });
@@ -27,188 +47,173 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
     shareUrl: "",
   });
 
-  // API hooks
   const { data: venuesResponse, isLoading, error, refetch: refetchVenues } = useVenues(filters);
   const updateVenueMutation = useUpdateVenue();
 
   const venues = venuesResponse?.data?.data || [];
+  const fail = (message: string) => show(message, { tone: "error" });
 
-  // Handle search
-  const handleSearch = (term: string) => {
-    setSearchTerm(term);
-    setFilters((prev) => ({
-      ...prev,
-      search: term || undefined,
-      pageNumber: 1,
-    }));
+  // A search still waiting must not fire after the tab has gone.
+  useEffect(() => () => window.clearTimeout(searchTimer.current), []);
+
+  // Typing searches 300 ms after the last key; clearing the field shows every court at once.
+  const handleSearchChange = (term: string) => {
+    setSearchInput(term);
+    window.clearTimeout(searchTimer.current);
+    const search = () =>
+      setFilters((prev) => ({
+        ...prev,
+        search: term || undefined,
+        pageNumber: 1,
+      }));
+    if (term) searchTimer.current = window.setTimeout(search, SEARCH_DEBOUNCE_MS);
+    else search();
   };
 
-  // Handle filters (not used - filtering is done locally in VenueList)
-  const handleFilter = (newFilters: Partial<VenueFilters>) => {
-    // No-op - filtering is handled locally in VenueList component
-  };
-
-  // Handle update venue directly
   const handleUpdateVenue = (id: string, data: UpdateVenueDTO) => {
     updateVenueMutation.mutate(
       { id, data },
       {
-        onSuccess: () => {
-          // Success handled by mutation
-        },
-        onError: (error) => {
-          console.error("Failed to update venue:", error);
+        onError: (updateError) => {
+          console.error("Failed to update venue:", updateError);
+          fail("Failed to update the court. Please try again.");
         },
       }
     );
   };
 
-  // Handle share venue
   const handleShareVenue = async (venue: Venue) => {
     setLoadingAction({ venueId: venue.id, action: "share" });
     try {
-      // Generate a new access token (use existing if valid)
+      // Generate an access token (an existing valid one is reused)
       const response = await generateVenueToken(venue.id, false);
 
       if (response.data.success && response.data.data) {
-        // Refresh the venues list to show updated expiry time
+        // Refresh the courts to show the updated expiry time
         await refetchVenues();
 
-        const shareUrl = `${window.location.origin}/venue/shared?venueId=${venue.id}&token=${response.data.data}`;
+        const shareUrl = shareUrlOf(venue, response.data.data);
         const shareData = {
           title: `Referee Portal - ${venue.name}`,
           text: `Access the referee portal for ${venue.name} through this link: ${shareUrl}`,
-          // url: shareUrl,
         };
 
-        // Check if Web Share API is supported
         if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
           try {
             await navigator.share(shareData);
-            // Share was successful
           } catch (shareError) {
-            // User cancelled sharing
             console.log("Share cancelled by user");
           }
         } else {
-          // Web Share API not supported
-          alert("Sharing is not supported on this device. Please use a modern mobile browser.");
+          fail("Sharing is not supported on this device. Please use a modern mobile browser.");
         }
       } else {
-        // Handle API error response
-        const errorMessage = response.data.message || "Failed to generate share link. Please try again.";
-        alert(`Error: ${errorMessage}`);
+        fail(`Error: ${response.data.message || "Failed to generate share link. Please try again."}`);
       }
-    } catch (error) {
-      console.error("Error generating share link:", error);
-      alert("Failed to generate share link. Please try again.");
+    } catch (shareLinkError) {
+      console.error("Error generating share link:", shareLinkError);
+      fail("Failed to generate share link. Please try again.");
     } finally {
       setLoadingAction(null);
     }
   };
 
-  // Handle show QR code
   const handleShowQRCode = async (venue: Venue) => {
     setLoadingAction({ venueId: venue.id, action: "qrCode" });
     try {
-      // Generate a new access token (use existing if valid)
+      // Generate an access token (an existing valid one is reused)
       const response = await generateVenueToken(venue.id, false);
 
       if (response.data.success && response.data.data) {
-        // Refresh the venues list to show updated expiry time
         await refetchVenues();
-
-        const shareUrl = `${window.location.origin}/venue/shared?venueId=${venue.id}&token=${response.data.data}`;
         setQrCodeModal({
           isOpen: true,
           venueName: venue.name,
-          shareUrl,
+          shareUrl: shareUrlOf(venue, response.data.data),
         });
       } else {
-        // Handle API error response
-        const errorMessage = response.data.message || "Failed to generate QR code. Please try again.";
-        alert(`Error: ${errorMessage}`);
+        fail(`Error: ${response.data.message || "Failed to generate QR code. Please try again."}`);
       }
-    } catch (error) {
-      console.error("Error generating QR code:", error);
-      alert("Failed to generate QR code. Please try again.");
+    } catch (qrError) {
+      console.error("Error generating QR code:", qrError);
+      fail("Failed to generate QR code. Please try again.");
     } finally {
       setLoadingAction(null);
     }
   };
 
-  // Handle force generate token
+  // ⋯ › New link: always a fresh token (the old Regenerate Token).
   const handleForceGenerateToken = async (venue: Venue) => {
     setLoadingAction({ venueId: venue.id, action: "regenerate" });
     try {
-      // Force generate a new access token
       const response = await generateVenueToken(venue.id, true);
 
       if (response.data.success && response.data.data) {
-        // Refresh the venues list to show updated expiry time
         await refetchVenues();
+        show(`New link ready for ${venue.name}.`);
       } else {
-        // Handle API error response
-        const errorMessage = response.data.message || "Failed to generate new token. Please try again.";
-        alert(`Error: ${errorMessage}`);
+        fail(`Error: ${response.data.message || "Failed to generate a new link. Please try again."}`);
       }
-    } catch (error) {
-      console.error("Error force generating token:", error);
-      alert("Failed to generate new token. Please try again.");
+    } catch (tokenError) {
+      console.error("Error force generating token:", tokenError);
+      fail("Failed to generate a new link. Please try again.");
     } finally {
       setLoadingAction(null);
     }
   };
 
-  // Handle close QR code modal
   const handleCloseQRCode = () => {
-    setQrCodeModal({
-      isOpen: false,
-      venueName: "",
-      shareUrl: "",
-    });
+    setQrCodeModal((current) => ({ ...current, isOpen: false }));
   };
 
   return (
     <div className="venue-management">
-      {venues.length > 0 && (
-        <div className="venue-management__header">
-          <div className="venue-management__title">
-            <h1>Venue Management</h1>
-            <p>Manage venues for this tournament</p>
-          </div>
+      <AppBarSlot>
+        <div className="venue-management__search">
+          <SearchInput
+            value={searchInput}
+            onChange={handleSearchChange}
+            placeholder="Search courts"
+            ariaLabel="Search courts"
+          />
         </div>
-      )}
+      </AppBarSlot>
 
-      <div className="venue-management__content">
-        <VenueList
-          venues={venues}
-          onUpdate={handleUpdateVenue}
-          onShare={handleShareVenue}
-          onShowQRCode={handleShowQRCode}
-          onForceGenerateToken={handleForceGenerateToken}
-          onSearch={handleSearch}
-          onFilter={handleFilter}
-          isLoading={isLoading}
-          searchTerm={searchTerm}
-          showActions={true}
-          showSearchAndFilters={venues.length > 0}
-          loadingAction={loadingAction}
-          isUpdating={updateVenueMutation.isPending}
+      {error && venues.length === 0 && !isLoading ? (
+        <EmptyState
+          icon="alert"
+          title="Error"
+          body="Failed to load courts. Please try again."
+          action={
+            <Button variant="tint" icon="refresh" onClick={() => void refetchVenues()}>
+              Try again
+            </Button>
+          }
         />
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="error-message">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12,2C6.47,2 2,6.47 2,12C2,17.53 6.47,22 12,22C17.53,22 22,17.53 22,12C22,6.47 17.53,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z" />
-          </svg>
-          <span>Failed to load venues. Please try again.</span>
-        </div>
+      ) : (
+        <>
+          {/* A refresh that failed with courts on screen: they stay, but their lock and password may be stale. */}
+          {error && venues.length > 0 ? (
+            <RefreshNotice
+              className="venue-management__notice"
+              message="Failed to load courts. Please try again."
+              onRetry={() => void refetchVenues()}
+            />
+          ) : null}
+          <VenueList
+            venues={venues}
+            onUpdate={handleUpdateVenue}
+            onShare={handleShareVenue}
+            onShowQRCode={handleShowQRCode}
+            onForceGenerateToken={handleForceGenerateToken}
+            isLoading={isLoading}
+            showActions={true}
+            loadingAction={loadingAction}
+            isUpdating={updateVenueMutation.isPending}
+          />
+        </>
       )}
 
-      {/* QR Code Modal */}
       <VenueQRCodeModal
         isOpen={qrCodeModal.isOpen}
         venueName={qrCodeModal.venueName}

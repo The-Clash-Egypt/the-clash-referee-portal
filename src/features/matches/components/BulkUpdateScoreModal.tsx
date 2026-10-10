@@ -5,6 +5,8 @@ import { filledCells, gameScoresFromCells, otherSideScore, sameCells, validateGa
 import { groupMatchesByVenue } from "../../../utils/venueGrouping";
 import { formatClock, shouldLabelCategories } from "../../../utils/matchSheetFormat";
 import Drawer from "../../shared/components/Drawer";
+import { Button } from "../../../ui/Button";
+import { Icon } from "../../../ui/Icon";
 import "./BulkUpdateScoreModal.scss";
 
 export interface BulkScoreEntry {
@@ -286,7 +288,7 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
               aria-label={`Remove ${home} vs ${away} from this list`}
               title="Remove from this list"
             >
-              ×
+              <Icon name="close" size={14} />
             </button>
           ) : null}
         </div>
@@ -327,26 +329,26 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
           {saveAttempted && invalid.length > 0 ? (
             <div className="bulk-sheet__blocked" role="alert">
               <span>{invalid.length === 1 ? "1 match has errors." : `${invalid.length} matches have errors.`}</span>
-              <button type="button" className="btn btn-secondary" onClick={() => focusRow(firstInvalidId())}>
+              <Button variant="tint" size="sm" onClick={() => focusRow(firstInvalidId())}>
                 Review errors
-              </button>
+              </Button>
               {valid.length > 0 ? (
-                <button type="button" className="btn btn-primary" onClick={handleSaveValidOnly} disabled={saving}>
+                <Button size="sm" onClick={handleSaveValidOnly} disabled={saving}>
                   Save {valid.length} valid, skip {invalid.length}
-                </button>
+                </Button>
               ) : null}
             </div>
           ) : (
             <span className="bulk-sheet__summary">{summary}</span>
           )}
 
-          <div className="bulk-sheet__actions">
-            <button type="button" className="btn btn-secondary" onClick={handleClose} disabled={saving}>
+          <div className="bulk-sheet__actions drawer__actions">
+            <Button variant="ghost" size="lg" onClick={handleClose} disabled={saving}>
               Cancel
-            </button>
-            <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving || changed.length === 0}>
+            </Button>
+            <Button size="lg" onClick={handleSave} loading={saving} disabled={changed.length === 0}>
               {saving ? "Saving…" : `Save ${plural(changed.length, "match", "matches")}`}
-            </button>
+            </Button>
           </div>
         </div>
       }

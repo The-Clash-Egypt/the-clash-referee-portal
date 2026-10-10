@@ -1,0 +1,79 @@
+@use "../styles/touch" as *;
+
+// A square brand checkbox (mockup `.check`); the real input sits on top, invisible, so taps and focus just work.
+.ui-check {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ui-check__input {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ui-check__box {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--line-strong);
+  background: var(--card);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.ui-check__input:checked + .ui-check__box {
+  border-color: var(--spark);
+  background: var(--spark);
+
+  &::after {
+    content: "";
+    width: 10px;
+    height: 6px;
+    border-bottom: 2.5px solid var(--on-spark);
+    border-left: 2.5px solid var(--on-spark);
+    transform: rotate(-45deg) translate(1px, -1px);
+  }
+}
+
+.ui-check__input:focus-visible + .ui-check__box {
+  outline: 2px solid var(--spark);
+  outline-offset: 2px;
+}
+
+.ui-check__label {
+  min-width: 0;
+}
+
+// Already decided elsewhere (e.g. a referee who is assigned): shown, not changeable here.
+.ui-check--disabled {
+  cursor: default;
+
+  .ui-check__input {
+    cursor: default;
+  }
+
+  .ui-check__box {
+    opacity: 0.45;
+  }
+}
+
+@include touch {
+  .ui-check {
+    min-height: $touch-min;
+  }
+}

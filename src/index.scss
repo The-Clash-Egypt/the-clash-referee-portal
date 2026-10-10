@@ -1,14 +1,21 @@
-/* Import shared styles */
+/* The brand tokens and fonts first, then the legacy colour names remapped onto them */
+@import "./styles/brand.scss";
 @import "./styles/colors.scss";
-@import "./styles/utilities.scss";
-@import "./styles/components.scss";
 
 body {
   margin: 0;
+  background: var(--page);
+  color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
     "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Keyboard focus: an orange ring on any control that doesn't draw its own (the components' rules load later and win). */
+:focus-visible {
+  outline: 2px solid var(--spark);
+  outline-offset: 2px;
 }
 
 code {

@@ -1,0 +1,81 @@
+// Tap targets of at least 44 x 44 px on touch screens, without changing the look (review finding M5).
+// Use with `@use "<relative path>/styles/touch" as *;`.
+@use "sass:math";
+
+$touch-min: 44px;
+
+// Rules for touch screens only (phones, tablets).
+@mixin touch {
+  @media (pointer: coarse) {
+    @content;
+  }
+}
+
+// An invisible layer centred on the element takes the taps around it. Not for an element with its own ::after, an
+// `overflow` other than visible, or a clip-path — each would cut the layer.
+@mixin hit-area($size: $touch-min) {
+  @include touch {
+    position: relative;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, #{$size});
+      height: max(100%, #{$size});
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
+// A small slanted control whose face stays $face-w x $face-h while the control itself is at least 44 x 44: the face
+// moves to ::before (a clip-path on the control would cut its tap area too) and negative margins keep the layout.
+// The face's colour is the --face custom property: set it for each state instead of `background`. A $face-w of
+// `auto` keeps the control's own width (the face then spans it).
+@mixin slanted-target($face-h, $face-w: auto, $clip: var(--clip-slant-sm)) {
+  $pad-y: math.div(math.max($touch-min - $face-h, 0px), 2);
+  position: relative;
+  isolation: isolate;
+  min-height: $face-h + 2 * $pad-y;
+  margin-top: -$pad-y;
+  margin-bottom: -$pad-y;
+  clip-path: none;
+  background: transparent;
+
+  @if $face-w != auto {
+    $pad-x: math.div(math.max($touch-min - $face-w, 0px), 2);
+    min-width: $face-w + 2 * $pad-x;
+    margin-right: -$pad-x;
+    margin-left: -$pad-x;
+  }
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: $pad-y;
+    bottom: $pad-y;
+    z-index: -1;
+    clip-path: $clip;
+    background: var(--face, transparent);
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+
+    @if $face-w != auto {
+      left: math.div(math.max($touch-min - $face-w, 0px), 2);
+      right: math.div(math.max($touch-min - $face-w, 0px), 2);
+    } @else {
+      left: 0;
+      right: 0;
+    }
+  }
+
+  // The focus ring sits on the face.
+  &:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  &:focus-visible::before {
+    box-shadow: inset 0 0 0 2px var(--face-ring, currentColor);
+  }
+}

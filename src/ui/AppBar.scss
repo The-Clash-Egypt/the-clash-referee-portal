@@ -1,0 +1,117 @@
+@use "../styles/touch" as *;
+
+// The solid bar on top of the tournament screens (mockup `.appbar`, select mode `.selbar`).
+.ui-appbar {
+  flex: none;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 14px;
+  color: var(--on-brand);
+}
+
+.ui-appbar--brand {
+  background: var(--brand);
+
+  --ui-appbar-eyebrow: var(--on-brand-muted);
+}
+
+.ui-appbar--spark {
+  background: var(--spark);
+
+  --ui-appbar-eyebrow: var(--on-color-muted);
+}
+
+.ui-appbar__inner {
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+
+.ui-appbar__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+}
+
+// A 36 x 34 glass face in a 44 x 44 tap target.
+.ui-appbar__back {
+  --face: var(--glass);
+
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  @include slanted-target(34px, 36px);
+
+  &:hover {
+    --face: var(--glass-strong);
+  }
+}
+
+.ui-appbar__titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-appbar__eyebrow {
+  margin: 0 0 2px;
+  overflow: hidden;
+  color: var(--ui-appbar-eyebrow);
+  font-family: var(--font-label);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ui-appbar__title {
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ui-appbar__right {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+
+  // The wordmark sits white on the bar (mockup `.wm`: 46 x 30).
+  .ui-brand-logo {
+    height: 30px;
+  }
+}
+
+.ui-appbar__below {
+  margin-top: 12px;
+
+  &:empty {
+    display: none;
+  }
+}
+
+@media (min-width: 900px) {
+  .ui-appbar {
+    padding-top: 16px;
+  }
+
+  .ui-appbar__title {
+    font-size: 22px;
+  }
+}

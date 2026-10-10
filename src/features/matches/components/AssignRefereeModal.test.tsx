@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom";
 import AssignRefereeModal from "./AssignRefereeModal";
 import { DRAWER_EXIT_MS } from "../../shared/components/Drawer";
+import { ToastProvider } from "../../../ui/Toast";
 import { useRefereeTeamOptions } from "../hooks/useRefereeTeamOptions";
 import { Match, RefereeTeamAssignResult, RefereeTeamOption } from "../types/match";
 
@@ -52,7 +53,7 @@ it("opens as a drawer and slides away once closed", () => {
   const props = { match, ...handlers() };
   const { rerender } = render(<AssignRefereeModal isOpen {...props} />);
 
-  expect(screen.getByRole("dialog", { name: "Assign Referees to Match" })).toHaveTextContent("Falcons vs Sharks");
+  expect(screen.getByRole("dialog", { name: "Referees" })).toHaveTextContent("Falcons vs Sharks");
 
   rerender(<AssignRefereeModal isOpen={false} {...props} />);
   act(() => {
@@ -65,17 +66,17 @@ it("offers the category's teams above the individual referees, next to the ones 
   render(<AssignRefereeModal isOpen match={refereed} {...handlers()} />);
 
   expect(teamOptions).toHaveBeenCalledWith(["m1"], true);
-  expect(screen.getByText("Currently Assigned Referee Teams")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Unassign Eagles" })).toBeInTheDocument();
   expect(screen.getByText("Eagles")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Add Tigers" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Add Waves" })).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Tigers", checked: false })).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Waves", checked: false })).toBeInTheDocument();
 
   const text = screen.getByRole("dialog").textContent ?? "";
-  expect(text.indexOf("Add Referee Teams")).toBeLessThan(text.indexOf("Add Referees"));
+  expect(text.indexOf("Referee teams")).toBeLessThan(text.indexOf("People"));
 
-  fireEvent.change(screen.getByRole("textbox", { name: "Search referee teams" }), { target: { value: "wav" } });
-  expect(screen.queryByRole("button", { name: "Add Tigers" })).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Add Waves" })).toBeInTheDocument();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search name, email or team" }), { target: { value: "wav" } });
+  expect(screen.queryByRole("checkbox", { name: "Tigers", checked: false })).not.toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Waves", checked: false })).toBeInTheDocument();
 });
 
 it("says when no team can referee the match", () => {
@@ -90,12 +91,12 @@ it("counts picked teams in the footer and assigns teams and referees together", 
   render(<AssignRefereeModal isOpen match={match} {...props} />);
   expect(assignButton()).not.toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole("button", { name: "Add Tigers" }));
-  expect(screen.getByText("Referee Teams to Assign (1)")).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Add Tigers" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("checkbox", { name: "Tigers", checked: false }));
+  expect(screen.getByRole("button", { name: "Remove Tigers" })).toBeInTheDocument();
+  expect(screen.queryByRole("checkbox", { name: "Tigers", checked: false })).not.toBeInTheDocument();
   expect(assignButton()).toHaveTextContent("Assign 1 Team");
 
-  fireEvent.change(screen.getByPlaceholderText("Search by name or email..."), { target: { value: "mo" } });
+  fireEvent.change(screen.getByPlaceholderText("Search name, email or team"), { target: { value: "mo" } });
   fireEvent.click(await screen.findByText("Mona Salah"));
   expect(assignButton()).toHaveTextContent("Assign 1 Team, 1 Referee");
 
@@ -106,22 +107,28 @@ it("counts picked teams in the footer and assigns teams and referees together", 
   await waitFor(() => expect(assignButton()).not.toBeInTheDocument());
 });
 
-it("closes after assigning teams alone, and names any team the server skipped", async () => {
+it("closes after assigning teams alone, and names any team the server skipped in a toast", async () => {
   const alert = jest.spyOn(window, "alert").mockImplementation(() => undefined);
   const props = handlers();
   props.onAssignTeams.mockResolvedValue([
     { matchId: "m1", assignedTeamIds: ["t-waves"], unchangedTeamIds: [], skipped: [{ teamId: "t-tigers", reason: "plays in this match" }] },
   ]);
-  render(<AssignRefereeModal isOpen match={match} {...props} />);
+  render(
+    <ToastProvider>
+      <AssignRefereeModal isOpen match={match} {...props} />
+    </ToastProvider>
+  );
 
-  fireEvent.click(screen.getByRole("button", { name: "Add Tigers" }));
-  fireEvent.click(screen.getByRole("button", { name: "Add Waves" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Tigers", checked: false }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Waves", checked: false }));
   fireEvent.click(assignButton()!);
 
   await waitFor(() => expect(props.onClose).toHaveBeenCalled());
   expect(props.onAssignTeams).toHaveBeenCalledWith(["t-tigers", "t-waves"], ["m1"]);
   expect(props.onAssign).not.toHaveBeenCalled();
-  expect(alert).toHaveBeenCalledWith("Couldn't assign Tigers (plays in this match).");
+  // An info toast (it outlives the sheet), no longer a blocking alert.
+  expect(screen.getByRole("status")).toHaveTextContent("Couldn't assign Tigers (plays in this match).");
+  expect(alert).not.toHaveBeenCalled();
   alert.mockRestore();
 });
 
@@ -130,7 +137,7 @@ it("keeps the picks when the team request fails", async () => {
   props.onAssignTeams.mockResolvedValue(null);
   render(<AssignRefereeModal isOpen match={match} {...props} />);
 
-  fireEvent.click(screen.getByRole("button", { name: "Add Tigers" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Tigers", checked: false }));
   fireEvent.click(assignButton()!);
 
   await waitFor(() => expect(assignButton()).toBeEnabled());
@@ -143,10 +150,12 @@ it("unassigns a current team, once confirmed, without leaving the drawer", async
   const props = handlers();
   render(<AssignRefereeModal isOpen match={refereed} {...props} />);
 
-  // The card's unassign control, not the local remove "×" of the picks below it.
+  // The assigned chip's unassign control (named "Unassign …"), not a picked chip's remove (named "Remove …"): both
+  // show the same ✕ now, so they are told apart by name.
   const unassign = screen.getByRole("button", { name: "Unassign Eagles" });
   expect(unassign).toHaveClass("unassign-button");
-  expect(unassign).toHaveTextContent(/^-$/);
+  expect(screen.queryByRole("button", { name: /^Remove Eagles/ })).not.toBeInTheDocument();
+  expect(unassign).not.toHaveTextContent("-");
   fireEvent.click(unassign);
 
   expect(confirm).toHaveBeenCalledWith("Unassign Eagles?");
@@ -154,7 +163,7 @@ it("unassigns a current team, once confirmed, without leaving the drawer", async
   await waitFor(() => expect(unassign).toBeEnabled());
   expect(props.onUnassignTeam).toHaveBeenCalledWith("m1", "t-eagles");
   expect(props.onClose).not.toHaveBeenCalled();
-  expect(screen.getByRole("dialog", { name: "Assign Referees to Match" })).toBeInTheDocument();
+  expect(screen.getByRole("dialog", { name: "Referees" })).toBeInTheDocument();
   confirm.mockRestore();
 });
 
@@ -191,27 +200,53 @@ it("holds every team's unassign control while one unassign is in flight", async 
 
 it("keeps keyboard focus in the drawer after picking or removing a team", () => {
   render(<AssignRefereeModal isOpen match={match} {...handlers()} />);
-  const search = screen.getByRole("textbox", { name: "Search referee teams" });
+  const search = screen.getByRole("searchbox", { name: "Search name, email or team" });
 
-  const tigers = screen.getByRole("button", { name: "Add Tigers" });
+  const tigers = screen.getByRole("checkbox", { name: "Tigers", checked: false });
   tigers.focus();
   fireEvent.keyDown(tigers, { key: "Enter" });
-  expect(screen.getByText("Referee Teams to Assign (1)")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Remove Tigers" })).toBeInTheDocument();
   expect(search).toHaveFocus();
 
   // A keyboard press on a button fires its click with detail 0.
   const remove = screen.getByRole("button", { name: "Remove Tigers" });
   remove.focus();
   fireEvent.click(remove, { detail: 0 });
-  expect(screen.queryByText("Referee Teams to Assign (1)")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Remove Tigers" })).not.toBeInTheDocument();
   expect(search).toHaveFocus();
 });
 
 it("leaves focus alone after a tap, so a phone doesn't pop its keyboard", () => {
   render(<AssignRefereeModal isOpen match={match} {...handlers()} />);
 
-  fireEvent.click(screen.getByRole("button", { name: "Add Tigers" }), { detail: 1 });
+  fireEvent.click(screen.getByRole("checkbox", { name: "Tigers", checked: false }), { detail: 1 });
 
-  expect(screen.getByText("Referee Teams to Assign (1)")).toBeInTheDocument();
-  expect(screen.getByRole("textbox", { name: "Search referee teams" })).not.toHaveFocus();
+  expect(screen.getByRole("button", { name: "Remove Tigers" })).toBeInTheDocument();
+  expect(screen.getByRole("searchbox", { name: "Search name, email or team" })).not.toHaveFocus();
+});
+
+// Review I2: "Done" on a phone reads as save-and-close, so it must not drop what was picked.
+it("saves the picks waiting when Done is tapped, as the footer button does", async () => {
+  const props = handlers();
+  render(<AssignRefereeModal isOpen match={match} {...props} />);
+
+  fireEvent.click(screen.getByRole("checkbox", { name: "Tigers", checked: false }));
+  fireEvent.change(screen.getByPlaceholderText("Search name, email or team"), { target: { value: "mo" } });
+  fireEvent.click(await screen.findByText("Mona Salah"));
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+
+  await waitFor(() => expect(props.onAssign).toHaveBeenCalledWith(["u-mona"]));
+  expect(props.onAssignTeams).toHaveBeenCalledWith(["t-tigers"], ["m1"]);
+  await waitFor(() => expect(assignButton()).not.toBeInTheDocument());
+});
+
+it("closes on Done when nothing is picked", () => {
+  const props = handlers();
+  render(<AssignRefereeModal isOpen match={match} {...props} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+
+  expect(props.onClose).toHaveBeenCalledTimes(1);
+  expect(props.onAssign).not.toHaveBeenCalled();
+  expect(props.onAssignTeams).not.toHaveBeenCalled();
 });

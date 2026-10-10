@@ -1,32 +1,35 @@
-import React, { useRef, useState } from "react";
+import React, { useId } from "react";
+import { Checkbox } from "../../../ui/Checkbox";
 import { RefereeTeam, RefereeTeamOption } from "../types/match";
-import "./RefereeTeamsSection.scss";
+import { initials } from "../utils/matchDisplay";
+import { onEnterKey } from "./RefereeSheetParts";
+import "./RefereeSheet.scss";
 
 interface RefereeTeamsSectionProps {
-  /** Teams that can referee the drawer's match(es). */
+  /** Teams that can referee the sheet's match(es). */
   options: RefereeTeamOption[];
   loading: boolean;
   failed: boolean;
-  /** Picked in this session, waiting for the footer's Assign button. */
+  /** Picked in this sheet, waiting for the footer's Assign button: ticked. */
   selected: RefereeTeamOption[];
-  onSelect: (team: RefereeTeamOption) => void;
-  onRemove: (teamId: string) => void;
-  /** The match's current referee teams (single-match drawer), each with an unassign control. */
+  onSelect: (team: RefereeTeamOption, fromKeyboard: boolean) => void;
+  onRemove: (teamId: string, fromKeyboard: boolean) => void;
+  /** The match's current referee teams (one-match sheet): not offered again, they sit on top as chips. */
   assigned?: RefereeTeam[];
-  onUnassign?: (teamId: string) => Promise<void>;
-  /** A team's second line, e.g. its category. */
+  /** The sheet's one search: teams whose name or category contain it stay listed (picked ones always do). */
+  term: string;
+  /** In the heading, "Referee teams · Men's Open", when the teams share one category. */
+  category?: string;
+  /** A team's second line, also part of its name, so same-named teams stay apart (bulk: category · eligible N of M). */
   detailFor?: (team: RefereeTeamOption) => string;
+  /** Without a detail, show the team's category as its second line (one match). */
+  showCategory?: boolean;
   emptyText: string;
-  /**
-   * What the last assignment did (bulk drawer). Passing it, even as null, keeps the empty live region
-   * mounted, so its text is announced when it arrives.
-   */
-  outcome?: string | null;
 }
 
 /**
- * The "Referee teams" block of the Assign and Bulk Assign drawers. It is built from the drawers'
- * own cards (blue current, green selected, the suggestion list) so it reads as part of them.
+ * The "Referee teams" block of the referee sheet (mockup match-flow-v2.html phone 4): the teams allowed to referee
+ * the match(es), as checkbox rows filtered by the sheet's search.
  */
 const RefereeTeamsSection: React.FC<RefereeTeamsSectionProps> = ({
   options,
@@ -36,194 +39,72 @@ const RefereeTeamsSection: React.FC<RefereeTeamsSectionProps> = ({
   onSelect,
   onRemove,
   assigned = [],
-  onUnassign,
+  term,
+  category,
   detailFor,
+  showCategory = false,
   emptyText,
-  outcome,
 }) => {
-  const [search, setSearch] = useState("");
-  // One unassign at a time: each refreshes the list, and overlapping refreshes can land out of order.
-  const [unassigning, setUnassigning] = useState(false);
-  const searchRef = useRef<HTMLInputElement>(null);
-
-  // The control a keyboard user just used leaves the list, so keep them in the drawer, on the search.
-  // Keyboard and assistive-tech activation fires click with detail 0, a tap or mouse click detail >= 1;
-  // focusing the input after a tap would only pop the phone keyboard.
-  const keepFocus = (fromKeyboard: boolean) => {
-    if (fromKeyboard) searchRef.current?.focus();
-  };
-  const isKeyboardClick = (event: React.MouseEvent) => event.detail === 0;
-
-  const taken = new Set([...selected, ...assigned].map((team) => team.teamId));
-  const term = search.trim().toLowerCase();
-  const available = options.filter((team) => !taken.has(team.teamId));
-  const visible = term
-    ? available.filter((team) => `${team.teamName} ${team.categoryName}`.toLowerCase().includes(term))
+  const headingId = useId();
+  const assignedIds = new Set(assigned.map((team) => team.teamId));
+  const pickedIds = new Set(selected.map((team) => team.teamId));
+  const needle = term.trim().toLowerCase();
+  const available = options.filter((team) => !assignedIds.has(team.teamId));
+  const visible = needle
+    ? available.filter(
+        (team) => pickedIds.has(team.teamId) || `${team.teamName} ${team.categoryName}`.toLowerCase().includes(needle)
+      )
     : available;
 
-  const unassign = async (team: RefereeTeam, fromKeyboard: boolean) => {
-    if (!onUnassign || unassigning || !window.confirm(`Unassign ${team.teamName}?`)) return;
-    setUnassigning(true);
-    try {
-      await onUnassign(team.teamId);
-    } finally {
-      setUnassigning(false);
-      keepFocus(fromKeyboard);
-    }
-  };
-
-  const pick = (team: RefereeTeamOption, fromKeyboard: boolean) => {
-    onSelect(team);
-    setSearch("");
-    keepFocus(fromKeyboard);
-  };
-
-  const remove = (teamId: string, fromKeyboard: boolean) => {
-    onRemove(teamId);
-    keepFocus(fromKeyboard);
-  };
-
-  // "Add Falcons, Men's Open · eligible for 1 of 3 matches": the detail tells same-named teams apart.
-  const nameWithDetail = (verb: string, team: RefereeTeamOption) => {
-    const detail = detailFor?.(team);
-    return detail ? `${verb} ${team.teamName}, ${detail}` : `${verb} ${team.teamName}`;
-  };
-
-  const renderList = () => {
-    if (loading) {
-      return (
-        <div className="loading-suggestions">
-          <p>Loading teams...</p>
-        </div>
-      );
-    }
-    if (failed && options.length === 0) {
-      return (
-        <div className="no-suggestions">
-          <p>Couldn't load the referee teams. Close and reopen to try again.</p>
-        </div>
-      );
-    }
-    if (visible.length === 0) {
-      let message = emptyText;
-      if (term) message = `No teams found matching "${search.trim()}"`;
-      else if (options.length > 0) message = "No other teams to add."; // every option is already picked or assigned
-      return (
-        <div className="no-suggestions">
-          <p>{message}</p>
-        </div>
-      );
-    }
-    return (
-      <div className="suggestions-list">
+  let body: React.ReactNode;
+  if (loading) {
+    body = <p className="ref-sheet__note">Loading teams...</p>;
+  } else if (failed && options.length === 0) {
+    body = <p className="ref-sheet__note">Couldn't load the referee teams. Close and reopen to try again.</p>;
+  } else if (visible.length === 0) {
+    let message = emptyText;
+    if (needle) message = `No teams found matching "${term.trim()}"`;
+    else if (options.length > 0) message = "No other teams to add."; // every option already referees the match
+    body = <p className="ref-sheet__note">{message}</p>;
+  } else {
+    body = (
+      <ul className="ref-sheet__rows">
         {visible.map((team) => {
-          const detail = detailFor?.(team);
+          const detail = detailFor?.(team) ?? "";
+          const line = detail || (showCategory ? team.categoryName : "");
+          const picked = pickedIds.has(team.teamId);
+          const toggle = (keyboard: boolean) => (picked ? onRemove(team.teamId, keyboard) : onSelect(team, keyboard));
           return (
-            <div
-              key={team.teamId}
-              className="suggestion-item"
-              role="button"
-              tabIndex={0}
-              aria-label={nameWithDetail("Add", team)}
-              onClick={(event) => pick(team, isKeyboardClick(event))}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  pick(team, true);
-                }
-              }}
-            >
-              <div className="referee-info">
-                <h5>{team.teamName}</h5>
-                {detail ? <p>{detail}</p> : null}
-              </div>
-              <div className="add-icon">+</div>
-            </div>
+            <li key={team.teamId}>
+              <Checkbox
+                className="ref-row"
+                checked={picked}
+                onChange={() => toggle(false)}
+                onKeyDown={onEnterKey(() => toggle(true))}
+                label={detail ? `${team.teamName}, ${detail}` : team.teamName}
+              >
+                <span className="ref-row__avatar ref-row__avatar--team" aria-hidden="true">
+                  {initials(team.teamName)}
+                </span>
+                <span className="ref-row__who">
+                  {team.teamName}
+                  {line ? <small>{line}</small> : null}
+                </span>
+              </Checkbox>
+            </li>
           );
         })}
-      </div>
+      </ul>
     );
-  };
+  }
 
   return (
-    <div className="referees-section referee-teams-section">
-      {assigned.length > 0 && (
-        <div className="assigned-referees-section">
-          <h4>Currently Assigned Referee Teams</h4>
-          <div className="assigned-referees-list">
-            {assigned.map((team) => (
-              <div key={team.teamId} className="assigned-referee-item">
-                <div className="referee-info">
-                  <h5>{team.teamName}</h5>
-                </div>
-                {onUnassign && (
-                  <button
-                    type="button"
-                    className="unassign-button"
-                    onClick={(event) => unassign(team, isKeyboardClick(event))}
-                    disabled={unassigning}
-                    title="Unassign referee team"
-                    aria-label={`Unassign ${team.teamName}`}
-                  >
-                    -
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {selected.length > 0 && (
-        <div className="selected-referees-section">
-          <h4>Referee Teams to Assign ({selected.length})</h4>
-          <div className="selected-referees-list">
-            {selected.map((team) => {
-              const detail = detailFor?.(team);
-              return (
-                <div key={team.teamId} className="selected-referee-item">
-                  <div className="referee-info">
-                    <h5>{team.teamName}</h5>
-                    {detail ? <p>{detail}</p> : null}
-                  </div>
-                  <button
-                    type="button"
-                    className="remove-button"
-                    onClick={(event) => remove(team.teamId, isKeyboardClick(event))}
-                    title="Remove team"
-                    aria-label={nameWithDetail("Remove", team)}
-                  >
-                    ×
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {outcome !== undefined && (
-        <div role="status">{outcome ? <p className="team-assign-outcome">{outcome}</p> : null}</div>
-      )}
-
-      <div className="search-inputs-section">
-        <h4>Add Referee Teams</h4>
-        <div className="search-input-row">
-          <div className="input-container">
-            <input
-              ref={searchRef}
-              type="text"
-              placeholder="Search teams..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="referee-search-input"
-              aria-label="Search referee teams"
-            />
-          </div>
-          <div className="suggestions-container">{renderList()}</div>
-        </div>
-      </div>
-    </div>
+    <section className="ref-sheet__section" aria-labelledby={headingId}>
+      <h3 id={headingId} className="ref-sheet__label">
+        {category ? `Referee teams · ${category}` : "Referee teams"}
+      </h3>
+      {body}
+    </section>
   );
 };
 

@@ -1,0 +1,265 @@
+@use "../../../../styles/touch" as *;
+
+// The match sheet (mockup match-flow-v2.html phone 2). The Drawer supplies the sheet / right panel and close button.
+
+// The title row is the eyebrow: status tag + "Court · time · category · round".
+.match-sheet .drawer__title {
+  font-family: var(--font-body);
+  font-size: inherit;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.3;
+  text-transform: none;
+}
+
+.match-sheet__eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-height: 34px;
+}
+
+.match-sheet__where,
+.match-sheet__label,
+.match-sheet__duration {
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.match-sheet__teams {
+  border: 1px solid var(--line);
+}
+
+.match-sheet__team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+
+  & + & {
+    border-top: 1px solid var(--line);
+  }
+}
+
+.match-sheet__team--lose {
+  color: var(--muted);
+}
+
+.match-sheet__who {
+  flex: 1;
+  min-width: 0;
+}
+
+.match-sheet__name {
+  display: block;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-sheet__players {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.match-sheet__scores {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: 12px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.match-sheet__score--done {
+  color: var(--muted);
+}
+
+.match-sheet__score--current {
+  color: var(--live);
+}
+
+// A finished match: the set scores quiet, the sets won after a rule.
+.match-sheet__score--final {
+  color: var(--muted);
+  font-size: 19px;
+}
+
+.match-sheet__score--won {
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+  color: inherit;
+}
+
+// Americano/Mexicano points (or a result without sets): the one score is the result, in full colour.
+.match-sheet__score--result {
+  color: inherit;
+}
+
+.match-sheet__duration {
+  margin: 8px 0 0;
+}
+
+.match-sheet__score-btn {
+  margin-top: 12px;
+}
+
+.match-sheet__tiles {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.match-sheet__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 64px;
+  margin: 0;
+  padding: 0 4px;
+  border: 0;
+  clip-path: var(--clip-cut);
+  background: var(--spark-tint);
+  color: var(--spark-text);
+  font-family: var(--font-label);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, color 0.15s ease;
+
+  .ui-icon {
+    stroke-width: 2;
+  }
+
+  &:hover {
+    background: var(--spark);
+    color: var(--on-spark);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px currentColor;
+  }
+}
+
+.match-sheet__people {
+  margin-top: 16px;
+}
+
+.match-sheet__label {
+  margin: 0 0 6px;
+}
+
+.match-sheet__none {
+  margin: 0;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.match-sheet__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.match-sheet__person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.match-sheet__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  clip-path: var(--clip-slant-sm);
+  background: var(--alt);
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 800;
+}
+
+.match-sheet__avatar--team {
+  background: var(--clash-blue-tint);
+  color: var(--clash-blue);
+}
+
+.match-sheet__person-who {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+
+  small {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+  }
+}
+
+.match-sheet__round {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--ink);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--spark);
+    outline-offset: -2px;
+  }
+}
+
+@include touch {
+  .match-sheet__round {
+    width: $touch-min;
+    height: $touch-min;
+  }
+}
+
+.match-sheet__round--wa {
+  color: var(--whatsapp);
+
+  &:hover {
+    color: var(--whatsapp);
+    opacity: 0.8;
+  }
+}

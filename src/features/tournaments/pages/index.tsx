@@ -1,323 +1,191 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tournament } from "../types";
 import TournamentCard from "../components/TournamentCard";
-import { useNavigate } from "react-router-dom";
+import AccountMenu from "../components/AccountMenu";
 import { useTournaments } from "../hooks";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSearch, faTimes, faExclamationCircle, faCircle } from "@fortawesome/free-solid-svg-icons";
+import { tournamentGroup, TournamentGroup } from "../utils/grouping";
+import { BrandLogo, Button, Chip, EmptyState, PhotoHeader, SearchInput, Segmented, SkeletonRows, Tag } from "../../../ui";
 import "./styles.scss";
+
+type Group = TournamentGroup;
+
+const GROUPS: { value: Group; label: string }[] = [
+  { value: "active", label: "Live" },
+  { value: "upcoming", label: "Upcoming" },
+  { value: "past", label: "Past" },
+];
+
+const sportOf = (tournament: Tournament): string | undefined => tournament.sport || tournament.type || undefined;
+
+// Live and upcoming tournaments soonest first, past ones latest first.
+const byDate = (group: Group) => (a: Tournament, b: Tournament) => {
+  const dateA = new Date(a.startDate).getTime();
+  const dateB = new Date(b.startDate).getTime();
+  return group === "past" ? dateB - dateA : dateA - dateB;
+};
 
 const Tournaments = () => {
   const navigate = useNavigate();
   const { data: tournaments = [], isLoading: loading, error, refetch } = useTournaments();
 
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
-    active: false,
-    upcoming: true,
-    past: true,
-  });
-
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
+  // The tab the user picked; until then it's Live when there are live tournaments, else the first with any.
+  const [pickedGroup, setPickedGroup] = useState<Group | null>(null);
 
   // Get unique sports (or types) from all tournaments
-  const tournamentSports = Array.from(
-    new Set(tournaments.filter((t) => t.sport || (t as any).type).map((t) => (t.sport || (t as any).type) as string)),
-  ).sort();
+  const tournamentSports = useMemo(
+    () => Array.from(new Set(tournaments.map(sportOf).filter((sport): sport is string => !!sport))).sort(),
+    [tournaments]
+  );
 
   const handleTournamentSelect = (tournament: Tournament) => {
-    navigate(`/tournaments/${tournament.id}/matches?name=${tournament.name}`);
+    navigate(`/tournaments/${tournament.id}/matches?${new URLSearchParams({ name: tournament.name }).toString()}`);
   };
 
-  const toggleSection = (status: string) => {
-    setCollapsedSections((prev) => ({
-      ...prev,
-      [status]: !prev[status],
-    }));
-  };
-
-  // Filter tournaments based on search query and sport/type filter (applies to all sections)
+  // Filter tournaments based on search query and sport/type filter (applies to all tabs)
   const filteredTournaments = tournaments.filter((tournament) => {
-    // First apply search filter
     const matchesSearch = tournament.name.toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
-
-    // Apply sport/type filter across all tournaments when one or more sports are selected
     if (selectedSports.length > 0) {
-      return selectedSports.includes((tournament.sport || (tournament as any).type) as string);
+      return selectedSports.includes(sportOf(tournament) as string);
     }
-
     return true;
   });
 
-  // Sort tournaments by date based on status
-  const sortTournamentsByDate = (tournaments: Tournament[], status: string) => {
-    return tournaments.sort((a, b) => {
-      const dateA = new Date(a.startDate).getTime();
-      const dateB = new Date(b.startDate).getTime();
-
-      if (status === "upcoming" || status === "active") {
-        // For upcoming and active tournaments, sort by earliest first
-        return dateA - dateB;
-      } else {
-        // For past tournaments, sort by latest first
-        return dateB - dateA;
-      }
-    });
-  };
-
-  // Group tournaments by status
-  const groupedTournaments = filteredTournaments.reduce(
-    (acc, tournament) => {
-      const status = tournament.status;
-      if (!acc[status]) {
-        acc[status] = [];
-      }
-      acc[status].push(tournament);
-      return acc;
-    },
-    {} as Record<string, Tournament[]>,
-  );
-
-  // Apply sorting to each status group
-  Object.keys(groupedTournaments).forEach((status) => {
-    groupedTournaments[status] = sortTournamentsByDate(groupedTournaments[status], status);
+  const grouped: Record<Group, Tournament[]> = { active: [], upcoming: [], past: [] };
+  filteredTournaments.forEach((tournament) => {
+    const group = tournamentGroup(tournament.status);
+    if (group) grouped[group].push(tournament);
   });
+  GROUPS.forEach(({ value }) => grouped[value].sort(byDate(value)));
 
-  // Auto-expand sections that contain search results or when sport filters are active
+  const firstWithResults = GROUPS.find(({ value }) => grouped[value].length > 0)?.value;
+  const group: Group = pickedGroup ?? (grouped.active.length > 0 ? "active" : firstWithResults ?? "upcoming");
+
+  // Like the old sections that opened to show search results: when a search or a sport leaves the open tab empty,
+  // switch to the first tab with results.
   useEffect(() => {
-    if ((searchQuery && filteredTournaments.length > 0) || selectedSports.length > 0) {
-      const sectionsToExpand: string[] = [];
-
-      // Check which sections have matching tournaments
-      Object.keys(groupedTournaments).forEach((status) => {
-        if (groupedTournaments[status].length > 0) {
-          sectionsToExpand.push(status);
-        }
-      });
-
-      // Expand all sections that have results
-      if (sectionsToExpand.length > 0) {
-        setCollapsedSections((prev) => {
-          const newState = { ...prev };
-          let hasChanges = false;
-
-          sectionsToExpand.forEach((status) => {
-            if (prev[status] !== false) {
-              newState[status] = false; // false means expanded
-              hasChanges = true;
-            }
-          });
-
-          return hasChanges ? newState : prev;
-        });
-      }
-    }
-  }, [searchQuery, filteredTournaments.length, selectedSports.length]);
+    if (pickedGroup && grouped[pickedGroup].length === 0 && firstWithResults) setPickedGroup(firstWithResults);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, selectedSports]);
 
   const toggleSport = (sport: string) => {
     setSelectedSports((prev) => (prev.includes(sport) ? prev.filter((s) => s !== sport) : [...prev, sport]));
   };
 
-  // (removed: per-section expand effect) handled by combined auto-expand effect above
+  const groupLabel = GROUPS.find(({ value }) => value === group)?.label ?? "";
 
-  // Define status order and labels
-  const statusConfig = {
-    active: { label: "Live Tournaments" },
-    upcoming: { label: "Upcoming Tournaments" },
-    past: { label: "Past Tournaments" },
-  };
+  const renderBody = () => {
+    if (loading) {
+      return (
+        <div className="tournaments-page__state">
+          <SkeletonRows rows={3} />
+        </div>
+      );
+    }
 
-  const statusOrder = ["active", "upcoming", "past"];
+    if (error) {
+      return (
+        <div className="tournaments-page__state">
+          <EmptyState
+            icon="alert"
+            title="Failed to load tournaments"
+            body="Please try again."
+            action={<Button onClick={() => refetch()}>Retry</Button>}
+          />
+        </div>
+      );
+    }
 
-  if (loading) {
+    if (tournaments.length === 0) {
+      return (
+        <div className="tournaments-page__state">
+          <EmptyState
+            icon="calendar"
+            title="No assigned tournaments"
+            body="You don't have any assigned matches in tournaments yet. Check back when you're assigned to referee matches."
+          />
+        </div>
+      );
+    }
+
     return (
-      <div className={`tournament-list`}>
-        <div className="loading-state">
-          <div className="loading-spinner"></div>
-          <p>Loading tournaments...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={`tournament-list`}>
-        <div className="error-state">
-          <div className="error-icon">
-            <FontAwesomeIcon icon={faExclamationCircle} />
-          </div>
-          <p>Failed to load tournaments. Please try again.</p>
-          <button className="btn btn-primary" onClick={() => refetch()}>
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (tournaments.length === 0) {
-    return (
-      <div className={`tournament-list`}>
-        <div className="empty-state">
-          <div className="empty-icon">
-            <FontAwesomeIcon icon={faCircle} />
-          </div>
-          <p>No assigned tournaments</p>
-          <p className="empty-subtitle">
-            You don't have any assigned matches in tournaments yet. Check back when you're assigned to referee matches.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (searchQuery && filteredTournaments.length === 0) {
-    return (
-      <div className={`tournament-list`}>
-        <div className="tournament-header">
-          <div className="header-content">
-            <div className="title-section">
-              <h1 className="page-title">Tournaments</h1>
-              <p className="page-subtitle">Browse and manage all tournaments</p>
-            </div>
-          </div>
+      <>
+        <div className="tournaments-page__search">
+          <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search tournaments by name" />
         </div>
 
-        <div className="search-section">
-          <div className="search-bar">
-            <div className="search-input-container">
-              <div className="search-icon">
-                <FontAwesomeIcon icon={faSearch} />
-              </div>
-              <input
-                type="text"
-                placeholder="Search tournaments by name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input"
-              />
-              {searchQuery && (
-                <button className="clear-search" onClick={() => setSearchQuery("")} title="Clear search">
-                  <FontAwesomeIcon icon={faTimes} />
-                </button>
-              )}
-            </div>
-          </div>
+        <div className="tournaments-page__seg">
+          <Segmented
+            ariaLabel="Tournaments"
+            options={GROUPS.map(({ value, label }) => ({ value, label, count: grouped[value].length }))}
+            value={group}
+            onChange={(value) => setPickedGroup(value as Group)}
+          />
         </div>
 
-        <div className="empty-state">
-          <div className="empty-icon">
-            <FontAwesomeIcon icon={faSearch} />
-          </div>
-          <p>No tournaments found matching "{searchQuery}"</p>
-          <p className="empty-subtitle">Try adjusting your search terms</p>
-          <button className="btn btn-primary" onClick={() => setSearchQuery("")}>
-            Clear Search
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`tournament-list`}>
-      <div className="tournament-header">
-        <div className="header-content">
-          <div className="title-section">
-            <h1 className="page-title">Tournaments</h1>
-            <p className="page-subtitle">Browse and manage all tournaments</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="search-section">
-        <div className="search-bar">
-          <div className="search-input-container">
-            <div className="search-icon">
-              <FontAwesomeIcon icon={faSearch} />
-            </div>
-            <input
-              type="text"
-              placeholder="Search tournaments by name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
-            {searchQuery && (
-              <button className="clear-search" onClick={() => setSearchQuery("")} title="Clear search">
-                <FontAwesomeIcon icon={faTimes} />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Sports filter (applies across all sections) */}
-      {tournamentSports.length > 0 && (
-        <div className="sports-filter-top">
-          <div className="sport-pills">
-            <button
-              type="button"
-              className={`pill ${selectedSports.length === 0 ? "active" : ""}`}
-              onClick={() => setSelectedSports([])}
-            >
-              All Sports
-            </button>
+        {tournamentSports.length > 0 && (
+          <div className="tournaments-page__chips" role="group" aria-label="Sports">
+            <Chip className="ui-chip--card" selected={selectedSports.length === 0} onClick={() => setSelectedSports([])}>
+              All
+            </Chip>
             {tournamentSports.map((sport) => (
-              <button
+              <Chip
                 key={sport}
-                type="button"
-                className={`pill ${selectedSports.includes(sport) ? "active" : ""}`}
+                className="ui-chip--card"
+                selected={selectedSports.includes(sport)}
                 onClick={() => toggleSport(sport)}
               >
                 {sport}
-              </button>
+              </Chip>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="tournament-sections">
-        {statusOrder.map((status) => {
-          const statusTournaments = groupedTournaments[status] || [];
-          if (statusTournaments.length === 0) return null;
+        {searchQuery && filteredTournaments.length === 0 ? (
+          <div className="tournaments-page__state">
+            <EmptyState
+              icon="search"
+              title={`No tournaments found matching "${searchQuery}"`}
+              body="Try adjusting your search terms"
+              action={<Button onClick={() => setSearchQuery("")}>Clear Search</Button>}
+            />
+          </div>
+        ) : grouped[group].length === 0 ? (
+          <div className="tournaments-page__state">
+            <EmptyState icon="calendar" title={`No ${groupLabel.toLowerCase()} tournaments`} />
+          </div>
+        ) : (
+          <div className="tournaments-page__grid">
+            {grouped[group].map((tournament) => (
+              <TournamentCard key={tournament.id} tournament={tournament} onSelect={handleTournamentSelect} />
+            ))}
+          </div>
+        )}
+      </>
+    );
+  };
 
-          const isCollapsed = collapsedSections[status] ?? false;
-
-          return (
-            <div key={status} className="tournament-section">
-              <div className="section-header" onClick={() => toggleSection(status)}>
-                <div className="section-title-group">
-                  <h2 className="section-title">{statusConfig[status as keyof typeof statusConfig].label}</h2>
-                  <div className="section-count">{statusTournaments.length}</div>
-                  <div className={`toggle-icon ${isCollapsed ? "collapsed" : "expanded"}`}>▼</div>
-                </div>
-                <div className="section-divider"></div>
-              </div>
-
-              <div
-                className={`tournament-grid ${isCollapsed ? "collapsed" : "expanded"}`}
-                style={{
-                  maxHeight: isCollapsed ? "0px" : "none",
-                  opacity: isCollapsed ? 0 : 1,
-                  padding: isCollapsed ? "0" : "12px 0",
-                }}
-              >
-                {statusTournaments.map((tournament) => (
-                  <TournamentCard
-                    key={tournament.id}
-                    tournament={tournament}
-                    onSelect={handleTournamentSelect}
-                    showActions={false}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })}
+  return (
+    <div className="tournaments-page">
+      {/* Over the photo, outside its clipped frame so the account panel can drop below it. */}
+      <div className="tournaments-page__topbar">
+        <BrandLogo className="tournaments-page__logo" />
+        <AccountMenu />
       </div>
+
+      <PhotoHeader className="tournaments-page__top">
+        <div className="tournaments-page__hero">
+          <Tag tone="orange" className="tournaments-page__eyebrow">
+            Referee portal
+          </Tag>
+          <h1 className="tournaments-page__title">Tournaments</h1>
+        </div>
+      </PhotoHeader>
+
+      <main className="tournaments-page__body">{renderBody()}</main>
     </div>
   );
 };

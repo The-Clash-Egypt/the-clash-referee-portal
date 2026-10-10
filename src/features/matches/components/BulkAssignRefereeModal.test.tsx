@@ -60,7 +60,7 @@ it("opens as a drawer and slides away once closed", () => {
   const props = handlers();
   const { rerender } = render(<BulkAssignRefereeModal isOpen selectedMatches={matches} {...props} />);
 
-  expect(screen.getByRole("dialog", { name: "Bulk Assign Referees" })).toHaveTextContent("Selected Matches (2)");
+  expect(screen.getByRole("dialog", { name: "Referees · 2 matches" })).toHaveTextContent("2 matches");
 
   rerender(<BulkAssignRefereeModal isOpen={false} selectedMatches={matches} {...props} />);
   act(() => {
@@ -74,11 +74,11 @@ it("offers the teams for every selected match, with their category when the matc
 
   expect(teamOptions).toHaveBeenCalledWith(["m1", "m2", "m3"], true);
   // The detail line is part of each option's name, so same-named teams in two categories stay apart.
-  expect(screen.getByRole("button", { name: "Add Falcons, Men's Open · eligible for 1 of 3 matches" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Add Waves, Men's Open · eligible for 2 of 3 matches" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Add Dunes, Women's Open · eligible for 1 of 3 matches" })).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Falcons, Men's Open · eligible for 1 of 3 matches" })).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Waves, Men's Open · eligible for 2 of 3 matches" })).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Dunes, Women's Open · eligible for 1 of 3 matches" })).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole("button", { name: /^Add Falcons/ }));
+  fireEvent.click(screen.getByRole("checkbox", { name: /^Falcons/ }));
   expect(screen.getByRole("button", { name: "Remove Falcons, Men's Open · eligible for 1 of 3 matches" })).toBeInTheDocument();
 });
 
@@ -86,8 +86,8 @@ it("leaves the category off when every selected match shares it", () => {
   teamOptions.mockReturnValue({ data: [options[1]], isLoading: false, isError: false });
   render(<BulkAssignRefereeModal isOpen selectedMatches={acrossCategories.slice(0, 2)} {...handlers()} />);
 
-  expect(screen.getByRole("button", { name: "Add Waves" })).not.toHaveTextContent("Men's Open");
-  expect(screen.getByRole("button", { name: "Add Waves" })).not.toHaveTextContent("eligible");
+  expect(screen.getByRole("checkbox", { name: "Waves" }).closest("label")).not.toHaveTextContent("Men's Open");
+  expect(screen.getByRole("checkbox", { name: "Waves" }).closest("label")).not.toHaveTextContent("eligible");
 });
 
 it("assigns the picked teams in one request and reports what was skipped", async () => {
@@ -110,8 +110,8 @@ it("assigns the picked teams in one request and reports what was skipped", async
   const status = screen.getByRole("status");
   expect(status).toBeEmptyDOMElement();
 
-  fireEvent.click(screen.getByRole("button", { name: /^Add Falcons/ }));
-  fireEvent.click(screen.getByRole("button", { name: /^Add Waves/ }));
+  fireEvent.click(screen.getByRole("checkbox", { name: /^Falcons/ }));
+  fireEvent.click(screen.getByRole("checkbox", { name: /^Waves/ }));
   // Neither team fits all three matches, so the button doesn't promise them all.
   expect(assignButton()).toHaveTextContent(/^Assign 2 Teams$/);
   fireEvent.click(assignButton()!);
@@ -136,8 +136,8 @@ it("asks the page to keep the drawer open when referees go on with teams, and co
   ]);
   render(<BulkAssignRefereeModal isOpen selectedMatches={matches} {...props} />);
 
-  fireEvent.click(screen.getByRole("button", { name: /^Add Waves/ }));
-  fireEvent.change(screen.getByPlaceholderText("Search by name or email..."), { target: { value: "mo" } });
+  fireEvent.click(screen.getByRole("checkbox", { name: /^Waves/ }));
+  fireEvent.change(screen.getByPlaceholderText("Search name, email or team"), { target: { value: "mo" } });
   fireEvent.click(await screen.findByText("Mona Salah"));
   expect(assignButton()).toHaveTextContent("Assign 1 Team, 1 Referee to 2 Matches");
   fireEvent.click(assignButton()!);
@@ -147,7 +147,7 @@ it("asks the page to keep the drawer open when referees go on with teams, and co
   await waitFor(() =>
     expect(screen.getByRole("status")).toHaveTextContent(/^Assigned to 2 matches · 1 referee assigned to 2 matches$/)
   );
-  expect(screen.queryByText("Referees to Assign (1)")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Remove Mona Salah" })).not.toBeInTheDocument();
 });
 
 it("keeps the referee picks, and confirms only the teams, when the page reports the referees failed", async () => {
@@ -159,21 +159,21 @@ it("keeps the referee picks, and confirms only the teams, when the page reports 
   props.onAssign.mockResolvedValue(false);
   render(<BulkAssignRefereeModal isOpen selectedMatches={matches} {...props} />);
 
-  fireEvent.click(screen.getByRole("button", { name: /^Add Waves/ }));
-  fireEvent.change(screen.getByPlaceholderText("Search by name or email..."), { target: { value: "mo" } });
+  fireEvent.click(screen.getByRole("checkbox", { name: /^Waves/ }));
+  fireEvent.change(screen.getByPlaceholderText("Search name, email or team"), { target: { value: "mo" } });
   fireEvent.click(await screen.findByText("Mona Salah"));
   fireEvent.click(assignButton()!);
 
   await waitFor(() => expect(assignButton()).toHaveTextContent("Assign 1 Referee to 2 Matches"));
   expect(screen.getByRole("status")).toHaveTextContent(/^Assigned to 2 matches$/);
-  expect(screen.getByText("Referees to Assign (1)")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Remove Mona Salah" })).toBeInTheDocument();
 });
 
 it("labels a mixed pick so only the referees are promised every match", async () => {
   render(<BulkAssignRefereeModal isOpen selectedMatches={acrossCategories} {...handlers()} />);
 
-  fireEvent.click(screen.getByRole("button", { name: /^Add Waves/ }));
-  fireEvent.change(screen.getByPlaceholderText("Search by name or email..."), { target: { value: "mo" } });
+  fireEvent.click(screen.getByRole("checkbox", { name: /^Waves/ }));
+  fireEvent.change(screen.getByPlaceholderText("Search name, email or team"), { target: { value: "mo" } });
   fireEvent.click(await screen.findByText("Mona Salah"));
 
   expect(assignButton()).toHaveTextContent("Assign 1 Team · 1 Referee to 3 Matches");
@@ -183,11 +183,42 @@ it("hands referees alone to the page without keepOpen, and clears the picks", as
   const props = handlers();
   render(<BulkAssignRefereeModal isOpen selectedMatches={matches} {...props} />);
 
-  fireEvent.change(screen.getByPlaceholderText("Search by name or email..."), { target: { value: "mo" } });
+  fireEvent.change(screen.getByPlaceholderText("Search name, email or team"), { target: { value: "mo" } });
   fireEvent.click(await screen.findByText("Mona Salah"));
   fireEvent.click(assignButton()!);
 
   await waitFor(() => expect(props.onAssign).toHaveBeenCalledWith(["u-mona"], ["m1", "m2"], false));
   expect(props.onAssignTeams).not.toHaveBeenCalled();
   await waitFor(() => expect(assignButton()).not.toBeInTheDocument());
+});
+
+// Review I2: "Done" on a phone reads as save-and-close, so it must not drop what was picked.
+it("saves the picks waiting when Done is tapped, staying open on the teams' outcome; Done then closes", async () => {
+  const props = handlers();
+  props.onAssignTeams.mockResolvedValue([
+    { matchId: "m1", assignedTeamIds: ["t-waves"], unchangedTeamIds: [], skipped: [] },
+    { matchId: "m2", assignedTeamIds: ["t-waves"], unchangedTeamIds: [], skipped: [] },
+  ]);
+  render(<BulkAssignRefereeModal isOpen selectedMatches={matches} {...props} />);
+
+  fireEvent.click(screen.getByRole("checkbox", { name: /^Waves/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/^Assigned to 2 matches$/));
+  expect(props.onAssignTeams).toHaveBeenCalledWith(["t-waves"], ["m1", "m2"]);
+  expect(props.onClose).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  expect(props.onClose).toHaveBeenCalledTimes(1);
+});
+
+it("hands referees picked alone to the page on Done (which closes the sheet)", async () => {
+  const props = handlers();
+  render(<BulkAssignRefereeModal isOpen selectedMatches={matches} {...props} />);
+
+  fireEvent.change(screen.getByPlaceholderText("Search name, email or team"), { target: { value: "mo" } });
+  fireEvent.click(await screen.findByText("Mona Salah"));
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+
+  await waitFor(() => expect(props.onAssign).toHaveBeenCalledWith(["u-mona"], ["m1", "m2"], false));
 });

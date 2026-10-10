@@ -3,6 +3,9 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import Drawer, { DRAWER_EXIT_MS } from "./Drawer";
 
+/** Whether the page is held still (no scrolling behind the sheet). */
+const pageHeld = () => document.body.style.overflow === "hidden";
+
 afterEach(() => {
   jest.useRealTimers();
   document.body.style.overflow = "";
@@ -98,10 +101,71 @@ it("locks page scroll while open and restores it afterwards", () => {
   expect(document.body.style.overflow).toBe("hidden");
 
   rerender(<Drawer isOpen={false} onClose={jest.fn()} title="Edit match">x</Drawer>);
+  expect(document.body.style.overflow).toBe("hidden"); // still sliding out
   act(() => {
     jest.advanceTimersByTime(DRAWER_EXIT_MS);
   });
   expect(document.body.style.overflow).toBe("auto");
+});
+
+// Review C1: the match sheet's Score, Referee, QR code and Edit close it and open their own sheet in one render.
+it("hands the page lock and keyboard focus on when a sheet opens in the place of one sliding out", () => {
+  jest.useFakeTimers();
+  const Harness: React.FC<{ open: "match" | "action" | null }> = ({ open }) => (
+    <>
+      <button>Row</button>
+      <Drawer isOpen={open === "match"} onClose={jest.fn()} title="Match">
+        <button>Referee</button>
+      </Drawer>
+      <Drawer isOpen={open === "action"} onClose={jest.fn()} title="Referees">
+        x
+      </Drawer>
+    </>
+  );
+  const { rerender } = render(<Harness open={null} />);
+  screen.getByRole("button", { name: "Row" }).focus();
+  rerender(<Harness open="match" />);
+  screen.getByRole("button", { name: "Referee" }).focus();
+
+  rerender(<Harness open="action" />);
+  act(() => {
+    jest.advanceTimersByTime(DRAWER_EXIT_MS);
+  });
+  // The match sheet has slid out; the page is still held and focus stays in the open sheet.
+  expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  expect(pageHeld()).toBe(true);
+  expect(screen.getByRole("dialog", { name: "Referees" })).toHaveFocus();
+
+  rerender(<Harness open={null} />);
+  act(() => {
+    jest.advanceTimersByTime(DRAWER_EXIT_MS);
+  });
+  // Both gone: the page scrolls again, and focus is back on the row the first sheet came from.
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(pageHeld()).toBe(false);
+  expect(screen.getByRole("button", { name: "Row" })).toHaveFocus();
+});
+
+it("keeps the page held until the last of several open drawers closes", () => {
+  jest.useFakeTimers();
+  const Two: React.FC<{ first: boolean; second: boolean }> = ({ first, second }) => (
+    <>
+      <Drawer isOpen={first} onClose={jest.fn()} title="First">x</Drawer>
+      <Drawer isOpen={second} onClose={jest.fn()} title="Second">y</Drawer>
+    </>
+  );
+  const { rerender } = render(<Two first second />);
+  rerender(<Two first={false} second />);
+  act(() => {
+    jest.advanceTimersByTime(DRAWER_EXIT_MS);
+  });
+  expect(pageHeld()).toBe(true);
+
+  rerender(<Two first={false} second={false} />);
+  act(() => {
+    jest.advanceTimersByTime(DRAWER_EXIT_MS);
+  });
+  expect(pageHeld()).toBe(false);
 });
 
 it("moves focus into the drawer and hands it back on close", () => {
@@ -128,4 +192,37 @@ it("moves focus into the drawer and hands it back on close", () => {
 it("offers a wide size for big sheets", () => {
   open({ size: "lg" });
   expect(screen.getByRole("dialog")).toHaveClass("drawer--lg");
+});
+
+describe("on phones (below 768px)", () => {
+  const original = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(max-width: 767px)",
+      media: query,
+      onchange: null,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => {
+    window.matchMedia = original;
+  });
+
+  it("opens as a bottom sheet with a grab handle", () => {
+    open({ subtitle: "Court 1" });
+    const sheet = screen.getByRole("dialog", { name: "Edit match" });
+    expect(sheet).toHaveClass("drawer--sheet");
+    // eslint-disable-next-line testing-library/no-node-access -- the handle is decoration, hidden from assistive tech
+    expect(sheet.querySelector(".drawer__handle")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText("Body text")).toBeInTheDocument();
+  });
+});
+
+it("stays a right-hand panel from 768px", () => {
+  open();
+  expect(screen.getByRole("dialog")).not.toHaveClass("drawer--sheet");
 });

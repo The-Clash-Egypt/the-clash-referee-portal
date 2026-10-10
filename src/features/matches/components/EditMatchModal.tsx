@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Match, TeamMember } from "../types/match";
+import { Match, TeamMember, sideDisplayName } from "../types/match";
 import Drawer from "../../shared/components/Drawer";
+import { Button } from "../../../ui/Button";
+import { Icon } from "../../../ui/Icon";
+import { Tag } from "../../../ui/Tag";
+import "./SheetForm.scss";
 import "./EditMatchModal.scss";
 
 // Helper function to convert date to local datetime-local format
@@ -116,14 +120,14 @@ const EditMatchModal: React.FC<EditMatchModalProps> = ({
     const hasMore = members.length > 3;
 
     return (
-      <div className="team-members-display">
+      <small className="team-members-display">
         {displayMembers.map((member) => (
           <span key={member.id} className="member-name">
             {member.firstName} {member.lastName}
             {hasMore && member.isCaptain && <span className="captain-badge">(C)</span>}
           </span>
         ))}
-      </div>
+      </small>
     );
   };
 
@@ -134,37 +138,38 @@ const EditMatchModal: React.FC<EditMatchModalProps> = ({
       onClose={handleClose}
       title="Edit Match Details"
       size="md"
-      className="edit-match-drawer"
+      className="edit-match-drawer sheet-form"
       footer={
-        <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={handleClose} disabled={loading}>
+        <div className="drawer__actions">
+          <Button variant="ghost" size="lg" onClick={handleClose} disabled={loading}>
             Cancel
-          </button>
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
+          </Button>
+          <Button size="lg" onClick={handleSubmit} loading={loading}>
             {loading ? "Saving..." : "Save Changes"}
-          </button>
+          </Button>
         </div>
       }
     >
       {match ? (
         <>
-          {/* Teams Display */}
+          {/* Teams: home with the orange edge, away with the blue one (the scoreboard's colours). */}
           <div className="teams-section">
             <div className="teams-row">
               <div className="team-card home">
-                <span className="team-name">{match.homeTeamName || "TBD"}</span>
+                <span className="team-name">{sideDisplayName(match.homeTeamName, match.homeTeam2Name)}</span>
                 {renderTeamMembers(match.homeTeamMembers)}
               </div>
-              <span className="vs-text">vs</span>
               <div className="team-card away">
-                <span className="team-name">{match.awayTeamName || "TBD"}</span>
+                <span className="team-name">{sideDisplayName(match.awayTeamName, match.awayTeam2Name)}</span>
                 {renderTeamMembers(match.awayTeamMembers)}
               </div>
             </div>
-            <div className="match-info-badges">
-              {match.format && <span className="format-badge">{match.format}</span>}
-              {match.round && <span className="round-badge">{match.round}</span>}
-            </div>
+            {match.format || match.round ? (
+              <div className="match-info-badges">
+                {match.format && <Tag tone="grey">{match.format}</Tag>}
+                {match.round && <Tag tone="grey">{match.round}</Tag>}
+              </div>
+            ) : null}
           </div>
 
           <div className="form-group">
@@ -200,17 +205,20 @@ const EditMatchModal: React.FC<EditMatchModalProps> = ({
 
           <div className="form-group">
             <label htmlFor="bestOf">Best Of</label>
-            <select
-              id="bestOf"
-              value={bestOf}
-              onChange={(e) => setBestOf(Number(e.target.value))}
-              className="form-input"
-            >
-              <option value={1}>Best of 1</option>
-              <option value={3}>Best of 3</option>
-              <option value={5}>Best of 5</option>
-              <option value={7}>Best of 7</option>
-            </select>
+            <div className="sheet-select">
+              <select
+                id="bestOf"
+                value={bestOf}
+                onChange={(e) => setBestOf(Number(e.target.value))}
+                className="form-input"
+              >
+                <option value={1}>Best of 1</option>
+                <option value={3}>Best of 3</option>
+                <option value={5}>Best of 5</option>
+                <option value={7}>Best of 7</option>
+              </select>
+              <Icon name="chevron-down" size={14} className="sheet-select__icon" />
+            </div>
             <small className="form-hint">Number of games in the match</small>
           </div>
 

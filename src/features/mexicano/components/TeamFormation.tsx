@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon } from "../../../ui/Icon";
 import { UnpairedPlayer } from "../types";
 
 /** "Needs a partner" for pairs, "Needs a team" for bigger teams. */
@@ -16,7 +17,7 @@ interface UnpairedListProps {
   onToggle: (memberId: string) => void;
 }
 
-/** The players not in a team yet, as a grid of big tap targets (spec 2026-10-10). */
+/** The players not in a team yet, as a grid of big tap targets (spec 2026-10-10); a pick turns orange. */
 export const UnpairedList: React.FC<UnpairedListProps> = ({
   unitSize,
   players,
@@ -42,7 +43,8 @@ export const UnpairedList: React.FC<UnpairedListProps> = ({
               disabled={disabled}
               onClick={() => onToggle(p.memberId)}
             >
-              {p.name}
+              <span className="mexicano-runner__pick-name">{p.name}</span>
+              {picked.includes(p.memberId) && <Icon name="check" size={16} />}
             </button>
           </li>
         ))}
@@ -72,7 +74,7 @@ export const NewTeamTray: React.FC<NewTeamTrayProps> = ({ unitSize, picked, onRe
           aria-label={`Remove ${p.name}`}
           onClick={() => onRemove(p.memberId)}
         >
-          {p.name} <span aria-hidden="true">×</span>
+          {p.name} <Icon name="close" size={12} />
         </button>
       ))}
       <span className="mexicano-runner__tray-more">+ {missing} more</span>

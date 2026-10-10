@@ -3,25 +3,19 @@
   display: flex;
   flex-direction: column;
 
+  // Each screen brings its own top: photo tops (Log in, Tournaments) or the tournament app bar.
   .app-main {
     flex: 1;
-    background: #f8f9fa;
+    background: var(--page);
   }
+}
 
-  /* Update dashboard containers to account for navbar */
-  .matches-dashboard,
-  .admin-dashboard {
-    min-height: calc(100vh - 64px);
-    background: #f8f9fa;
-    padding: 24px;
-
-    @media (max-width: 768px) {
-      min-height: calc(100vh - 56px);
-      padding: 16px;
-    }
-
-    @media (max-width: 480px) {
-      padding: 12px;
-    }
-  }
+// While the signed-in user loads, before any screen: the brand spinner on the page grey.
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--page);
 }
