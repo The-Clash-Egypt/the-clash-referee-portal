@@ -14,11 +14,12 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Tournaments from "./features/tournaments/pages";
 import TournamentLayout from "./features/tournament-shell/TournamentLayout";
 import MorePage from "./features/tournament-shell/MorePage";
-import { CourtsTab, MexicanoTab } from "./features/tournament-shell/TournamentTabs";
+import { CourtsTab } from "./features/tournament-shell/TournamentTabs";
 import { FullAccessOnly, TabRedirect } from "./features/tournament-shell/guards";
 import MatchesPage from "./features/matches/pages/MatchesPage";
 import PrintableViewPage from "./features/matches/pages/PrintableViewPage";
 import MexicanoPage from "./features/mexicano/pages/MexicanoPage";
+import MexicanoStagesPage from "./features/mexicano/pages/MexicanoStagesPage";
 import GuestVenuePage from "./features/venue/pages/GuestVenuePage";
 import GuestMatchPage from "./features/matches/pages/GuestMatchPage";
 
@@ -80,7 +81,7 @@ const App: React.FC = () => {
                           </FullAccessOnly>
                         }
                       />
-                      <Route path="mexicano" element={<MexicanoTab />} />
+                      <Route path="mexicano" element={<MexicanoStagesPage />} />
                       <Route path="more" element={<MorePage />} />
                     </Route>
                     {/* Focused screens, outside the tabs */}

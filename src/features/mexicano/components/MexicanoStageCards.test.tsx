@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import MexicanoStageCards from "./MexicanoStageCards";
 import { getMexicanoSession, getMexicanoStages } from "../api/mexicano";
@@ -34,7 +34,10 @@ it("shows a card per Mexicano stage with where it stands, and opens it on tap", 
   render(<MexicanoStageCards tournamentId="t1" onOpen={onOpen} />);
 
   expect(await screen.findByText("Men's Open")).toBeInTheDocument();
-  expect(screen.getByText("Evening · Round 3 of 8 · Ready for next round")).toBeInTheDocument();
+  const evening = screen.getByRole("button", { name: /Men's Open/ });
+  expect(within(evening).getByText("Evening")).toBeInTheDocument();
+  expect(within(evening).getByText("Round 3 of 8")).toBeInTheDocument();
+  expect(within(evening).getByText("Ready for next round")).toBeInTheDocument();
   expect(screen.getByText("Tap to open")).toBeInTheDocument(); // its session didn't load: still reachable
   fireEvent.click(screen.getByRole("button", { name: /Mixed/ }));
   expect(onOpen).toHaveBeenCalledWith("m2");
@@ -49,4 +52,17 @@ it("renders nothing for a tournament without a Mexicano stage", async () => {
 
   expect(container).toBeEmptyDOMElement();
   expect(load).not.toHaveBeenCalled();
+});
+
+it("shows the loading placeholder it is given until the stages are in", async () => {
+  let answer: (value: unknown[]) => void = () => {};
+  stages.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+
+  const { container } = render(
+    <MexicanoStageCards tournamentId="t1" onOpen={jest.fn()} loading={<p>Loading Mexicano...</p>} />
+  );
+  expect(screen.getByText("Loading Mexicano...")).toBeInTheDocument();
+
+  answer([]);
+  await waitFor(() => expect(container).toBeEmptyDOMElement());
 });

@@ -1,0 +1,17 @@
+// The Mexicano tab's page gutter. From 900px the tournament layout centres its content column; the cards line up with
+// the app bar's content (16px in from the screen edge until the column reaches its full width).
+.mexicano-stages {
+  padding: 14px 14px 0;
+}
+
+@media (min-width: 900px) {
+  .mexicano-stages {
+    padding: 20px 16px 0;
+  }
+}
+
+@media (min-width: 1132px) {
+  .mexicano-stages {
+    padding: 20px 0 0;
+  }
+}
