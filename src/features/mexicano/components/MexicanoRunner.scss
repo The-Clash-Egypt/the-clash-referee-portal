@@ -1,613 +1,733 @@
-/* Mexicano live-round page. Follows MatchesManagement.scss: same page padding, header type
-   scale, underline tabs and brand tokens from styles/colors.scss. Phone-first. */
-@import "../../../styles/colors.scss";
-
+// The Mexicano runner (mockup rest-of-portal.html phones 5–6): a focused screen with the blue app bar (stage, round
+// and a status tag), Round · Players · Leaderboard tabs and, for organizers, a sticky Start round bar. No tournament
+// tabs here. Phone first; from 900px the lists use two columns inside the centred content column.
 .mexicano-runner {
+  // "Not here" when it's on (mockup `.tri .on-away`); the brand has no token for this grey.
+  --mexicano-away: #8a8d94;
+  // The organizer's bar on wide screens: a centred dock rather than a 1100px-wide button.
+  --mexicano-dock: 560px;
+
   min-height: 100vh;
-  background: #fafbfc;
-  padding: 12px 32px 32px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100dvh;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
 
-  &--with-bar {
-    padding-bottom: 140px; // room for the sticky action bar
+// The bar and the tabs stay on top while the lists scroll under them (sheets still cover them).
+.mexicano-runner__top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+// The tabs start where the app bar's content starts once the column is centred.
+.mexicano-runner__tabs .ui-utabs {
+  padding-right: max(14px, calc((100% - var(--content-max)) / 2));
+  padding-left: max(14px, calc((100% - var(--content-max)) / 2));
+}
+
+.mexicano-runner__body {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 14px 32px;
+}
+
+// Room for the fixed bar (and the new-team tray on top of it).
+.mexicano-runner--with-bar .mexicano-runner__body {
+  padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+}
+
+.mexicano-runner--with-tray .mexicano-runner__body {
+  padding-bottom: calc(214px + env(safe-area-inset-bottom, 0px));
+}
+
+.mexicano-runner__state {
+  padding-top: 14px;
+}
+
+// ---------- Round ----------
+
+.mexicano-runner__round-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+// The round chip (mockup `.rpick`); with more than one round a native select lies invisibly on top of it.
+.mexicano-runner__round-pick {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  clip-path: var(--clip-slant-sm);
+  background: var(--card);
+  color: var(--ink);
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+
+  .ui-icon {
+    stroke-width: 2.6;
   }
 
-  &--with-tray {
-    padding-bottom: 200px; // the new-team tray sits on top of the bar
-  }
-
-  &__state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding: 64px 16px;
-    color: $text-secondary;
-    text-align: center;
-  }
-
-  &__back {
-    border: none;
-    background: transparent;
-    color: $primary-color;
-    font-size: 14px;
-    font-weight: 500;
-    padding: 8px 0;
-    cursor: pointer;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-
-  &__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 16px;
-    margin: 4px 0 16px;
-  }
-
-  &__titles {
-    min-width: 0;
-
-    h1 {
-      color: #1a202c;
-      font-size: 28px;
-      font-weight: 600;
-      margin: 0 0 4px;
-    }
-
-    p {
-      color: #718096;
-      font-size: 15px;
-      margin: 0;
-    }
-  }
-
-  &__pill {
-    flex-shrink: 0;
-    padding: 6px 12px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 600;
-    white-space: nowrap;
-
-    &--ready {
-      background: $primary-color-light;
-      color: $primary-color;
-    }
-
-    &--waiting {
-      background: $secondary-color-light;
-      color: $secondary-color-dark;
-    }
-
-    &--done {
-      background: $success-color-light;
-      color: $success-color-hover;
-    }
-  }
-
-  &__tabs {
-    display: flex;
-    margin-bottom: 16px;
-    border-bottom: 2px solid var(--border-primary);
-  }
-
-  &__tab {
-    flex: 0 0 auto;
-    padding: 8px 20px;
-    border: none;
-    border-bottom: 3px solid transparent;
-    background: transparent;
-    color: $text-secondary;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-
-    &:hover {
-      color: $text-primary;
-    }
-
-    &.active {
-      color: $primary-color;
-      font-weight: 600;
-      border-bottom-color: $primary-color;
-    }
-  }
-
-  &__panel {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  &__empty {
-    padding: 32px 16px;
-    border: 1px dashed var(--border-secondary);
-    border-radius: 12px;
-    background: $white;
-    text-align: center;
-    color: $text-secondary;
-
-    p {
-      margin: 0;
-    }
-  }
-
-  &__empty-title {
-    color: $text-primary;
-    font-weight: 600;
-    margin-bottom: 4px !important;
-  }
-
-  &__round-picker {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: $text-secondary;
-    font-size: 14px;
-
-    select {
-      padding: 8px 12px;
-      border: 1px solid var(--border-secondary);
-      border-radius: 8px;
-      background: $white;
-      font-size: 14px;
-    }
-  }
-
-  &__courts {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
-  }
-
-  &__sitting-out {
-    margin: 0;
-    padding: 12px 16px;
-    border-radius: 8px;
-    background: $gray-100;
-    color: $text-secondary;
-    font-size: 14px;
-  }
-
-  &__players-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__counts {
-    margin: 0;
-    color: $text-secondary;
-    font-size: 14px;
-    font-weight: 500;
-  }
-
-  &__search {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--border-secondary);
-    border-radius: 8px;
-    font-size: 15px;
-    box-sizing: border-box;
-
-    &:focus {
-      outline: none;
-      border-color: $primary-color;
-    }
-  }
-
-  &__players {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    border: 1px solid var(--border-primary);
-    border-radius: 12px;
-    background: $white;
-    overflow: hidden;
-  }
-
-  &__player {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-
-    & + & {
-      border-top: 1px solid var(--border-primary);
-    }
-  }
-
-  &__player-name {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    color: $text-primary;
-    font-weight: 500;
-
-    span {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-  }
-
-  &__player-members {
-    color: $text-secondary;
-    font-size: 13px;
-    font-weight: 400;
-  }
-
-  &__none {
-    padding: 16px;
-    color: $text-secondary;
-    text-align: center;
-  }
-
-  &__segmented {
-    display: inline-flex;
-    flex-shrink: 0;
-    border: 1px solid var(--border-secondary);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-
-  &__segment {
-    min-height: 40px; // thumb-sized on phones
-    padding: 0 12px;
-    border: none;
-    background: $white;
-    color: $text-secondary;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-
-    & + & {
-      border-left: 1px solid var(--border-secondary);
-    }
-
-    &:disabled {
-      cursor: default;
-    }
-
-    &.active {
-      font-weight: 600;
-    }
-
-    &--0.active {
-      background: $gray-200;
-      color: $text-primary;
-    }
-
-    &--1.active {
-      background: $primary-color;
-      color: $white;
-    }
-
-    &--2.active {
-      background: $secondary-color;
-      color: $gray-900;
-    }
-  }
-
-  &__table {
-    width: 100%;
-    border-collapse: collapse;
-    background: $white;
-    border: 1px solid var(--border-primary);
-    border-radius: 12px;
-    overflow: hidden;
-    font-size: 14px;
-
-    th,
-    td {
-      padding: 10px 12px;
-      text-align: left;
-    }
-
-    th {
-      background: $gray-50;
-      color: $text-secondary;
-      font-weight: 600;
-      font-size: 13px;
-    }
-
-    tr + tr td {
-      border-top: 1px solid var(--border-primary);
-    }
-  }
-
-  &__points {
-    color: $primary-color;
-    font-weight: 600;
-  }
-
-  &__section {
-    margin: 16px 0 8px;
-    color: $text-secondary;
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  &__pool {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 8px;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  &__leftover {
-    margin: 8px 0 0;
-    color: $secondary-color-dark;
-    font-size: 14px;
-  }
-
-  &__player-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  &__quiet {
-    padding: 8px 6px;
-    border: none;
-    background: none;
-    color: $text-secondary;
-    font-size: 14px;
-    text-decoration: underline;
-    cursor: pointer;
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
-  }
-
-  &__player--new {
-    background: $primary-color-light;
-  }
-
-  &__tray {
+  // 16px keeps iOS from zooming in when the picker opens; it's invisible anyway.
+  select {
     position: absolute;
-    left: 0;
+    top: 0;
     right: 0;
-    bottom: 100%;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 10px 32px;
-    background: $primary-color-light;
-    border-top: 1px solid var(--border-primary);
-    color: $text-primary;
-    font-size: 14px;
-  }
-
-  &__tray-label {
-    font-weight: 600;
-  }
-
-  &__tray-more {
-    color: $text-secondary;
-  }
-
-  &__chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border: 1px solid $primary-color;
-    border-radius: 999px;
-    background: $white;
-    color: $primary-color;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-  }
-
-  &__pick {
+    bottom: 0;
+    left: 0;
     width: 100%;
-    min-height: 44px; // thumb-sized
-    padding: 10px 12px;
-    border: 1px solid var(--border-secondary);
-    border-radius: 8px;
-    background: $white;
-    color: $text-primary;
-    font-size: 15px;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    font-size: 16px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  &:focus-within {
+    box-shadow: inset 0 0 0 2px var(--spark);
+  }
+}
+
+.mexicano-runner__round-status {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mexicano-runner__courts {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mexicano-runner__sitting-out {
+  margin: 12px 2px 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+
+  b {
+    color: var(--ink);
+    font-weight: 700;
+  }
+}
+
+// ---------- Players ----------
+
+.mexicano-runner__players-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.mexicano-runner__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+// "Mark everyone playing" keeps to the right, also when it wraps under the counts on a phone.
+.mexicano-runner__players-head > .ui-btn {
+  margin-left: auto;
+}
+
+.mexicano-runner__search {
+  margin-top: 12px;
+}
+
+// "Needs a partner · 3", "Teams · 8": label headers with a hairline, like the timeline's slots.
+.mexicano-runner__section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 2px 8px;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  text-transform: uppercase;
+
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+}
+
+// Tap-to-pair: the players without a team, as big white tiles; a pick turns orange.
+.mexicano-runner__pool {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  .mexicano-runner__none {
+    grid-column: 1 / -1;
+    background: var(--card);
+  }
+}
+
+.mexicano-runner__pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 0;
+  clip-path: var(--clip-slant-sm);
+  background: var(--card);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--spark-tint);
+  }
+
+  &.active {
+    background: var(--spark);
+    color: var(--on-spark);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px currentColor;
+  }
+
+  .ui-icon {
+    stroke-width: 2.6;
+  }
+}
+
+.mexicano-runner__pick-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mexicano-runner__leftover {
+  margin: 8px 2px 0;
+  color: var(--spark-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+// The list (mockup `.plist`): one row per player or team, the switch on the right.
+.mexicano-runner__players {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  background: var(--card);
+}
+
+.mexicano-runner__section + .mexicano-runner__players {
+  margin-top: 0;
+}
+
+.mexicano-runner__player {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 10px;
+  min-width: 0;
+  padding: 2px 12px;
+  border-bottom: 1px solid var(--line);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+// The team just made, with its Undo, stands out for a moment.
+.mexicano-runner__player--new {
+  background: var(--spark-tint);
+}
+
+.mexicano-runner__player-name {
+  display: flex;
+  flex: 1 1 110px;
+  flex-direction: column;
+  min-width: 0;
+  padding: 8px 0;
+}
+
+.mexicano-runner__player-title,
+.mexicano-runner__player-members {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mexicano-runner__player-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.mexicano-runner__player-members {
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.mexicano-runner__player-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+// The three-way switch (mockup `.tri`). Each option is a tall transparent button around its slanted face, so the
+// tap target is thumb-sized while the face keeps the mockup's size.
+.mexicano-runner__tri {
+  display: flex;
+  gap: 3px;
+}
+
+.mexicano-runner__tri-option {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: none;
+
+    .mexicano-runner__tri-face {
+      box-shadow: inset 0 0 0 2px currentColor;
+    }
+  }
+
+  &:hover:not(:disabled):not([aria-pressed="true"]) {
+    color: var(--ink);
+  }
+
+  &[aria-pressed="true"] {
+    color: var(--on-spark);
+  }
+}
+
+.mexicano-runner__tri-face {
+  padding: 8px 9px;
+  clip-path: var(--clip-slant-sm);
+  background: var(--alt);
+  font-family: var(--font-label);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.mexicano-runner__tri-option--away[aria-pressed="true"] .mexicano-runner__tri-face {
+  background: var(--mexicano-away);
+}
+
+.mexicano-runner__tri-option--play[aria-pressed="true"] .mexicano-runner__tri-face {
+  background: var(--ok);
+}
+
+.mexicano-runner__tri-option--out[aria-pressed="true"] .mexicano-runner__tri-face {
+  background: var(--spark);
+}
+
+// Read-only (a plain referee, or a finished event): the options that are off fade back.
+.mexicano-runner__tri-option:disabled:not([aria-pressed="true"]) .mexicano-runner__tri-face {
+  opacity: 0.6;
+}
+
+.mexicano-runner__quiet {
+  min-height: 36px;
+  margin: 0;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-decoration: underline;
+  text-transform: uppercase;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: var(--spark-text);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--spark);
+    outline-offset: 2px;
+  }
+}
+
+.mexicano-runner__none {
+  padding: 16px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+// ---------- Leaderboard ----------
+
+.mexicano-runner__board {
+  margin-top: 12px;
+  overflow-x: auto;
+  clip-path: var(--clip-cut);
+  background: var(--card);
+}
+
+.mexicano-runner__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+
+  th,
+  td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  th {
+    color: var(--muted);
+    font-family: var(--font-label);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  th:first-child,
+  td:first-child {
+    padding-left: 14px;
+  }
+
+  th:last-child,
+  td:last-child {
+    padding-right: 14px;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .mexicano-runner__num {
+    text-align: right;
+  }
+}
+
+.mexicano-runner__rank {
+  width: 1%;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 800;
+}
+
+// The name takes what's left and gives way first.
+.mexicano-runner__who {
+  width: 100%;
+  max-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.mexicano-runner__points {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+}
+
+// ---------- The organizer's bar ----------
+
+.mexicano-runner__bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  background: var(--card);
+  border-top: 1px solid var(--line);
+}
+
+.mexicano-runner__bar-inner {
+  max-width: var(--mexicano-dock);
+  margin: 0 auto;
+  padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+.mexicano-runner__bar-row {
+  display: flex;
+  gap: 8px;
+}
+
+.mexicano-runner__start {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mexicano-runner__more {
+  position: relative;
+  flex: none;
+}
+
+.mexicano-runner__dots {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 50px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  clip-path: var(--clip-slant);
+  background: var(--alt);
+  color: var(--muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover:not(:disabled) {
+    background: var(--line);
+    color: var(--ink);
+  }
+
+  &[aria-expanded="true"] {
+    background: var(--spark-tint);
+    color: var(--spark-text);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 3px currentColor;
+  }
+}
+
+// Undo round · Finish early, above the ⋯ button.
+.mexicano-runner__menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  filter: var(--toast-shadow);
+
+  button {
+    min-height: 46px;
+    margin: 0;
+    padding: 0 16px;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 14.5px;
+    font-weight: 600;
     text-align: left;
     cursor: pointer;
 
-    &.active {
-      background: $primary-color;
-      border-color: $primary-color;
-      color: $white;
+    & + button {
+      border-top: 1px solid var(--line);
     }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
-  }
-
-  &__secondary {
-    padding: 8px 14px;
-    border: 1px solid $primary-color;
-    border-radius: 8px;
-    background: $white;
-    color: $primary-color;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
-  }
-
-  &__bar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 20;
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 12px 32px calc(12px + env(safe-area-inset-bottom));
-    background: $white;
-    border-top: 1px solid var(--border-primary);
-    box-shadow: var(--shadow-lg);
-  }
-
-  &__bar-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &__start {
-    width: 100%;
-    min-height: 48px;
-    border: none;
-    border-radius: 8px;
-    background: $primary-color;
-    color: $white;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
 
     &:hover:not(:disabled) {
-      background: $primary-color-hover;
+      background: var(--alt);
     }
 
     &:disabled {
-      background: $gray-300;
-      color: $gray-600;
+      color: var(--muted);
       cursor: default;
     }
-  }
 
-  &__reason {
-    margin: 6px 0 0;
-    color: $text-secondary;
-    font-size: 13px;
-    // Long reasons (e.g. a list of units) stay inside the space reserved for the bar.
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  &__more {
-    position: relative;
-  }
-
-  &__more-toggle {
-    width: 48px;
-    height: 48px;
-    border: 1px solid var(--border-secondary);
-    border-radius: 8px;
-    background: $white;
-    color: $text-primary;
-    font-size: 20px;
-    cursor: pointer;
-  }
-
-  &__menu {
-    position: absolute;
-    right: 0;
-    bottom: 56px;
-    display: flex;
-    flex-direction: column;
-    min-width: 180px;
-    padding: 4px;
-    border: 1px solid var(--border-primary);
-    border-radius: 8px;
-    background: $white;
-    box-shadow: var(--shadow-lg);
-
-    button {
-      padding: 10px 12px;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      color: $text-primary;
-      font-size: 14px;
-      text-align: left;
-      cursor: pointer;
-
-      &:hover {
-        background: $gray-100;
-      }
+    &:focus-visible {
+      outline: none;
+      box-shadow: inset 0 0 0 2px var(--spark);
     }
   }
+}
 
-  @media (max-width: 768px) {
-    padding: 8px 16px 24px;
+// Why the next round can't start yet (mockup `.why`); long reasons stay inside the bar.
+.mexicano-runner__reason {
+  display: -webkit-box;
+  margin: 7px 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.35;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 
-    &--with-bar {
-      padding-bottom: 140px;
-    }
+// The new team being picked, on top of the bar.
+.mexicano-runner__tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 8px max(14px, calc((100% - var(--mexicano-dock)) / 2));
+  border-bottom: 1px solid var(--line);
+  background: var(--spark-tint);
+  font-size: 13.5px;
+}
 
-    &__titles h1 {
-      font-size: 22px;
-    }
+.mexicano-runner__tray-label {
+  color: var(--spark-text);
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
 
-    &__header {
-      flex-direction: column;
-      gap: 8px;
-    }
+.mexicano-runner__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  clip-path: var(--clip-slant-sm);
+  background: var(--spark);
+  color: var(--on-spark);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
 
-    &__tab {
-      flex: 1;
-      padding: 8px 4px;
-      font-size: 15px;
-    }
+  &:hover {
+    background: var(--spark-strong);
+  }
 
-    &__courts {
-      grid-template-columns: 1fr;
-    }
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px currentColor;
+  }
 
-    &__bar {
-      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-    }
+  .ui-icon {
+    stroke-width: 2.6;
+  }
+}
 
-    &__tray {
-      padding: 10px 16px;
+.mexicano-runner__tray-more {
+  color: var(--muted);
+}
+
+// ---------- Touch screens and wide screens ----------
+
+// Thumb-sized switch options on touch screens.
+@media (pointer: coarse) {
+  .mexicano-runner__tri-option,
+  .mexicano-runner__quiet {
+    min-height: 44px;
+  }
+}
+
+@media (min-width: 900px) {
+  // A ranking stays one list; capped so the points sit near the names.
+  .mexicano-runner__board {
+    max-width: 760px;
+  }
+
+  .mexicano-runner__courts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 12px;
+  }
+
+  .mexicano-runner__players {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    .mexicano-runner__none {
+      grid-column: 1 / -1;
     }
   }
 
-  @media (max-width: 480px) {
-    &__player {
-      flex-direction: column;
-      align-items: stretch;
+  // Two columns: the right-hand rows get a hairline on their left; the last row of both columns loses its bottom one.
+  .mexicano-runner__player {
+    &:nth-child(even) {
+      border-left: 1px solid var(--line);
     }
 
-    &__player-actions {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    &__quiet {
-      align-self: flex-end;
-      padding: 4px 6px;
-    }
-
-    &__segmented {
-      display: flex;
-    }
-
-    &__segment {
-      flex: 1;
+    &:nth-last-child(2):nth-child(odd) {
+      border-bottom: 0;
     }
   }
 }

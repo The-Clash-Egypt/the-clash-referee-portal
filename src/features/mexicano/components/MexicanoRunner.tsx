@@ -1,9 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import MatchCard from "../../shared/components/MatchCard";
 import UpdateScoreDialog from "../../matches/components/UpdateScoreDialog";
 import { UnknownMatchFormatError, updateMatchByFormat } from "../../matches/api/matches";
 import { Match, MatchGameScore } from "../../matches/types/match";
-import VolleyballLoading from "../../../components/VolleyballLoading";
+// The UI kit's own files, not its barrel: the barrel pulls in react-router-dom, which these router-free tests can't load.
+import { AppBar } from "../../../ui/AppBar";
+import { Button } from "../../../ui/Button";
+import { EmptyState } from "../../../ui/EmptyState";
+import { Icon } from "../../../ui/Icon";
+import { SearchInput } from "../../../ui/SearchInput";
+import { Spinner } from "../../../ui/Spinner";
+import { Tag } from "../../../ui/Tag";
+import { UnderlineTabs } from "../../../ui/UnderlineTabs";
 import {
   createMexicanoUnit,
   dissolveMexicanoUnit,
@@ -16,10 +23,17 @@ import {
 } from "../api/mexicano";
 import { roundLabel, statusLine } from "../sessionText";
 import { MexicanoSession, MexicanoStatus } from "../types";
+import MexicanoCourt from "./MexicanoCourt";
 import { NewTeamTray, UnpairedList } from "./TeamFormation";
 import "./MexicanoRunner.scss";
 
 type Tab = "round" | "players" | "leaderboard";
+
+const TABS: { value: Tab; label: string }[] = [
+  { value: "round", label: "Round" },
+  { value: "players", label: "Players" },
+  { value: "leaderboard", label: "Leaderboard" },
+];
 
 interface MexicanoRunnerProps {
   formatId: string;
@@ -30,11 +44,14 @@ interface MexicanoRunnerProps {
   pollMs?: number;
 }
 
-const STATUS_OPTIONS: { status: MexicanoStatus; label: string }[] = [
-  { status: MexicanoStatus.NotHere, label: "Not here" },
-  { status: MexicanoStatus.Playing, label: "Playing" },
-  { status: MexicanoStatus.SitOut, label: "Sit out" },
+/** The three-way switch: grey when Not here is on, green for Playing, orange for Sit out (mockup `.tri`). */
+const STATUS_OPTIONS: { status: MexicanoStatus; label: string; tone: "away" | "play" | "out" }[] = [
+  { status: MexicanoStatus.NotHere, label: "Not here", tone: "away" },
+  { status: MexicanoStatus.Playing, label: "Playing", tone: "play" },
+  { status: MexicanoStatus.SitOut, label: "Sit out", tone: "out" },
 ];
+
+const BACK_LABEL = "Back to Mexicano";
 
 type StatusUpdate = { teamId: string; status: MexicanoStatus };
 
@@ -60,7 +77,7 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
   const [picked, setPicked] = useState<string[]>([]);
   const [pairing, setPairing] = useState<string[]>([]); // members hidden while their team is being made
   const [justMade, setJustMade] = useState<string | null>(null); // the team that gets Undo for a moment
-  const searchInput = useRef<HTMLInputElement>(null);
+  const searchBox = useRef<HTMLDivElement>(null); // around the SearchInput, which takes no ref
   // A save or action in flight: polling must not overwrite its optimistic state.
   const pending = useRef(0);
   // Every request that returns a session takes a number; only the newest one's answer is applied,
@@ -202,7 +219,7 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
     setPicked([]);
     if (search) {
       setSearch("");
-      searchInput.current?.focus();
+      searchBox.current?.querySelector("input")?.focus();
     }
     makeTeam(next);
   };
@@ -265,18 +282,18 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
   if (!session) {
     return (
       <div className="mexicano-runner">
-        <div className="mexicano-runner__state">
-          {loadError ? (
-            <>
-              <p>{loadError}</p>
-              <button type="button" className="mexicano-runner__secondary" onClick={refresh}>
-                Try again
-              </button>
-            </>
-          ) : (
-            <VolleyballLoading message="Loading Mexicano..." size="medium" />
-          )}
+        <div className="mexicano-runner__top">
+          <AppBar title="Mexicano" onBack={onBack} backLabel={BACK_LABEL} />
         </div>
+        <main className="mexicano-runner__body">
+          {loadError ? (
+            <div className="mexicano-runner__state">
+              <EmptyState icon="alert" title={loadError} action={<Button onClick={refresh}>Try again</Button>} />
+            </div>
+          ) : (
+            <Spinner label="Loading Mexicano..." />
+          )}
+        </main>
       </div>
     );
   }
@@ -316,304 +333,303 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
           session.unitSize === 2 ? "a partner" : "a team"
         }.`
       : null;
-  const pillTone = session.ended
-    ? "done"
-    : session.currentRound > 0 && session.currentRoundScored < session.currentRoundTotal
-      ? "waiting"
-      : "ready";
+  // The status, split as in the mockup: while scores are due the bar's tag says how many are in ("2 of 4 in") and
+  // the Round tab says "Waiting for scores"; otherwise the tag carries the whole status line.
+  const waitingForScores =
+    !session.ended && session.currentRound > 0 && session.currentRoundScored < session.currentRoundTotal;
+  const statusTag = waitingForScores
+    ? `${session.currentRoundScored} of ${session.currentRoundTotal} in`
+    : statusLine(session);
   const unitLabel = session.unitSize === 1 ? "Player" : "Team";
   const searchLabel = canFormTeams ? "Search players and teams" : `Search ${unitLabel.toLowerCase()}s`;
   // Until someone picks a tab: Players before round 1 (check-in), the Round afterwards.
   const activeTab: Tab = tab ?? (session.currentRound > 0 ? "round" : "players");
+  const hasBar = canRun && !session.ended;
+  const hasTray = canFormTeams && pickedPlayers.length > 0;
 
   return (
     <div
-      className={`mexicano-runner ${canRun && !session.ended ? "mexicano-runner--with-bar" : ""} ${
-        canFormTeams && pickedPlayers.length > 0 ? "mexicano-runner--with-tray" : ""
-      }`}
+      className={["mexicano-runner", hasBar && "mexicano-runner--with-bar", hasTray && "mexicano-runner--with-tray"]
+        .filter(Boolean)
+        .join(" ")}
     >
-      <button type="button" className="mexicano-runner__back" onClick={onBack}>
-        ← Back to matches
-      </button>
-
-      <header className="mexicano-runner__header">
-        <div className="mexicano-runner__titles">
-          <h1>{session.categoryName || "Mexicano"}</h1>
-          <p>
-            {session.stageName} · {roundLabel(session)}
-          </p>
+      <div className="mexicano-runner__top">
+        <AppBar
+          eyebrow={`${session.stageName || "Mexicano"} · ${roundLabel(session)}`}
+          title={session.categoryName || "Mexicano"}
+          onBack={onBack}
+          backLabel={BACK_LABEL}
+          right={<Tag tone="glass">{statusTag}</Tag>}
+        />
+        <div className="mexicano-runner__tabs">
+          <UnderlineTabs ariaLabel="Mexicano" options={TABS} value={activeTab} onChange={(v) => setTab(v as Tab)} />
         </div>
-        <span className={`mexicano-runner__pill mexicano-runner__pill--${pillTone}`}>{statusLine(session)}</span>
-      </header>
-
-      <div className="mexicano-runner__tabs" role="tablist">
-        {(
-          [
-            ["round", "Round"],
-            ["players", "Players"],
-            ["leaderboard", "Leaderboard"],
-          ] as [Tab, string][]
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === key}
-            className={`mexicano-runner__tab ${activeTab === key ? "active" : ""}`}
-            onClick={() => setTab(key)}
-          >
-            {label}
-          </button>
-        ))}
       </div>
 
-      {activeTab === "round" && (
-        <section className="mexicano-runner__panel">
-          {!shownRound ? (
-            <div className="mexicano-runner__empty">
-              <p className="mexicano-runner__empty-title">No round has started yet</p>
-              <p>
-                {canRun
-                  ? "Mark who's here on the Players tab, then press Start round 1."
-                  : "The organizer starts each round. Courts show up here as soon as it does."}
-              </p>
-            </div>
-          ) : (
-            <>
-              {session.rounds.length > 1 && (
-                <label className="mexicano-runner__round-picker">
-                  <span>Showing</span>
-                  <select
-                    aria-label="Round"
-                    value={shownRound.number}
-                    onChange={(e) => setViewedRound(Number(e.target.value))}
-                  >
-                    {session.rounds.map((r) => (
-                      <option key={r.number} value={r.number}>
-                        Round {r.number}
-                        {r.number === session.currentRound ? " (current)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <div className="mexicano-runner__courts">
-                {shownRound.matches.map((match) => (
-                  <MatchCard
-                    key={match.id}
-                    match={match}
-                    onUpdateScore={setScoreMatch}
-                    showUpdateScore={!match.isCompleted || canRun}
-                    showAssignReferee={false}
-                    showRefereeTeams
-                  />
-                ))}
+      <main className="mexicano-runner__body">
+        {activeTab === "round" && (
+          <section className="mexicano-runner__panel">
+            {!shownRound ? (
+              <div className="mexicano-runner__state">
+                <EmptyState
+                  icon="mexicano"
+                  title="No round has started yet"
+                  body={
+                    canRun
+                      ? "Mark who's here on the Players tab, then press Start round 1."
+                      : "The organizer starts each round. Courts show up here as soon as it does."
+                  }
+                />
               </div>
-              {shownRound.sittingOut.length > 0 && (
-                <p className="mexicano-runner__sitting-out">
-                  Sitting out this round: {shownRound.sittingOut.map((id) => nameById.get(id) ?? "Unknown").join(", ")}
-                </p>
-              )}
-            </>
-          )}
-        </section>
-      )}
-
-      {activeTab === "players" && (
-        <section className="mexicano-runner__panel">
-          <div className="mexicano-runner__players-head">
-            <p className="mexicano-runner__counts">
-              {counts.playing} playing · {counts.sittingOut} sitting out · {counts.notHere} not here
-            </p>
-            {canRun && !session.ended && (
-              <button
-                type="button"
-                className="mexicano-runner__secondary"
-                disabled={notHere.length === 0}
-                onClick={() =>
-                  saveStatuses(
-                    notHere.map((p) => ({
-                      teamId: p.teamId,
-                      status: MexicanoStatus.Playing,
-                    }))
-                  )
-                }
-              >
-                Mark everyone playing
-              </button>
-            )}
-          </div>
-          <input
-            ref={searchInput}
-            type="search"
-            className="mexicano-runner__search"
-            placeholder={searchLabel}
-            aria-label={searchLabel}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {waiting.length > 0 && (
-            <UnpairedList
-              unitSize={session.unitSize}
-              players={visibleWaiting}
-              total={waiting.length}
-              picked={picked}
-              disabled={busy}
-              search={search}
-              onToggle={togglePick}
-            />
-          )}
-          {leftover && <p className="mexicano-runner__leftover">{leftover}</p>}
-          {canFormTeams && <h2 className="mexicano-runner__section">Teams · {session.players.length}</h2>}
-          <ul className="mexicano-runner__players">
-            {visiblePlayers.map((p) => (
-              <li
-                key={p.teamId}
-                className={`mexicano-runner__player ${p.teamId === justMade ? "mexicano-runner__player--new" : ""}`}
-              >
-                <div className="mexicano-runner__player-name">
-                  <span>{p.name}</span>
-                  {/* Teams formed here are named after their players; don't say it twice. */}
-                  {session.unitSize > 1 && p.members.length > 0 && p.members.join(" / ") !== p.name && (
-                    <span className="mexicano-runner__player-members">{p.members.join(", ")}</span>
-                  )}
-                </div>
-                <div className="mexicano-runner__player-actions">
-                  <div className="mexicano-runner__segmented" role="group" aria-label={`${p.name} status`}>
-                    {STATUS_OPTIONS.map((option) => (
-                      <button
-                        key={option.status}
-                        type="button"
-                        aria-pressed={p.status === option.status}
-                        className={`mexicano-runner__segment mexicano-runner__segment--${option.status} ${
-                          p.status === option.status ? "active" : ""
-                        }`}
-                        disabled={statusesLocked}
-                        onClick={() =>
-                          p.status !== option.status && saveStatuses([{ teamId: p.teamId, status: option.status }])
-                        }
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                  {canFormTeams && !p.hasMatches && p.teamId === justMade && (
-                    <button
-                      type="button"
-                      className="mexicano-runner__secondary"
-                      aria-label={`Undo ${p.name}`}
-                      disabled={busy}
-                      onClick={() => undoTeam(p.teamId)}
-                    >
-                      Undo
-                    </button>
-                  )}
-                  {canFormTeams && !p.hasMatches && p.teamId !== justMade && (
-                    <button
-                      type="button"
-                      className="mexicano-runner__quiet"
-                      aria-label={`Break up ${p.name}`}
-                      disabled={busy}
-                      onClick={() => breakUpTeam(p.teamId, p.name)}
-                    >
-                      Break up
-                    </button>
-                  )}
-                </div>
-              </li>
-            ))}
-            {session.players.length === 0 ? (
-              <li className="mexicano-runner__none">
-                {canFormTeams
-                  ? "No teams yet. Tap players above to pair them."
-                  : "No players yet. Set up this stage in the dashboard first."}
-              </li>
             ) : (
-              visiblePlayers.length === 0 && <li className="mexicano-runner__none">No one matches "{search}".</li>
+              <>
+                <div className="mexicano-runner__round-head">
+                  {session.rounds.length > 1 ? (
+                    // A native select (the phone's own picker) laid invisibly over the round chip.
+                    <span className="mexicano-runner__round-pick">
+                      <span aria-hidden="true">Round {shownRound.number}</span>
+                      <Icon name="chevron-down" size={12} />
+                      <select
+                        aria-label="Round"
+                        value={shownRound.number}
+                        onChange={(e) => setViewedRound(Number(e.target.value))}
+                      >
+                        {session.rounds.map((r) => (
+                          <option key={r.number} value={r.number}>
+                            Round {r.number}
+                            {r.number === session.currentRound ? " (current)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+                  ) : (
+                    <span className="mexicano-runner__round-pick">Round {shownRound.number}</span>
+                  )}
+                  {waitingForScores && shownRound.number === session.currentRound && (
+                    <span className="mexicano-runner__round-status">Waiting for scores</span>
+                  )}
+                </div>
+                <ul className="mexicano-runner__courts">
+                  {shownRound.matches.map((match) => (
+                    <MexicanoCourt
+                      key={match.id}
+                      match={match}
+                      canScore={!match.isCompleted || canRun}
+                      onScore={setScoreMatch}
+                    />
+                  ))}
+                </ul>
+                {shownRound.sittingOut.length > 0 && (
+                  <p className="mexicano-runner__sitting-out">
+                    Sitting out: <b>{shownRound.sittingOut.map((id) => nameById.get(id) ?? "Unknown").join(", ")}</b>
+                  </p>
+                )}
+              </>
             )}
-          </ul>
-        </section>
-      )}
+          </section>
+        )}
 
-      {activeTab === "leaderboard" && (
-        <section className="mexicano-runner__panel">
-          <table className="mexicano-runner__table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>{unitLabel}</th>
-                <th>Played</th>
-                <th>Pts</th>
-                <th>Sat out</th>
-              </tr>
-            </thead>
-            <tbody>
-              {session.players.map((p) => (
-                <tr key={p.teamId}>
-                  <td>{p.rank}</td>
-                  <td>{p.name}</td>
-                  <td>{p.played}</td>
-                  <td className="mexicano-runner__points">{p.points}</td>
-                  <td>{p.sitOuts}</td>
-                </tr>
+        {activeTab === "players" && (
+          <section className="mexicano-runner__panel">
+            <div className="mexicano-runner__players-head">
+              <div className="mexicano-runner__counts">
+                <Tag tone="ok">{counts.playing} playing</Tag>
+                <Tag tone="warn">{counts.sittingOut} sitting out</Tag>
+                <Tag tone="grey">{counts.notHere} not here</Tag>
+              </div>
+              {canRun && !session.ended && (
+                <Button
+                  variant="tint"
+                  size="sm"
+                  disabled={notHere.length === 0}
+                  onClick={() =>
+                    saveStatuses(
+                      notHere.map((p) => ({
+                        teamId: p.teamId,
+                        status: MexicanoStatus.Playing,
+                      }))
+                    )
+                  }
+                >
+                  Mark everyone playing
+                </Button>
+              )}
+            </div>
+            <div className="mexicano-runner__search" ref={searchBox}>
+              <SearchInput value={search} onChange={setSearch} placeholder={searchLabel} />
+            </div>
+            {waiting.length > 0 && (
+              <UnpairedList
+                unitSize={session.unitSize}
+                players={visibleWaiting}
+                total={waiting.length}
+                picked={picked}
+                disabled={busy}
+                search={search}
+                onToggle={togglePick}
+              />
+            )}
+            {leftover && <p className="mexicano-runner__leftover">{leftover}</p>}
+            {canFormTeams && <h2 className="mexicano-runner__section">Teams · {session.players.length}</h2>}
+            <ul className="mexicano-runner__players">
+              {visiblePlayers.map((p) => (
+                <li
+                  key={p.teamId}
+                  className={`mexicano-runner__player${p.teamId === justMade ? " mexicano-runner__player--new" : ""}`}
+                >
+                  <div className="mexicano-runner__player-name">
+                    <span className="mexicano-runner__player-title">{p.name}</span>
+                    {/* Teams formed here are named after their players; don't say it twice. */}
+                    {session.unitSize > 1 && p.members.length > 0 && p.members.join(" / ") !== p.name && (
+                      <span className="mexicano-runner__player-members">{p.members.join(", ")}</span>
+                    )}
+                  </div>
+                  <div className="mexicano-runner__player-actions">
+                    <div className="mexicano-runner__tri" role="group" aria-label={`${p.name} status`}>
+                      {STATUS_OPTIONS.map((option) => (
+                        <button
+                          key={option.status}
+                          type="button"
+                          aria-pressed={p.status === option.status}
+                          className={`mexicano-runner__tri-option mexicano-runner__tri-option--${option.tone}`}
+                          disabled={statusesLocked}
+                          onClick={() =>
+                            p.status !== option.status && saveStatuses([{ teamId: p.teamId, status: option.status }])
+                          }
+                        >
+                          <span className="mexicano-runner__tri-face">{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {canFormTeams && !p.hasMatches && p.teamId === justMade && (
+                      <Button
+                        variant="tint"
+                        size="sm"
+                        aria-label={`Undo ${p.name}`}
+                        disabled={busy}
+                        onClick={() => undoTeam(p.teamId)}
+                      >
+                        Undo
+                      </Button>
+                    )}
+                    {canFormTeams && !p.hasMatches && p.teamId !== justMade && (
+                      <button
+                        type="button"
+                        className="mexicano-runner__quiet"
+                        aria-label={`Break up ${p.name}`}
+                        disabled={busy}
+                        onClick={() => breakUpTeam(p.teamId, p.name)}
+                      >
+                        Break up
+                      </button>
+                    )}
+                  </div>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </section>
-      )}
+              {session.players.length === 0 ? (
+                <li className="mexicano-runner__none">
+                  {canFormTeams
+                    ? "No teams yet. Tap players above to pair them."
+                    : "No players yet. Set up this stage in the dashboard first."}
+                </li>
+              ) : (
+                visiblePlayers.length === 0 && <li className="mexicano-runner__none">No one matches "{search}".</li>
+              )}
+            </ul>
+          </section>
+        )}
 
-      {canRun && !session.ended && (
+        {activeTab === "leaderboard" && (
+          <section className="mexicano-runner__panel">
+            <div className="mexicano-runner__board">
+              <table className="mexicano-runner__table">
+                <thead>
+                  <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">{unitLabel}</th>
+                    <th scope="col" className="mexicano-runner__num">
+                      Played
+                    </th>
+                    <th scope="col" className="mexicano-runner__num">
+                      Pts
+                    </th>
+                    <th scope="col" className="mexicano-runner__num">
+                      Sat out
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {session.players.map((p) => (
+                    <tr key={p.teamId}>
+                      <td className="mexicano-runner__rank">{p.rank}</td>
+                      <td className="mexicano-runner__who">{p.name}</td>
+                      <td className="mexicano-runner__num">{p.played}</td>
+                      <td className="mexicano-runner__num mexicano-runner__points">{p.points}</td>
+                      <td className="mexicano-runner__num">{p.sitOuts}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+      </main>
+
+      {hasBar && (
         <div className="mexicano-runner__bar">
-          {canFormTeams && pickedPlayers.length > 0 && (
+          {hasTray && (
             <NewTeamTray
               unitSize={session.unitSize}
               picked={pickedPlayers}
               onRemove={(id) => setPicked((current) => current.filter((x) => x !== id))}
             />
           )}
-          <div className="mexicano-runner__bar-main">
-            <button
-              type="button"
-              className="mexicano-runner__start"
-              disabled={busy || savingStatuses > 0 || !session.canStartNextRound}
-              onClick={startRound}
-            >
-              {busy ? "Working..." : `Start round ${session.currentRound + 1}`}
-            </button>
+          <div className="mexicano-runner__bar-inner">
+            <div className="mexicano-runner__bar-row">
+              <Button
+                size="lg"
+                className="mexicano-runner__start"
+                loading={busy}
+                disabled={busy || savingStatuses > 0 || !session.canStartNextRound}
+                onClick={startRound}
+              >
+                {busy ? "Working..." : `Start round ${session.currentRound + 1}`}
+              </Button>
+              {(session.canUndoRound || session.canFinish) && (
+                <div className="mexicano-runner__more">
+                  <button
+                    type="button"
+                    className="mexicano-runner__dots"
+                    aria-label="More actions"
+                    aria-expanded={menuOpen}
+                    disabled={busy}
+                    onClick={() => setMenuOpen((open) => !open)}
+                  >
+                    <Icon name="more" size={22} />
+                  </button>
+                  {menuOpen && (
+                    <div className="mexicano-runner__menu">
+                      {session.canUndoRound && (
+                        <button type="button" onClick={undoRound} disabled={busy}>
+                          Undo round
+                        </button>
+                      )}
+                      {session.canFinish && (
+                        <button type="button" onClick={finishEarly} disabled={busy}>
+                          Finish early
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             {session.nextRoundBlockedReason && (
               <p className="mexicano-runner__reason" title={session.nextRoundBlockedReason}>
                 {session.nextRoundBlockedReason}
               </p>
             )}
           </div>
-          {(session.canUndoRound || session.canFinish) && (
-            <div className="mexicano-runner__more">
-              <button
-                type="button"
-                className="mexicano-runner__more-toggle"
-                aria-label="More actions"
-                aria-expanded={menuOpen}
-                disabled={busy}
-                onClick={() => setMenuOpen((open) => !open)}
-              >
-                ⋯
-              </button>
-              {menuOpen && (
-                <div className="mexicano-runner__menu">
-                  {session.canUndoRound && (
-                    <button type="button" onClick={undoRound} disabled={busy}>
-                      Undo round
-                    </button>
-                  )}
-                  {session.canFinish && (
-                    <button type="button" onClick={finishEarly} disabled={busy}>
-                      Finish early
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
 
