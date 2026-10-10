@@ -5,11 +5,14 @@ import { useMediaQuery } from "../../../../ui/useMediaQuery";
 export const LANDSCAPE_STORAGE_KEY = "portal.scoreboard.landscape";
 const PORTRAIT_QUERY = "(orientation: portrait)";
 
+// The choice made this visit, for when storage is blocked (private mode): every scoreboard opening is a new mount.
+let choiceThisVisit: boolean | null = null;
+
 const readForced = (): boolean => {
   try {
     return window.localStorage.getItem(LANDSCAPE_STORAGE_KEY) === "1";
   } catch {
-    return false; // storage blocked (private mode): start upright
+    return choiceThisVisit ?? false; // storage blocked: this visit's choice, else upright
   }
 };
 
@@ -28,7 +31,8 @@ export function useForcedLandscape(): { forced: boolean; toggle: () => void; vie
     try {
       window.localStorage.setItem(LANDSCAPE_STORAGE_KEY, next ? "1" : "0");
     } catch {
-      // Storage blocked: the switch still works for this visit.
+      // Storage blocked: the choice lasts this visit, across openings of the scoreboard.
+      choiceThisVisit = next;
     }
   }, [forced]);
 

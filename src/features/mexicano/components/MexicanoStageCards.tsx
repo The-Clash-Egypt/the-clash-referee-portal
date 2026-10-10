@@ -11,6 +11,10 @@ interface MexicanoStageCardsProps {
   onOpen: (formatId: string) => void;
   /** Shown while the stages load (e.g. a spinner on the Mexicano tab). Nothing by default. */
   loading?: React.ReactNode;
+  /** Shown when the tournament has no Mexicano stage. Nothing by default. */
+  empty?: React.ReactNode;
+  /** Shown when the stages couldn't load; `retry` asks again. Nothing by default. */
+  failed?: (retry: () => void) => React.ReactNode;
 }
 
 type Card = { stage: MexicanoStage; session: MexicanoSession | null };
@@ -23,15 +27,19 @@ const statusTone = (session: MexicanoSession): TagTone => {
 
 /**
  * The way into a Mexicano stage's live page (spec 2026-09-29 §4.1): one white card per stage on the tournament's
- * Mexicano tab, saying where the event stands. Nothing renders without one.
+ * Mexicano tab, saying where the event stands. Without a stage, or when they can't load, it renders `empty` /
+ * `failed` (nothing by default).
  */
-const MexicanoStageCards: React.FC<MexicanoStageCardsProps> = ({ tournamentId, onOpen, loading }) => {
+const MexicanoStageCards: React.FC<MexicanoStageCardsProps> = ({ tournamentId, onOpen, loading, empty, failed }) => {
   const [cards, setCards] = useState<Card[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoaded(false);
+    setLoadFailed(false);
     (async () => {
       try {
         const stages = await getMexicanoStages(tournamentId);
@@ -45,7 +53,10 @@ const MexicanoStageCards: React.FC<MexicanoStageCardsProps> = ({ tournamentId, o
         const sessions = await Promise.all(stages.map((stage) => getMexicanoSession(stage.formatId).catch(() => null)));
         if (!cancelled) setCards(stages.map((stage, i) => ({ stage, session: sessions[i] })));
       } catch {
-        if (!cancelled) setCards([]);
+        if (!cancelled) {
+          setCards([]);
+          setLoadFailed(true);
+        }
       } finally {
         if (!cancelled) setLoaded(true);
       }
@@ -53,10 +64,11 @@ const MexicanoStageCards: React.FC<MexicanoStageCardsProps> = ({ tournamentId, o
     return () => {
       cancelled = true;
     };
-  }, [tournamentId]);
+  }, [tournamentId, attempt]);
 
   if (!loaded && loading) return <>{loading}</>;
-  if (cards.length === 0) return null;
+  if (loaded && loadFailed && failed) return <>{failed(() => setAttempt((n) => n + 1))}</>;
+  if (cards.length === 0) return loaded && !loadFailed && empty ? <>{empty}</> : null;
 
   return (
     <section className="mexicano-stage-cards" aria-label="Mexicano stages">

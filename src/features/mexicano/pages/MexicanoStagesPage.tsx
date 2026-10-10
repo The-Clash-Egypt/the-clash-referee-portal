@@ -1,5 +1,7 @@
 import React from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Button } from "../../../ui/Button";
+import { EmptyState } from "../../../ui/EmptyState";
 import { Spinner } from "../../../ui/Spinner";
 import MexicanoStageCards from "../components/MexicanoStageCards";
 import "./MexicanoStagesPage.scss";
@@ -19,6 +21,19 @@ const MexicanoStagesPage: React.FC = () => {
       <MexicanoStageCards
         tournamentId={id}
         loading={<Spinner label="Loading Mexicano..." />}
+        empty={<EmptyState icon="list" title="No Mexicano stages" />}
+        failed={(retry) => (
+          <EmptyState
+            icon="alert"
+            title="Error"
+            body="An error occurred while loading data"
+            action={
+              <Button variant="tint" icon="refresh" onClick={retry}>
+                Try again
+              </Button>
+            }
+          />
+        )}
         onOpen={(formatId) =>
           navigate(`/tournaments/${id}/mexicano/${formatId}${name ? `?name=${encodeURIComponent(name)}` : ""}`)
         }

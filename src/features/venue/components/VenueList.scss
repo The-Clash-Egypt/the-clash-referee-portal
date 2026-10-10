@@ -1,8 +1,15 @@
+@use "../../../styles/touch" as *;
+
 // The courts list (mockup rest-of-portal.html phone 3: `.chips`, then the `.court` cards).
 .venue-list__chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+
+  // Wrapped rows: the chips' 44px targets reach 7px past their 30px faces.
+  @include touch {
+    row-gap: 14px;
+  }
 }
 
 .venue-list__content {

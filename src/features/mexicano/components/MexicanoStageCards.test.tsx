@@ -66,3 +66,33 @@ it("shows the loading placeholder it is given until the stages are in", async ()
   answer([]);
   await waitFor(() => expect(container).toBeEmptyDOMElement());
 });
+
+it("shows the empty state it is given for a tournament without a Mexicano stage", async () => {
+  stages.mockResolvedValue([]);
+
+  render(<MexicanoStageCards tournamentId="t1" onOpen={jest.fn()} empty={<p>No Mexicano stages</p>} />);
+
+  expect(await screen.findByText("No Mexicano stages")).toBeInTheDocument();
+});
+
+it("shows the error state it is given when the stages can't load, and Try again asks again", async () => {
+  stages.mockRejectedValueOnce(new Error("Network Error")).mockResolvedValueOnce([
+    { formatId: "m1", categoryName: "Men's Open", stageName: "Mexicano" },
+  ]);
+  load.mockResolvedValue(null);
+
+  render(
+    <MexicanoStageCards
+      tournamentId="t1"
+      onOpen={jest.fn()}
+      empty={<p>No Mexicano stages</p>}
+      failed={(retry) => <button onClick={retry}>Try again</button>}
+    />
+  );
+
+  fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+
+  expect(await screen.findByText("Men's Open")).toBeInTheDocument();
+  expect(stages).toHaveBeenCalledTimes(2);
+  expect(screen.queryByText("No Mexicano stages")).not.toBeInTheDocument();
+});

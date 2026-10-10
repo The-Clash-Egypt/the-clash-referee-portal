@@ -1,3 +1,5 @@
+@use "../../../styles/touch" as *;
+
 // Export preview: the on-screen twin of MatchesPDFDocument. Every size comes from SHEET in
 // src/utils/matchSheetLayout.ts through the --sheet-* custom properties set on
 // .printable-content (sheetCssVariables), so this page and the PDF cannot drift apart.
@@ -165,6 +167,10 @@ $rule-strong: #cbd5e1;
 
         &:disabled {
           cursor: not-allowed;
+        }
+
+        @include touch {
+          min-height: $touch-min;
         }
       }
 

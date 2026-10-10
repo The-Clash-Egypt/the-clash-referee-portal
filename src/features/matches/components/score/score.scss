@@ -719,6 +719,7 @@
 
   .sb-remind__done {
     align-self: stretch;
+    min-width: $touch-min;
     margin-right: -8px;
     padding: 0 8px;
   }

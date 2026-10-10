@@ -58,13 +58,19 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: var(--alt);
   }
 
   &:focus-visible {
     outline: none;
     box-shadow: inset 0 0 0 2px var(--spark);
+  }
+
+  // A print waiting for the names of its filters.
+  &:disabled {
+    cursor: progress;
+    opacity: 0.55;
   }
 }
 

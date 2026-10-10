@@ -5,7 +5,6 @@ import { useSelector } from "react-redux";
 import { RootState } from "../../../store";
 import { Button } from "../../../ui/Button";
 import { EmptyState } from "../../../ui/EmptyState";
-import { Icon } from "../../../ui/Icon";
 import { SearchInput } from "../../../ui/SearchInput";
 import { Segmented } from "../../../ui/Segmented";
 import { SkeletonRows } from "../../../ui/Spinner";
@@ -13,6 +12,7 @@ import { useToast } from "../../../ui/Toast";
 import { hasFullAccess } from "../../auth/permissions";
 import { AppBarSlot, AppBarTakeover } from "../../tournament-shell/AppBarSlot";
 import Drawer from "../../shared/components/Drawer";
+import { RefreshNotice } from "../../shared/components/RefreshNotice";
 import AssignRefereeModal from "../components/AssignRefereeModal";
 import BulkAssignRefereeModal from "../components/BulkAssignRefereeModal";
 import BulkEditMatchModal from "../components/BulkEditMatchModal";
@@ -213,13 +213,11 @@ const MatchesPage: React.FC = () => {
   // A refresh that failed (on return to the tab, after a change) keeps the list on screen and says so above it.
   const refreshNotice =
     list.refreshFailed && !list.isError ? (
-      <div className="matches-page__notice" role="alert">
-        <Icon name="alert" size={16} className="matches-page__notice-icon" />
-        <span className="matches-page__notice-text">An error occurred while loading data</span>
-        <Button variant="tint" size="sm" icon="refresh" onClick={list.refetch}>
-          Try again
-        </Button>
-      </div>
+      <RefreshNotice
+        className="matches-page__notice"
+        message="An error occurred while loading data"
+        onRetry={() => void list.refetch()}
+      />
     ) : null;
 
   let content: React.ReactNode;

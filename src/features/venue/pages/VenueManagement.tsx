@@ -5,6 +5,7 @@ import { generateVenueToken } from "../api/venue";
 import { VenueList } from "../components";
 import VenueQRCodeModal from "../components/VenueQRCodeModal";
 import { AppBarSlot } from "../../tournament-shell/AppBarSlot";
+import { RefreshNotice } from "../../shared/components/RefreshNotice";
 import { Button } from "../../../ui/Button";
 import { EmptyState } from "../../../ui/EmptyState";
 import { SearchInput } from "../../../ui/SearchInput";
@@ -190,17 +191,27 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
           }
         />
       ) : (
-        <VenueList
-          venues={venues}
-          onUpdate={handleUpdateVenue}
-          onShare={handleShareVenue}
-          onShowQRCode={handleShowQRCode}
-          onForceGenerateToken={handleForceGenerateToken}
-          isLoading={isLoading}
-          showActions={true}
-          loadingAction={loadingAction}
-          isUpdating={updateVenueMutation.isPending}
-        />
+        <>
+          {/* A refresh that failed with courts on screen: they stay, but their lock and password may be stale. */}
+          {error && venues.length > 0 ? (
+            <RefreshNotice
+              className="venue-management__notice"
+              message="Failed to load courts. Please try again."
+              onRetry={() => void refetchVenues()}
+            />
+          ) : null}
+          <VenueList
+            venues={venues}
+            onUpdate={handleUpdateVenue}
+            onShare={handleShareVenue}
+            onShowQRCode={handleShowQRCode}
+            onForceGenerateToken={handleForceGenerateToken}
+            isLoading={isLoading}
+            showActions={true}
+            loadingAction={loadingAction}
+            isUpdating={updateVenueMutation.isPending}
+          />
+        </>
       )}
 
       <VenueQRCodeModal

@@ -126,3 +126,20 @@ it("says so when there are no courts", () => {
   expect(screen.getByText("No courts found")).toBeInTheDocument();
   expect(screen.queryByRole("group", { name: "Filter courts" })).not.toBeInTheDocument();
 });
+
+it("flags a court whose link has expired or expires within hours, and keeps healthy links quiet", () => {
+  const inHours = (hours: number) => new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+  renderList({
+    venues: [
+      court("v1", "Court 1", { accessTokenExpiry: inHours(-1) }),
+      court("v2", "Court 2", { accessTokenExpiry: inHours(2.5) }),
+      court("v3", "Court 3", { accessTokenExpiry: inHours(37) }),
+      court("v4", "Court 4"),
+    ],
+  });
+
+  expect(within(card("Court 1")).getByText("Link expired")).toBeInTheDocument();
+  expect(within(card("Court 2")).getByText(/^Link expires in 2h \d+m$/)).toBeInTheDocument();
+  expect(within(card("Court 3")).queryByText(/^Link /)).not.toBeInTheDocument();
+  expect(within(card("Court 4")).queryByText(/^Link /)).not.toBeInTheDocument();
+});

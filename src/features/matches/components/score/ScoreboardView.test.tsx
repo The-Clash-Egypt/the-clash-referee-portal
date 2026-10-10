@@ -145,6 +145,107 @@ it("says whether the latest live score was saved", async () => {
   errorSpy.mockRestore();
 });
 
+// Review part 2, M2: "saved" is only ever about the score on the board.
+it("doesn't say saved while a newer point is still on its way", async () => {
+  jest.useFakeTimers();
+  openScoreboard();
+
+  fireEvent.click(screen.getByRole("button", { name: "Add point to Blue Wave" }));
+  await act(async () => {
+    jest.advanceTimersByTime(500);
+  });
+  expect(screen.getByText("Live score saved")).toBeInTheDocument();
+
+  // The next point: not saved yet (the debounce, then the call).
+  let answer: (value: unknown) => void = () => undefined;
+  liveScore.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+  fireEvent.click(screen.getByRole("button", { name: "Add point to Blue Wave" }));
+  expect(screen.queryByText("Live score saved")).not.toBeInTheDocument();
+  await act(async () => {
+    jest.advanceTimersByTime(500);
+  });
+  expect(screen.queryByText("Live score saved")).not.toBeInTheDocument(); // the call hasn't answered
+
+  await act(async () => {
+    answer({ data: {} });
+  });
+  expect(screen.getByText("Live score saved")).toBeInTheDocument();
+});
+
+describe("on the board", () => {
+  const sides = () => screen.getAllByRole("region").map((side) => side.getAttribute("aria-label"));
+  const scoreOf = (team: string) =>
+    // eslint-disable-next-line testing-library/no-node-access -- the big score digits have no accessible name
+    screen.getByRole("region", { name: team }).querySelector(".sb-team__score")?.textContent;
+
+  it("reminds to switch sides every 7 points of the set; Done hides it until the next 7", () => {
+    openScoreboard(sandSharks({ gameScores: [game(1, 21, 18), game(2, 3, 3)] }));
+    expect(screen.queryByText(/Switch sides:/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add point to Sand Sharks" }));
+    expect(screen.getByText("Switch sides: 7 points played")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByText(/Switch sides:/)).not.toBeInTheDocument();
+
+    for (let point = 0; point < 6; point += 1) {
+      fireEvent.click(screen.getByRole("button", { name: "Add point to Blue Wave" }));
+    }
+    expect(screen.queryByText(/Switch sides:/)).not.toBeInTheDocument(); // 13
+    fireEvent.click(screen.getByRole("button", { name: "Add point to Blue Wave" }));
+    expect(screen.getByText("Switch sides: 14 points played")).toBeInTheDocument();
+  });
+
+  it("tags a side with the sets it has won", () => {
+    openScoreboard();
+
+    expect(screen.getByRole("region", { name: "Sand Sharks" })).toHaveTextContent("Won set 1");
+    expect(screen.getByRole("region", { name: "Blue Wave" })).not.toHaveTextContent(/Won set/);
+  });
+
+  it("still scores each team by its name once the sides are switched", () => {
+    openScoreboard();
+    expect(sides()).toEqual(["Sand Sharks", "Blue Wave"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch sides" }));
+    expect(sides()).toEqual(["Blue Wave", "Sand Sharks"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add point to Sand Sharks" }));
+    expect(scoreOf("Sand Sharks")).toBe("10");
+    expect(scoreOf("Blue Wave")).toBe("7");
+    fireEvent.click(screen.getByRole("button", { name: "Add point to Blue Wave" }));
+    expect(scoreOf("Blue Wave")).toBe("8");
+  });
+
+  it("leaves with Escape, as with the back arrow", () => {
+    const onClose = jest.fn();
+    render(<UpdateScoreDialog isOpen match={sandSharks()} onClose={onClose} onSubmit={jest.fn()} loading={false} />);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  // Review part 2, M1: the teams are still on the ends they changed to.
+  it("keeps the side swap when a scorer goes back and reopens the match; another match starts unswapped", () => {
+    const other = sandSharks({ id: "e0000000-0000-4000-8000-000000000002", homeTeamName: "Dune Dogs", awayTeamName: "Salty Six" });
+    const dialog = (isOpen: boolean, match: Match) => (
+      <UpdateScoreDialog isOpen={isOpen} match={match} onClose={jest.fn()} onSubmit={jest.fn()} loading={false} />
+    );
+    const { rerender } = render(dialog(true, sandSharks()));
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch sides" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    rerender(dialog(false, sandSharks()));
+    rerender(dialog(true, sandSharks()));
+    expect(sides()).toEqual(["Blue Wave", "Sand Sharks"]);
+
+    rerender(dialog(false, sandSharks()));
+    rerender(dialog(true, other));
+    expect(sides()).toEqual(["Dune Dogs", "Salty Six"]);
+  });
+});
+
 it("keeps the page still while open, and scrollable once it closes, when it opens as the match sheet slides out", async () => {
   jest.useFakeTimers();
   const match = sandSharks();

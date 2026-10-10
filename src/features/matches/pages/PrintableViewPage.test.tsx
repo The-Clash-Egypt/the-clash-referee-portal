@@ -1,9 +1,10 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import PrintableViewPage from "./PrintableViewPage";
 import { getRefereeMatches } from "../api/matches";
+import { issueMatchAccessTokens } from "../api/matchAccess";
 
 // Jest 27 (CRA) can't resolve react-router-dom v7; react-router exports the same API (it needs TextEncoder).
 jest.mock(
@@ -24,10 +25,11 @@ jest.mock("../../../utils/reactPdfExport", () => ({ previewMatchesPDFWithFilenam
 jest.mock("../api/matches", () => ({ getRefereeMatches: jest.fn() }));
 jest.mock("../api/matchAccess", () => ({
   ...jest.requireActual("../api/matchAccess"),
-  issueMatchAccessTokens: jest.fn(() => Promise.resolve([])),
+  issueMatchAccessTokens: jest.fn(),
 }));
 
 const loadMatches = getRefereeMatches as jest.Mock;
+const issueTokens = issueMatchAccessTokens as jest.Mock;
 
 const renderPage = () =>
   render(
@@ -42,7 +44,13 @@ const renderPage = () =>
     </MemoryRouter>
   );
 
-beforeEach(() => loadMatches.mockReset());
+// CRA resets mocks before each test, which would wipe an implementation given in the factory above.
+beforeEach(() => {
+  loadMatches.mockReset();
+  issueTokens.mockResolvedValue([
+    { matchId: "m1", token: "tok-m1", expiresAt: new Date(2026, 9, 11, 15, 20).toISOString() },
+  ]);
+});
 
 it("shows the brand spinner while the matches load", () => {
   loadMatches.mockReturnValue(new Promise(() => undefined));
@@ -85,9 +93,15 @@ it("opens the export preview with its toolbar once the matches are in", async ()
     },
   });
 
+  const errorSpy = jest.spyOn(console, "error");
   renderPage();
 
   expect(await screen.findByRole("button", { name: "Preview PDF" })).toBeInTheDocument();
+  // The QR codes come from one token request for the report, and it succeeds (no failure path, no retry chip).
+  await waitFor(() => expect(issueTokens).toHaveBeenCalledWith(["m1"]));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Preview PDF" })).toBeEnabled());
+  expect(errorSpy).not.toHaveBeenCalledWith("Failed to generate match QR codes:", expect.anything());
+  errorSpy.mockRestore();
   expect(screen.getByRole("button", { name: "Close preview" })).toBeInTheDocument();
   expect(screen.getByText("Export preview")).toBeInTheDocument();
   expect(loadMatches).toHaveBeenCalledWith(

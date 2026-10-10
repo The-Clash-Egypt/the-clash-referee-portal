@@ -8,6 +8,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import userReducer, { User } from "../../store/slices/userSlice";
 import { AdminRole } from "../auth/types/adminRoles";
 import { getRefereeMatches } from "../matches/api/matches";
+import { matchListKeys } from "../matches/hooks/useMatchList";
 import { Match } from "../matches/types/match";
 import { getTournaments } from "../tournaments/api";
 import MorePage from "./MorePage";
@@ -56,12 +57,15 @@ const matches: Match[] = [
   { id: "m3", isCompleted: true, startedAt: at(12, 9), endedAt: at(12, 18, 40) },
 ];
 
-function renderMore(path: string, user: User) {
+function renderMore(
+  path: string,
+  user: User,
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+) {
   const store = configureStore({
     reducer: { user: userReducer },
     preloadedState: { user: { user, token: "x", isAuthenticated: true } },
   });
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <Provider store={store}>
       <QueryClientProvider client={client}>
@@ -187,4 +191,46 @@ it("prints a match list of the type picked in its sheet", async () => {
   expect(preview.searchParams.get("viewType")).toBe("referee");
   expect(preview.searchParams.get("referee")).toBe("r1");
   expect(preview.searchParams.get("refereeName")).toBe("Mona Samir");
+});
+
+describe("naming the referee or team a print is filtered by", () => {
+  it("takes the name from the Matches tab's cache while the durations call is still out", () => {
+    fetchMatches.mockReturnValue(new Promise(() => {})); // the durations call never answers
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData([...matchListKeys.all, "counts", "t1", { referee: "r1" }], {
+      filters: { referees: [{ id: "r1", fullName: "Mona Samir" }] },
+    });
+    renderMore("/tournaments/t1/more?referee=r1", superadmin, client);
+
+    expect(screen.getByText(/Filters from Matches: Mona Samir/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /match sheets with qr codes/i }));
+
+    const preview = openedPreview(open);
+    expect(preview.searchParams.get("referee")).toBe("r1");
+    expect(preview.searchParams.get("refereeName")).toBe("Mona Samir");
+  });
+
+  it("holds the prints until the name is in, rather than printing the id", async () => {
+    let answer: (value: unknown) => void = () => {};
+    fetchMatches.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    renderMore("/tournaments/t1/more?referee=r1", superadmin);
+
+    const sheets = screen.getByRole("button", { name: /match sheets with qr codes/i });
+    expect(sheets).toBeDisabled();
+    expect(screen.getByRole("button", { name: /match lists/i })).toBeDisabled();
+    fireEvent.click(sheets);
+    expect(open).not.toHaveBeenCalled();
+
+    answer({
+      data: {
+        data: {
+          matches: { items: [], pagination: { total: 0, pageNumber: 1, pageSize: 1000, totalPages: 0 } },
+          filters: { referees: [{ id: "r1", fullName: "Mona Samir" }], teams: [], venues: [] },
+        },
+      },
+    });
+    await waitFor(() => expect(sheets).toBeEnabled());
+    fireEvent.click(sheets);
+    expect(openedPreview(open).searchParams.get("refereeName")).toBe("Mona Samir");
+  });
 });

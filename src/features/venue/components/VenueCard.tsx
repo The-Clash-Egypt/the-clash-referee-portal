@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Venue, UpdateVenueDTO } from "../types/venue";
 import { Button } from "../../../ui/Button";
 import { Icon } from "../../../ui/Icon";
+import { Tag } from "../../../ui/Tag";
 import "./VenueCard.scss";
 
 interface VenueCardProps {
@@ -15,6 +16,9 @@ interface VenueCardProps {
   isUpdating?: boolean;
 }
 
+/** A court link this close to its expiry is flagged on the card (a match day's worth of warning). */
+const LINK_WARNING_HOURS = 12;
+
 /** "expires in 5h 12m" / "expired" for the court's current link ("" when unknown). */
 const linkExpiry = (expiry: string | null | undefined): string => {
   if (!expiry) return "";
@@ -24,6 +28,15 @@ const linkExpiry = (expiry: string | null | undefined): string => {
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
   return diffHours > 0 ? `expires in ${diffHours}h ${diffMinutes}m` : `expires in ${diffMinutes}m`;
+};
+
+/** Whether the card flags the link: expired, or expiring within LINK_WARNING_HOURS. Healthy links stay quiet. */
+const linkState = (expiry: string | null | undefined): "expired" | "soon" | null => {
+  if (!expiry) return null;
+  const diffMs = new Date(expiry).getTime() - Date.now();
+  if (Number.isNaN(diffMs)) return null;
+  if (diffMs < 0) return "expired";
+  return diffMs < LINK_WARNING_HOURS * 60 * 60 * 1000 ? "soon" : null;
 };
 
 /**
@@ -154,6 +167,15 @@ const VenueCard: React.FC<VenueCardProps> = ({
   const hasPassword = Boolean(venue.password && venue.password.trim() !== "");
   const canRegenerate = Boolean(onForceGenerateToken && venue.accessToken);
   const expiry = linkExpiry(venue.accessTokenExpiry);
+  const linkFlag = linkState(venue.accessTokenExpiry);
+  // The court's shared link stops working when it expires (referees then see "Token Expired"): the card says so,
+  // in red once expired, orange in its last hours. QR / Share / New link make a fresh one.
+  const linkTag = linkFlag ? (
+    <Tag tone={linkFlag === "expired" ? "live" : "warn"} className={`court-card__link court-card__link--${linkFlag}`}>
+      <Icon name="clock" size={11} />
+      {linkFlag === "expired" ? "Link expired" : `Link ${expiry}`}
+    </Tag>
+  ) : null;
 
   return (
     <article
@@ -286,6 +308,7 @@ const VenueCard: React.FC<VenueCardProps> = ({
           ) : (
             "No password"
           )}
+          {linkTag}
         </div>
       )}
 

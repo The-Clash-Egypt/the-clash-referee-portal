@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { RootState } from "../../store";
 import { Button, Icon, Spinner } from "../../ui";
@@ -9,8 +10,9 @@ import { hasFullAccess } from "../auth/permissions";
 import { useLogout } from "../auth/useLogout";
 import { ExportViewType, useMatchActions } from "../matches/hooks/useMatchActions";
 import { MatchFilterState, useMatchFilters } from "../matches/hooks/useMatchFilters";
+import { matchListKeys } from "../matches/hooks/useMatchList";
 import { FilterOptions } from "../matches/types/match";
-import { formatOption, nameForValue } from "../matches/utils/filterOptions";
+import { formatOption, nameForValue, normalizeFilterOptions, optionValue } from "../matches/utils/filterOptions";
 import { formatDayLabel } from "../matches/utils/timeline";
 import { useDayDurations } from "./useDayDurations";
 import { useTournamentInfo } from "./useTournamentInfo";
@@ -48,6 +50,30 @@ const filterLabels = (filters: MatchFilterState, options: FilterOptions): string
   return labels;
 };
 
+/**
+ * The teams and referees that name the print filters: the durations call's, then any the Matches tab has cached for
+ * this tournament (More opens from Matches, so they are usually there before the durations call answers).
+ */
+const useNamingOptions = (tournamentId: string, options: FilterOptions): FilterOptions => {
+  const queryClient = useQueryClient();
+  return useMemo(() => {
+    const cached = queryClient
+      .getQueriesData<{ filters?: Partial<FilterOptions> | null }>({
+        queryKey: [...matchListKeys.all, "counts", tournamentId],
+      })
+      .map(([, data]) => normalizeFilterOptions(data?.filters));
+    return {
+      ...options,
+      teams: [...options.teams, ...cached.flatMap((cachedOptions) => cachedOptions.teams)],
+      referees: [...options.referees, ...cached.flatMap((cachedOptions) => cachedOptions.referees)],
+    };
+  }, [queryClient, tournamentId, options]);
+};
+
+/** Whether a team / referee filter value has a name to print ("all" needs none). */
+const isNamed = (options: FilterOptions["teams"] | FilterOptions["referees"], value: string) =>
+  value === "all" || options.some((option) => optionValue(option) === value);
+
 const SectionHeading = ({ id, children }: { id: string; children: React.ReactNode }) => (
   <h2 className="more-page__heading" id={id}>
     <span className="more-page__blade" aria-hidden="true" />
@@ -80,13 +106,16 @@ const MorePage: React.FC = () => {
   const { exportView } = useMatchActions(id);
   const [listsOpen, setListsOpen] = useState(false);
 
-  const print = (type: ExportViewType) =>
-    exportView(type, filters, durations.filterOptions, { tournamentName: info.name });
+  const naming = useNamingOptions(id, durations.filterOptions);
+  // A print titled by a team or referee waits for its name (rather than printing the id) while the call is out.
+  const namesPending =
+    durations.isLoading && (!isNamed(naming.teams, filters.team) || !isNamed(naming.referees, filters.referee));
+  const print = (type: ExportViewType) => exportView(type, filters, naming, { tournamentName: info.name });
   const printList = (type: ExportViewType) => {
     print(type);
     setListsOpen(false);
   };
-  const filtersInForce = filterLabels(filters, durations.filterOptions).join(" · ");
+  const filtersInForce = filterLabels(filters, naming).join(" · ");
 
   let durationRows: React.ReactNode;
   if (durations.isLoading) {
@@ -130,7 +159,13 @@ const MorePage: React.FC = () => {
             <SectionHeading id="more-page-print">Print</SectionHeading>
             <ul className="more-page__menu">
               <li>
-                <button type="button" className="more-page__row" onClick={() => print(sheetsType(filters))}>
+                <button
+                  type="button"
+                  className="more-page__row"
+                  onClick={() => print(sheetsType(filters))}
+                  disabled={namesPending}
+                  aria-busy={namesPending || undefined}
+                >
                   <RowIcon name="qr" />
                   <span className="more-page__text">
                     Match sheets with QR codes
@@ -145,6 +180,8 @@ const MorePage: React.FC = () => {
                   className="more-page__row"
                   aria-haspopup="dialog"
                   onClick={() => setListsOpen(true)}
+                  disabled={namesPending}
+                  aria-busy={namesPending || undefined}
                 >
                   <RowIcon name="list" />
                   <span className="more-page__text">

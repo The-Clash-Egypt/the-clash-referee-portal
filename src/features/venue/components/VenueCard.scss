@@ -222,6 +222,20 @@
   }
 }
 
+// The court link's state, at the end of the password line: red once expired, orange in its last hours. The clock
+// stands in for the live tag's dot.
+.court-card__link {
+  margin-left: auto;
+
+  &.ui-tag--live::before {
+    display: none;
+  }
+
+  .ui-icon {
+    stroke-width: 2.4;
+  }
+}
+
 // Renaming, or setting the password: the field and its save / cancel.
 .court-card__edit {
   display: flex;
@@ -354,7 +368,7 @@
   padding: 0;
 
   @include touch {
-    width: $touch-min;
+    width: $touch-min + 4px; // the slant takes 2px off each side at mid-height
   }
 }
 

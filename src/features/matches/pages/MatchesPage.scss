@@ -90,39 +90,9 @@
 }
 
 // A refresh failed: the list stays, with this above it (a white card with a red stripe, like an error toast).
+// A failed refresh above the list (RefreshNotice).
 .matches-page__notice {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
   margin: 12px 14px 0;
-  padding: 8px 8px 8px 16px;
-  clip-path: var(--clip-cut);
-  background: var(--card);
-  color: var(--ink);
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: 5px;
-    background: var(--live);
-  }
-}
-
-.matches-page__notice-icon {
-  flex: none;
-  color: var(--live-badge);
-}
-
-.matches-page__notice-text {
-  flex: 1;
-  min-width: 0;
-  font-size: 13.5px;
-  font-weight: 600;
-  line-height: 1.35;
 }
 
 // Bulk WhatsApp: pick one referee of the selected matches (rows like the referee sheet's: radio, avatar, name, phone).

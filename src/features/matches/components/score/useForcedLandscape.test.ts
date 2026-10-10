@@ -66,3 +66,25 @@ test("never rotates a viewport that is already landscape, even when forced", () 
   expect(result.current.viewportPortrait).toBe(false);
   expect(result.current.rotate).toBe(false);
 });
+
+// Review part 2, M9: every scoreboard opening is a new mount; without storage the choice must outlive it.
+test("with storage blocked, the choice still holds for the next scoreboard of this visit", () => {
+  stubOrientation(true);
+  jest.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+    throw new Error("SecurityError");
+  });
+  jest.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+    throw new Error("QuotaExceededError");
+  });
+  const first = renderHook(() => useForcedLandscape());
+  if (!first.result.current.forced) act(() => first.result.current.toggle());
+  expect(first.result.current.forced).toBe(true);
+  first.unmount();
+
+  const next = renderHook(() => useForcedLandscape());
+  expect(next.result.current.forced).toBe(true);
+  expect(next.result.current.rotate).toBe(true);
+
+  act(() => next.result.current.toggle()); // upright again for the tests after this one
+  expect(renderHook(() => useForcedLandscape()).result.current.forced).toBe(false);
+});

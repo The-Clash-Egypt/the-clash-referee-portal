@@ -24,6 +24,8 @@
   display: inline-flex;
   flex: none;
   align-items: center;
+  justify-content: center;
+  min-width: $touch-min;
   padding: 0 12px;
   color: var(--ink);
   transition: color 0.15s ease;
@@ -57,6 +59,7 @@
 
 // With its own ✕: the wrapper carries the shape and colour, the two buttons share it.
 .ui-chip--removable {
+  min-width: 0;
   padding: 0;
   gap: 0;
   cursor: default;
@@ -96,6 +99,8 @@
 }
 
 .ui-chip__remove {
+  justify-content: center;
+  min-width: $touch-min;
   padding-right: 11px;
   padding-left: 6px;
   opacity: 0.75;

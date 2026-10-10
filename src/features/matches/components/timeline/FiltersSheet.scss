@@ -1,3 +1,5 @@
+@use "../../../../styles/touch" as *;
+
 // The filters sheet (mockup match-flow-v2.html phone 1: `.grp`, `.chips`, `.pick`).
 .filters-sheet__group {
   margin-top: 16px;
@@ -22,6 +24,11 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+
+  // Wrapped rows: the chips' 44px targets reach 7px past their 30px faces.
+  @include touch {
+    row-gap: 14px;
+  }
 }
 
 // The team and referee pickers are SearchableDropdown, branded in its own stylesheet.

@@ -70,6 +70,8 @@ export function useScoreState({
   const snapshotRef = useRef<ScoreSnapshot | null>(null);
   // Numbers the live calls, so only the latest one's answer is shown.
   const liveCallRef = useRef(0);
+  // The match the side swap belongs to: the teams changed ends on that court, so Back and reopening it keep the swap.
+  const swapMatchRef = useRef<string | null>(null);
 
   // Every opening (or another match) starts on its own view, and without a confirm prompt — a late click on the frozen
   // Save while the drawer slid out would otherwise leave one waiting. Adjusted while rendering, so nothing flashes.
@@ -110,6 +112,12 @@ export function useScoreState({
     // Americano/Mexicano matches are exactly one game — never carry extra sets
     if (isFixedPointsFormat(match.formatType)) {
       initialScores = initialScores.slice(0, 1);
+    }
+
+    // Another match: its own sides (the swap stays with the match it was made for).
+    if (swapMatchRef.current !== match.id) {
+      swapMatchRef.current = match.id;
+      setSidesSwapped(false);
     }
 
     setGameScores(initialScores);
@@ -155,6 +163,10 @@ export function useScoreState({
     }
 
     if (hasLoggedFirstPoint) {
+      // A newer score than the last one saved: not "saved" until its own call answers (an answer still on its way
+      // belongs to an older score).
+      liveCallRef.current += 1;
+      setLiveStatus("idle");
       const timeoutId = setTimeout(() => {
         sendLiveScore(gameScores);
       }, 500); // 500ms debounce
@@ -268,21 +280,20 @@ export function useScoreState({
     setSelectedSetIndex(0);
     setHasLoggedFirstPoint(false);
     snapshotRef.current = null;
-    setSidesSwapped(false);
     setShowConfirmation(false);
     onClose();
   };
 
   /**
    * The scoreboard's back arrow. The scores stay put, so a live update still waiting on its debounce goes out; the
-   * guest pages also keep a snapshot, so re-opening the same match carries on from it.
+   * guest pages also keep a snapshot, so re-opening the same match carries on from it. The side swap stays with the
+   * match (the teams are still on the ends they changed to).
    */
   const leaveScoreboard = () => {
     snapshotRef.current =
       openInFullscreen && match ? { matchId: match.id, scores: [...gameScores], setIndex: selectedSetIndex } : null;
     setErrors([]);
     setIsUnauthorized(false);
-    setSidesSwapped(false);
     setShowConfirmation(false);
     onClose();
   };
