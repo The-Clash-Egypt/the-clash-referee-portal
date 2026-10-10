@@ -79,6 +79,34 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks());
 
+it("shows the brand spinner while the match loads", () => {
+  load.mockReturnValue(new Promise(() => undefined));
+
+  renderView();
+
+  expect(screen.getByRole("status")).toHaveTextContent("Loading match…");
+});
+
+it("names the court and the tournament in the bar, and the match's teams and players on its card", async () => {
+  load.mockResolvedValue(
+    guest({
+      isCompleted: true,
+      homeTeamSets: 2,
+      awayTeamSets: 0,
+      homeTeamPlayers: [{ firstName: "Ali", lastName: "Hassan", isCaptain: true }],
+    })
+  );
+
+  renderView();
+
+  expect(await screen.findByRole("heading", { level: 1, name: "Court 1" })).toBeInTheDocument();
+  expect(screen.getByText("Summer Open")).toBeInTheDocument();
+  expect(screen.getByText("Falcons")).toBeInTheDocument();
+  expect(screen.getByText("Sharks")).toBeInTheDocument();
+  expect(screen.getByText("Ali Hassan (C)")).toBeInTheDocument();
+  expect(screen.getByText(/Men's Open · Pool A · Round 1 · Best of 3/)).toBeInTheDocument();
+});
+
 it("offers score entry for a match still to be played", async () => {
   load.mockResolvedValue(guest());
 
