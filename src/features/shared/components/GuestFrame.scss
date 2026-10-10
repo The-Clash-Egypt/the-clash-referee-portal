@@ -1,0 +1,86 @@
+// The frame of the public pages (court page, match QR page): the blue bar over the grey page.
+// One centred column: --content-max narrows the app bar's content (AppBar reads it) and the page alike.
+.guest-frame {
+  --content-max: 720px;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--page);
+  color: var(--ink);
+}
+
+// One match, or a state card (spinner, error, locked, password).
+.guest-frame--narrow {
+  --content-max: 560px;
+}
+
+// The bar stays on top while the page scrolls; the full-screen scoreboard (z-index 1000) still covers it.
+.guest-frame__bar {
+  position: sticky;
+  top: 0;
+  z-index: 800;
+}
+
+// Before the court is known: the same bar with just the wordmark, where the app bar has it.
+.guest-frame__brand {
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 14px;
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+.guest-frame__brand-inner {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 34px;
+  max-width: var(--content-max);
+  margin: 0 auto;
+
+  .ui-brand-logo {
+    height: 30px;
+  }
+}
+
+// Phones: the list runs edge to edge (its rows keep their own gutter); a narrow page keeps a 16px gutter.
+.guest-frame__body {
+  flex: 1;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2px 0 calc(32px + env(safe-area-inset-bottom, 0px));
+}
+
+.guest-frame--narrow .guest-frame__body {
+  padding: 16px 16px calc(32px + env(safe-area-inset-bottom, 0px));
+}
+
+// Wider screens: the content sits in the bar's column (gutter included in the width).
+@media (min-width: 768px) {
+  .guest-frame__body {
+    max-width: calc(var(--content-max) + 32px);
+    padding: 8px 16px 40px;
+  }
+
+  .guest-frame--narrow .guest-frame__body {
+    padding-top: 28px;
+  }
+}
+
+@media (min-width: 900px) {
+  .guest-frame__brand {
+    padding-top: 16px;
+  }
+}
+
+// A phone on its side: height is short, so the bar scrolls away with the page and the content starts closer to it.
+@media (max-height: 500px) and (orientation: landscape) {
+  .guest-frame__bar {
+    position: static;
+  }
+
+  .guest-frame--narrow .guest-frame__body {
+    padding-top: 12px;
+  }
+}

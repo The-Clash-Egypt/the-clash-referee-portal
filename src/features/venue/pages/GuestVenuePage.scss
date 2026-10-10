@@ -1,311 +1,220 @@
-@import "../../../styles/colors.scss";
-@import "../../shared/components/MatchCard.scss";
+// The public court page (/venue/shared): the court's matches as timeline rows under time headers (mockup
+// matches-layout.html option B: `.slot`, `.mrow`), in the GuestFrame. State cards are the UI kit's EmptyState.
 
-.guest-venue-page {
-  min-height: 100vh;
-  background: $bg-secondary;
-  padding: 2rem;
-  color: $text-primary;
+.guest-venue {
+  padding-bottom: 4px;
 
-  &__loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 50vh;
-    text-align: center;
-
-    .loading-spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid $gray-300;
-      border-top: 4px solid $primary-color;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 1rem;
-    }
-
-    p {
-      font-size: 1.1rem;
-      color: $text-secondary;
-    }
-  }
-
-  &__error {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 50vh;
-    text-align: center;
-    max-width: 500px;
-    margin: 0 auto;
-
-    .error-icon {
-      color: $error-color;
-      margin-bottom: 1rem;
-    }
-
-    h2 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-      color: $error-color;
-    }
-
-    p {
-      font-size: 1.1rem;
-      margin-bottom: 2rem;
-      color: $text-secondary;
-      line-height: 1.6;
-
-      &.expired-message {
-        background: $error-color-light;
-        border: 1px solid $error-color;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-top: 1rem;
-        color: $error-color;
-        font-size: 0.95rem;
-      }
-    }
-
-    .retry-button {
-      background: $error-color;
-      color: $white;
-      border: none;
-      padding: 0.75rem 1.5rem;
-      border-radius: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background-color 0.2s;
-
-      &:hover {
-        background: $error-color-hover;
-      }
-    }
-  }
-
-  &__header {
-    text-align: center;
-
-    .tournament-name {
-      font-size: 1.3rem;
-      font-weight: 600;
-      color: $text-secondary;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin: 0;
-    }
-
-    h1 {
-      font-size: 2.5rem;
-      margin: 0;
-      font-weight: 700;
-      margin-bottom: 0;
-      color: $text-primary;
-    }
-  }
-
-  &__content {
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-
-  .venue-locked {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 50vh;
-    text-align: center;
-    max-width: 500px;
-    margin: 0 auto;
-
-    .locked-icon {
-      color: $warning-color;
-      margin-bottom: 1.5rem;
-    }
-
-    h2 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-      color: $text-primary;
-    }
-
-    p {
-      font-size: 1.1rem;
-      margin-bottom: 1rem;
-      color: $text-secondary;
-      line-height: 1.6;
-    }
-  }
-
-  .password-prompt {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 50vh;
-    text-align: center;
-    max-width: 500px;
-    margin: 0 auto;
-
-    &__icon {
-      color: $primary-color;
-      margin-bottom: 1.5rem;
-    }
-
-    h2 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-      color: $text-primary;
-    }
-
-    p {
-      font-size: 1.1rem;
-      margin-bottom: 2rem;
-      color: $text-secondary;
-      line-height: 1.6;
-    }
-
-    &__form {
-      width: 100%;
-    }
-
-    &__input-group {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 1rem;
-
-      @media (max-width: 480px) {
-        flex-direction: column;
-      }
-    }
-
-    &__input {
-      flex: 1;
-      padding: 0.75rem 1rem;
-      border: 1px solid $border-primary;
-      border-radius: 8px;
-      font-size: 1rem;
-      color: $text-primary;
-      background: $white;
-      transition: all 0.2s ease;
-
-      &:focus {
-        outline: none;
-        border-color: $primary-color;
-        box-shadow: 0 0 0 2px $primary-color-light;
-      }
-
-      &::placeholder {
-        color: $text-tertiary;
-      }
-    }
-
-    &__button {
-      padding: 0.75rem 1.5rem;
-      background: $primary-color;
-      color: $white;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      white-space: nowrap;
-
-      &:hover:not(:disabled) {
-        background: $primary-color-hover;
-        transform: translateY(-1px);
-        box-shadow: $shadow-md;
-      }
-
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        transform: none;
-        box-shadow: none;
-      }
-    }
-
-    &__error {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1rem;
-      background: $error-color-light;
-      border: 1px solid $error-color;
-      border-radius: 8px;
-      color: $error-color;
-      font-size: 0.9rem;
-      text-align: left;
-
-      svg {
-        flex-shrink: 0;
-      }
-    }
-  }
-
-  .matches-section {
-    h2 {
-      font-size: 1.8rem;
-      margin-bottom: 1.5rem;
-      font-weight: 600;
-      color: $text-primary;
-    }
-
-    .matches-grid {
-      display: grid;
-      gap: 1rem;
-      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    }
+  // The court's payload names no referees, so its rows make no claim about them (no orange "No referee").
+  .match-row__ref {
+    display: none;
   }
 }
 
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
+// "Up next" / "Done": the blade header of the More tab.
+.guest-venue__heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 16px 2px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.guest-venue__blade {
+  flex: none;
+  width: 26px;
+  height: 7px;
+  clip-path: var(--clip-blade);
+  background: var(--spark);
+}
+
+.guest-venue__count {
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+// A start time (and its day, when the court plays on several days) over its matches.
+.guest-venue__slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 16px 6px;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+
+  b {
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-style: italic;
+    font-weight: 800;
+    letter-spacing: 0;
   }
-  100% {
-    transform: rotate(360deg);
+
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
   }
 }
 
-@keyframes pulse {
-  0%,
-  100% {
+.guest-venue__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0 14px;
+  list-style: none;
+}
+
+.guest-venue__item {
+  display: flex;
+  min-width: 0;
+}
+
+// A finished match is read-only here: no chevron, no hover.
+.guest-venue__item--final {
+  .match-row {
+    cursor: default;
+
+    &:hover {
+      box-shadow: none;
+    }
+
+    &:focus-visible {
+      box-shadow: inset 0 0 0 2px var(--spark);
+    }
+  }
+
+  .match-row__chev {
+    visibility: hidden;
+  }
+}
+
+.guest-venue__empty {
+  padding: 16px;
+}
+
+// --- state cards (error, locked, password) ---
+
+.guest-venue__line {
+  margin: 0;
+
+  & + & {
+    margin-top: 8px;
+  }
+}
+
+// The form takes the card's width: EmptyState centres its action slot at the slot's own width.
+.guest-venue__gate-card .ui-empty__action {
+  align-self: stretch;
+}
+
+.guest-venue__gate {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+  margin: 4px auto 0;
+  text-align: left;
+}
+
+// The password field: white, a line border, the orange ring on focus (as the search fields and the log in form).
+.guest-venue__password {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+  cursor: text;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:focus-within {
+    border-color: var(--spark);
+    box-shadow: inset 0 0 0 1px var(--spark);
+  }
+}
+
+.guest-venue__password--error {
+  border-color: var(--live-badge);
+}
+
+.guest-venue__password-icon {
+  stroke-width: 2.2;
+}
+
+// 16px text keeps iOS from zooming in on focus.
+.guest-venue__password-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  -webkit-appearance: none;
+  appearance: none;
+
+  &::placeholder {
+    color: var(--muted);
+    font-size: 15px;
     opacity: 1;
   }
-  50% {
-    opacity: 0.7;
+}
+
+.guest-venue__error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--live-badge);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+
+  .ui-icon {
+    stroke-width: 2.2;
   }
 }
 
-// Responsive design
-@media (max-width: 768px) {
-  .guest-venue-page {
-    padding: 1rem;
+// Wider screens: one court plays one match at a time, so the list stays a single column (GuestFrame centres it and
+// gives it its gutter).
+@media (min-width: 768px) {
+  .guest-venue__heading,
+  .guest-venue__slot {
+    margin-right: 0;
+    margin-left: 0;
+  }
 
-    &__header {
-      margin-bottom: 1.5rem;
+  .guest-venue__rows {
+    gap: 6px;
+    padding: 0;
+  }
 
-      .tournament-name {
-        font-size: 1.1rem;
-        margin-bottom: 0.2rem;
-      }
-
-      h1 {
-        font-size: 1.8rem;
-      }
-    }
-
-    .matches-section {
-      padding: 0;
-    }
-
-    .matches-grid {
-      grid-template-columns: 1fr;
-    }
+  .guest-venue__empty {
+    padding: 16px 0;
   }
 }

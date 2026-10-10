@@ -5,7 +5,9 @@ import { getRefereeMatches } from "../api/matches";
 import { buildMatchAccessUrl, issueMatchAccessTokens } from "../api/matchAccess";
 import { QrLinks, QrStatus } from "../../../utils/matchSheetLayout";
 import PrintableView from "../components/PrintableView";
-import VolleyballLoading from "../../../components/VolleyballLoading";
+import { Button } from "../../../ui/Button";
+import { EmptyState } from "../../../ui/EmptyState";
+import { Spinner } from "../../../ui/Spinner";
 import "./PrintableViewPage.scss";
 
 const PrintableViewPage: React.FC = () => {
@@ -156,23 +158,17 @@ const PrintableViewPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="printable-view-page">
-        <div className="loading-container">
-          <VolleyballLoading message="Loading matches..." size="medium" />
-        </div>
+      <div className="printable-view-page printable-view-page--state">
+        <Spinner size={32} label="Loading matches..." />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="printable-view-page">
-        <div className="error-container">
-          <h2>Error</h2>
-          <p>{error}</p>
-          <button onClick={handleClose} className="back-btn">
-            Go Back
-          </button>
+      <div className="printable-view-page printable-view-page--state">
+        <div className="printable-view-page__state">
+          <EmptyState icon="alert" title="Error" body={error} action={<Button onClick={handleClose}>Go Back</Button>} />
         </div>
       </div>
     );
