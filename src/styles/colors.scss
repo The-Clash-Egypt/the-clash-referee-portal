@@ -1,24 +1,27 @@
-/* Brand Colors - Centralized Color System */
+/* Brand Colors - Centralized Color System (legacy names; see brand.scss for the brand tokens) */
 
 :root {
-  /* Primary Brand Colors */
-  --primary-color: #004aad;
-  --primary-color-hover: #003d8a;
-  --primary-color-light: #e6f0ff;
-  --primary-color-dark: #002d66;
-  --primary-color-rgb: 0, 74, 173;
+  /* Legacy tokens, remapped onto The Clash brand (src/styles/brand.scss) so untouched screens look on-brand.
+     Every name stays; new code uses the brand tokens directly. */
 
-  /* Secondary Brand Colors */
-  --secondary-color: #fcc353;
-  --secondary-color-hover: #f9b735;
-  --secondary-color-light: #fef7e0;
-  --secondary-color-dark: #e6a000;
+  /* Primary Brand Colors: the orange accent */
+  --primary-color: #ff5536;
+  --primary-color-hover: #d9482e;
+  --primary-color-light: #fff1ef;
+  --primary-color-dark: #bf4028;
+  --primary-color-rgb: 255, 85, 54;
 
-  /* Tertiary Brand Colors */
-  --tertiary-color: #fcc353;
-  --tertiary-color-hover: #f9b735;
-  --tertiary-color-light: #fef7e0;
-  --tertiary-color-dark: #e6a000;
+  /* Secondary Brand Colors: the blue */
+  --secondary-color: #2c42c3;
+  --secondary-color-hover: #2538a6;
+  --secondary-color-light: #eef0fa;
+  --secondary-color-dark: #2538a6;
+
+  /* Tertiary Brand Colors: the blue */
+  --tertiary-color: #2c42c3;
+  --tertiary-color-hover: #2538a6;
+  --tertiary-color-light: #eef0fa;
+  --tertiary-color-dark: #2538a6;
 
   /* Neutral Colors */
   --white: #ffffff;
@@ -50,20 +53,20 @@
   --info-color-hover: #2563eb;
   --info-color-light: #dbeafe;
 
-  /* Background Colors */
+  /* Background Colors: white cards on the light grey page */
   --bg-primary: #ffffff;
-  --bg-secondary: #f9fafb;
-  --bg-tertiary: #f3f4f6;
+  --bg-secondary: #f4f4f5;
+  --bg-tertiary: #f4f4f5;
 
-  /* Text Colors */
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --text-tertiary: #9ca3af;
+  /* Text Colors: ink and muted */
+  --text-primary: #0e1116;
+  --text-secondary: #5c5f66;
+  --text-tertiary: #5c5f66;
   --text-inverse: #ffffff;
 
-  /* Border Colors */
-  --border-primary: #e5e7eb;
-  --border-secondary: #d1d5db;
+  /* Border Colors: the line */
+  --border-primary: #e4e4e7;
+  --border-secondary: #e4e4e7;
   --border-focus: var(--primary-color);
 
   /* Shadow Colors */

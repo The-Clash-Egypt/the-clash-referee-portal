@@ -1,0 +1,56 @@
+// The photo top of Log in and Tournaments (mockup `.ptop`). The page sets the height (or lets the content set it).
+.ui-ptop {
+  position: relative;
+  isolation: isolate;
+  flex: none;
+  overflow: hidden;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), 0 100%);
+  background: var(--brand); // under the photo while it loads
+  color: var(--on-brand);
+}
+
+.ui-ptop__photo {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ui-ptop__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: var(--photo-scrim);
+}
+
+// Mockup: right -70px, 220 x 250, mirrored so the streaks sweep in from the right edge.
+.ui-ptop__brush {
+  position: absolute;
+  top: 30px;
+  right: -70px;
+  z-index: -1;
+  width: 220px;
+  height: 250px;
+  transform: scaleX(-1);
+}
+
+.ui-ptop__content {
+  position: relative;
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+
+@media (min-width: 900px) {
+  .ui-ptop {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 36px), 0 100%);
+  }
+
+  .ui-ptop__brush {
+    top: 10px;
+    right: -40px;
+    width: 340px;
+    height: 390px;
+  }
+}

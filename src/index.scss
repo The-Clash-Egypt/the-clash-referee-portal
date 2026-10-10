@@ -1,10 +1,13 @@
-/* Import shared styles */
+/* Import shared styles: the brand tokens and fonts first */
+@import "./styles/brand.scss";
 @import "./styles/colors.scss";
 @import "./styles/utilities.scss";
 @import "./styles/components.scss";
 
 body {
   margin: 0;
+  background: var(--page);
+  color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
     "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;

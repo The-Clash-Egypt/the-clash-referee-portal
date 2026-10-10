@@ -1,0 +1,43 @@
+/*
+ * Paint-brush streaks (BrushStrokes), ported from the-clash-frontend's BrushStrokes.css.
+ * The parent places them and sets the stacking so they sit over its photo and scrim but under its text.
+ * A parent can recolour them with --brush-blue / --brush-orange.
+ */
+
+// The edge: a strip along an edge; the parent places it (top/bottom) and may change its height.
+.brush-strokes {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.brush-strokes--band {
+  left: 0;
+  width: 100%;
+  height: var(--brush-band-height, 18px);
+}
+
+.brush-strokes__streak--blue {
+  fill: var(--brush-blue, var(--clash-blue));
+}
+
+.brush-strokes__streak--orange {
+  fill: var(--brush-orange, var(--clash-orange));
+}
+
+// The corner: the parent's class places, sizes and turns it; the strokes may run past the box.
+.brush-variant {
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+  user-select: none;
+}
+
+.brush-variant__blue {
+  fill: var(--brush-blue, var(--clash-blue));
+}
+
+.brush-variant__orange {
+  fill: var(--brush-orange, var(--clash-orange));
+}

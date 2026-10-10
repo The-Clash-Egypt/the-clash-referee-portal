@@ -4,6 +4,7 @@ import { Provider } from "react-redux";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { store } from "./store";
 import { setQueryClient } from "./api/axios";
+import { ToastProvider } from "./ui";
 import "./App.scss";
 
 import NotFoundPage from "./pages/not-found";
@@ -35,60 +36,62 @@ const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <Provider store={store}>
-        <AppInitializer>
-          <Router>
-            <div className="app">
-              <Navbar />
-              <main className="app-main">
-                <Routes>
-                  <Route
-                    path="/"
-                    element={
-                      <ProtectedRoute requireAuth={true}>
-                        <Tournaments />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/login"
-                    element={
-                      <ProtectedRoute requireAuth={false}>
-                        <LoginPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="tournaments/:id/matches"
-                    element={
-                      <ProtectedRoute>
-                        <MatchesManagement />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="tournaments/:id/matches/preview"
-                    element={
-                      <ProtectedRoute>
-                        <PrintableViewPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="tournaments/:id/mexicano/:formatId"
-                    element={
-                      <ProtectedRoute>
-                        <MexicanoPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route path="venue/shared" element={<GuestVenuePage />} />
-                  <Route path="match/shared" element={<GuestMatchPage />} />
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </main>
-            </div>
-          </Router>
-        </AppInitializer>
+        <ToastProvider>
+          <AppInitializer>
+            <Router>
+              <div className="app">
+                <Navbar />
+                <main className="app-main">
+                  <Routes>
+                    <Route
+                      path="/"
+                      element={
+                        <ProtectedRoute requireAuth={true}>
+                          <Tournaments />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/login"
+                      element={
+                        <ProtectedRoute requireAuth={false}>
+                          <LoginPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="tournaments/:id/matches"
+                      element={
+                        <ProtectedRoute>
+                          <MatchesManagement />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="tournaments/:id/matches/preview"
+                      element={
+                        <ProtectedRoute>
+                          <PrintableViewPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="tournaments/:id/mexicano/:formatId"
+                      element={
+                        <ProtectedRoute>
+                          <MexicanoPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route path="venue/shared" element={<GuestVenuePage />} />
+                    <Route path="match/shared" element={<GuestMatchPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </main>
+              </div>
+            </Router>
+          </AppInitializer>
+        </ToastProvider>
       </Provider>
     </QueryClientProvider>
   );

@@ -129,3 +129,36 @@ it("offers a wide size for big sheets", () => {
   open({ size: "lg" });
   expect(screen.getByRole("dialog")).toHaveClass("drawer--lg");
 });
+
+describe("on phones (below 768px)", () => {
+  const original = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(max-width: 767px)",
+      media: query,
+      onchange: null,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => {
+    window.matchMedia = original;
+  });
+
+  it("opens as a bottom sheet with a grab handle", () => {
+    open({ subtitle: "Court 1" });
+    const sheet = screen.getByRole("dialog", { name: "Edit match" });
+    expect(sheet).toHaveClass("drawer--sheet");
+    // eslint-disable-next-line testing-library/no-node-access -- the handle is decoration, hidden from assistive tech
+    expect(sheet.querySelector(".drawer__handle")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText("Body text")).toBeInTheDocument();
+  });
+});
+
+it("stays a right-hand panel from 768px", () => {
+  open();
+  expect(screen.getByRole("dialog")).not.toHaveClass("drawer--sheet");
+});

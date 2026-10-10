@@ -1,0 +1,110 @@
+// The tournament sections: a fixed bottom bar on phones (mockup `.tabbar`), a nav in the app bar from 900px.
+.ui-tabbar__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-label);
+  font-weight: 700;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+
+  &:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
+  }
+}
+
+// --- bottom ---
+
+.ui-tabbar--bottom {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 900; // under the sheets (1100)
+  display: flex;
+  justify-content: space-around;
+  min-height: var(--tabbar-h);
+  padding: 10px 0 max(10px, env(safe-area-inset-bottom, 0px));
+  background: var(--card);
+  border-top: 1px solid var(--line);
+
+  .ui-tabbar__item {
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 4px;
+    max-width: 25%;
+    color: var(--muted);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+
+    .ui-icon {
+      stroke-width: 2;
+    }
+  }
+
+  .ui-tabbar__item--on {
+    color: var(--spark-text);
+
+    &::before {
+      content: "";
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      width: 34px;
+      height: 4px;
+      margin-left: -17px;
+      background: var(--spark);
+      transform: var(--bar-skew);
+    }
+  }
+}
+
+// --- top (inside the blue app bar) ---
+
+.ui-tabbar--top {
+  display: flex;
+  gap: 2px;
+
+  .ui-tabbar__item {
+    gap: 7px;
+    padding: 10px 12px 12px;
+    color: var(--on-brand-muted);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+
+    &:hover {
+      color: var(--on-brand);
+    }
+  }
+
+  .ui-tabbar__item--on {
+    color: var(--on-brand);
+
+    &::after {
+      content: "";
+      position: absolute;
+      right: 8px;
+      bottom: 0;
+      left: 8px;
+      height: 4px;
+      background: var(--spark);
+      transform: var(--bar-skew);
+    }
+  }
+}
+
+@media (min-width: 900px) {
+  .ui-tabbar--bottom {
+    display: none;
+  }
+}
+
+@media (max-width: 899px) {
+  .ui-tabbar--top {
+    display: none;
+  }
+}

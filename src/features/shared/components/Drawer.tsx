@@ -1,5 +1,8 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+// The components' own files, not the src/ui barrel: the barrel pulls in react-router-dom, which Jest can't resolve.
+import { Icon } from "../../../ui/Icon";
+import { useMediaQuery } from "../../../ui/useMediaQuery";
 import "./Drawer.scss";
 
 export type DrawerSize = "md" | "lg";
@@ -10,7 +13,7 @@ interface DrawerProps {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   footer?: React.ReactNode;
-  /** md = 560px (forms, QR), lg = 960px (the bulk score sheet). Both take the full width on phones. */
+  /** md = 560px (forms, QR), lg = 960px (the bulk score sheet). Phones get a bottom sheet either way. */
   size?: DrawerSize;
   closeOnOverlayClick?: boolean;
   /** Scopes the dialog's own content styles, e.g. "assign-referee-drawer". */
@@ -20,6 +23,9 @@ interface DrawerProps {
 
 /** How long the slide-out runs before the drawer unmounts — keep equal to $drawer-exit in Drawer.scss. */
 export const DRAWER_EXIT_MS = 220;
+
+/** Below this width every drawer opens as a bottom sheet. */
+export const SHEET_QUERY = "(max-width: 767px)";
 
 type Phase = "open" | "closing" | "closed";
 
@@ -31,10 +37,10 @@ interface Frame {
 }
 
 /**
- * Every dialog in the portal opens as this right-side drawer (user request 2026-09-10): it slides in
- * and out, takes the full width on phones, closes on Escape / backdrop / ×, locks page scroll, and
- * moves focus in and back. While sliding out it keeps showing its last content, so a parent may
- * clear its data at the same moment it closes the drawer.
+ * Every dialog in the portal opens as this drawer (user request 2026-09-10): a right-hand panel from 768px, and a
+ * bottom sheet with a slanted top edge and a grab handle on phones (portal redesign 2026-10-10). It slides in and
+ * out, closes on Escape / backdrop / ×, locks page scroll, and moves focus in and back. While sliding out it keeps
+ * showing its last content, so a parent may clear its data at the same moment it closes the drawer.
  */
 const Drawer: React.FC<DrawerProps> = ({
   isOpen,
@@ -51,6 +57,7 @@ const Drawer: React.FC<DrawerProps> = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const lastFrame = useRef<Frame>({ title, subtitle, footer, children });
   const titleId = useId();
+  const asSheet = useMediaQuery(SHEET_QUERY);
 
   if (isOpen) lastFrame.current = { title, subtitle, footer, children };
 
@@ -97,7 +104,7 @@ const Drawer: React.FC<DrawerProps> = ({
   // While sliding out, the last content is frozen: `inert` takes it out of clicks, focus and the
   // accessibility tree (and the closing root has pointer-events: none).
   return createPortal(
-    <div className={`drawer-root drawer-root--${phase}`}>
+    <div className={`drawer-root drawer-root--${phase}${asSheet ? " drawer-root--sheet" : ""}`}>
       <div
         className="drawer-overlay"
         aria-hidden="true"
@@ -105,13 +112,14 @@ const Drawer: React.FC<DrawerProps> = ({
       />
       <div
         ref={panelRef}
-        className={`drawer drawer--${size}${className ? ` ${className}` : ""}`}
+        className={`drawer drawer--${size}${asSheet ? " drawer--sheet" : ""}${className ? ` ${className}` : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
         inert={phase === "closing"}
       >
+        {asSheet ? <div className="drawer__handle" aria-hidden="true" /> : null}
         <header className="drawer__header">
           <div className="drawer__heading">
             <h2 id={titleId} className="drawer__title">
@@ -120,7 +128,7 @@ const Drawer: React.FC<DrawerProps> = ({
             {frame.subtitle ? <p className="drawer__subtitle">{frame.subtitle}</p> : null}
           </div>
           <button type="button" className="drawer__close" onClick={interactive ? onClose : undefined} aria-label="Close">
-            ×
+            <Icon name="close" size={16} />
           </button>
         </header>
         <div className="drawer__body">{frame.children}</div>

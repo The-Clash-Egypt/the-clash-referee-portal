@@ -1,0 +1,131 @@
+// The slanted brand button (mockup `.btn`). Slanted shapes are solid fills: clip-path would cut an outline's
+// slanted sides, so focus is an inner ring in the text colour.
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  margin: 0;
+  padding: 0 18px;
+  border: 0;
+  clip-path: var(--clip-slant);
+  background: var(--spark);
+  color: var(--on-spark);
+  font-family: var(--font-label);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, color 0.15s ease;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 3px currentColor;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  .ui-icon {
+    stroke-width: 2.4;
+  }
+}
+
+.ui-btn--sm {
+  height: 34px;
+  padding: 0 13px;
+  gap: 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+}
+
+.ui-btn--lg {
+  height: 50px;
+  padding: 0 22px;
+  font-size: 13px;
+}
+
+.ui-btn--block {
+  display: flex;
+  width: 100%;
+}
+
+.ui-btn--primary {
+  &:hover:not(:disabled) {
+    background: var(--spark-strong);
+  }
+
+  &:disabled {
+    background: var(--spark-off);
+  }
+}
+
+.ui-btn--tint {
+  background: var(--spark-tint);
+  color: var(--spark-text);
+
+  &:hover:not(:disabled) {
+    background: var(--spark);
+    color: var(--on-spark);
+  }
+}
+
+.ui-btn--ghost {
+  background: var(--alt);
+  color: var(--muted);
+
+  &:hover:not(:disabled) {
+    background: var(--line);
+    color: var(--ink);
+  }
+}
+
+.ui-btn--danger {
+  background: var(--live-badge);
+  color: var(--on-spark);
+
+  &:hover:not(:disabled) {
+    background: var(--live);
+  }
+}
+
+.ui-btn--tint:disabled,
+.ui-btn--ghost:disabled,
+.ui-btn--danger:disabled {
+  opacity: 0.5;
+}
+
+// While busy the label stays put and readable.
+.ui-btn--primary.ui-btn--loading:disabled {
+  background: var(--spark);
+  opacity: 0.85;
+}
+
+.ui-btn__spinner {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ui-btn-spin 0.7s linear infinite;
+}
+
+@keyframes ui-btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-btn__spinner {
+    animation-duration: 1.6s;
+  }
+}

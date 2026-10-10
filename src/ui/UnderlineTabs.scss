@@ -1,0 +1,65 @@
+// A white tab strip with a slanted underline (mockup `.ctabs`).
+.ui-utabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 14px;
+  overflow-x: auto;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.ui-utabs__tab {
+  position: relative;
+  flex: none;
+  margin: 0;
+  padding: 13px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover {
+    color: var(--ink);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--spark);
+    outline-offset: -4px;
+  }
+}
+
+.ui-utabs__tab--on {
+  color: var(--ink);
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: 6px;
+    bottom: -1px;
+    left: 6px;
+    height: 4px;
+    background: var(--spark);
+    transform: var(--bar-skew);
+  }
+}
+
+.ui-utabs__count {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0;
+}
