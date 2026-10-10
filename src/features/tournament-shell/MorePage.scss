@@ -1,0 +1,113 @@
+// The More tab (mockup rest-of-portal.html phone 4: `.sec`, `.blade`, `.menu`).
+.more-page {
+  padding: 2px 0 8px;
+}
+
+.more-page__heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 16px 8px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+// The orange stroke before a section title.
+.more-page__blade {
+  flex: none;
+  width: 26px;
+  height: 7px;
+  clip-path: var(--clip-blade);
+  background: var(--spark);
+}
+
+.more-page__menu {
+  margin: 0 14px;
+  padding: 0;
+  list-style: none;
+  background: var(--card);
+
+  li + li {
+    border-top: 1px solid var(--line);
+  }
+}
+
+.more-page__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 54px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover {
+    background: var(--alt);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--spark);
+  }
+}
+
+.more-page__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 30px;
+  clip-path: var(--clip-slant-sm);
+  background: var(--spark-tint);
+  color: var(--spark-text);
+
+  .ui-icon {
+    stroke-width: 2.1;
+  }
+}
+
+.more-page__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.more-page__sub {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.more-page__chevron {
+  color: var(--muted);
+  stroke-width: 2.4;
+}
+
+// Wider screens: a readable column, lined up with the app bar's left edge.
+@media (min-width: 900px) {
+  .more-page {
+    max-width: 720px;
+    padding-top: 12px;
+  }
+}

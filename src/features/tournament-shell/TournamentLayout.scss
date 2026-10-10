@@ -1,0 +1,43 @@
+// The frame of a tournament's screens (mockup matches-layout.html option B: `.appbar` on top, `.tabbar` at the bottom).
+.tournament-layout {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--page);
+}
+
+// The bar stays on top while the screen scrolls under it. No stacking context on the content below, so the full-screen
+// scoreboard (z-index 1000) and the sheets (1100) still cover the bar.
+.tournament-layout__bar {
+  position: sticky;
+  top: 0;
+  z-index: 800; // under the bottom tab bar (900)
+
+  // Only the top tab nav lives under the title row here; on phones it is hidden and takes no room.
+  .ui-appbar__below {
+    margin-top: 0;
+  }
+}
+
+// From 900px the tabs sit in the bar, their orange underline on its bottom edge.
+.tournament-layout__topnav {
+  margin: 10px -12px -14px;
+}
+
+// Room for the fixed bottom tab bar.
+.tournament-layout__content {
+  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 24px);
+}
+
+@media (max-width: 899px) {
+  .tournament-layout__topnav {
+    display: none;
+  }
+}
+
+@media (min-width: 900px) {
+  .tournament-layout__content {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding-bottom: 40px;
+  }
+}

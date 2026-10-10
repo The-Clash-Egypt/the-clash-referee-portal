@@ -11,8 +11,11 @@ import NotFoundPage from "./pages/not-found";
 import { LoginPage } from "./features/auth/pages";
 import AppInitializer from "./components/AppInitializer";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Navbar from "./components/Navbar";
 import Tournaments from "./features/tournaments/pages";
+import TournamentLayout from "./features/tournament-shell/TournamentLayout";
+import MorePage from "./features/tournament-shell/MorePage";
+import { CourtsTab, MexicanoTab } from "./features/tournament-shell/TournamentTabs";
+import { FullAccessOnly, TabRedirect } from "./features/tournament-shell/guards";
 import MatchesManagement from "./features/matches/pages/MatchesManagement";
 import PrintableViewPage from "./features/matches/pages/PrintableViewPage";
 import MexicanoPage from "./features/mexicano/pages/MexicanoPage";
@@ -40,8 +43,7 @@ const App: React.FC = () => {
           <AppInitializer>
             <Router>
               <div className="app">
-                <Navbar />
-                <main className="app-main">
+                <div className="app-main">
                   <Routes>
                     <Route
                       path="/"
@@ -59,14 +61,29 @@ const App: React.FC = () => {
                         </ProtectedRoute>
                       }
                     />
+                    {/* A tournament's tabs share the app bar and the tab bar (TournamentLayout). */}
                     <Route
-                      path="tournaments/:id/matches"
+                      path="tournaments/:id"
                       element={
                         <ProtectedRoute>
-                          <MatchesManagement />
+                          <TournamentLayout />
                         </ProtectedRoute>
                       }
-                    />
+                    >
+                      <Route index element={<TabRedirect to="matches" />} />
+                      <Route path="matches" element={<MatchesManagement />} />
+                      <Route
+                        path="courts"
+                        element={
+                          <FullAccessOnly>
+                            <CourtsTab />
+                          </FullAccessOnly>
+                        }
+                      />
+                      <Route path="mexicano" element={<MexicanoTab />} />
+                      <Route path="more" element={<MorePage />} />
+                    </Route>
+                    {/* Focused screens, outside the tabs */}
                     <Route
                       path="tournaments/:id/matches/preview"
                       element={
@@ -87,7 +104,7 @@ const App: React.FC = () => {
                     <Route path="match/shared" element={<GuestMatchPage />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
-                </main>
+                </div>
               </div>
             </Router>
           </AppInitializer>

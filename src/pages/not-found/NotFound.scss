@@ -1,0 +1,16 @@
+// The unknown-page screen: the branded empty state, centred on the page.
+.not-found-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px 16px;
+  background: var(--page);
+
+  .ui-empty {
+    width: 100%;
+    max-width: 440px;
+  }
+}

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useSearchParams, useNavigate, useParams } from "react-router-dom";
 import { signupSchema, SignupFormData } from "../types/validation";
 import { signup } from "../api";
-import "./AuthPages.scss";
+import "./SignupPage.scss";
 
 const SignupPage: React.FC = () => {
   const [searchParams] = useSearchParams();

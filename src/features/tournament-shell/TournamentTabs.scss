@@ -1,0 +1,10 @@
+// The Courts and Mexicano tabs keep their current content (restyled in later tasks); the tab gives it the page gutter.
+.tournament-tab {
+  padding: 14px 14px 0;
+}
+
+@media (min-width: 900px) {
+  .tournament-tab {
+    padding: 20px 24px 0;
+  }
+}

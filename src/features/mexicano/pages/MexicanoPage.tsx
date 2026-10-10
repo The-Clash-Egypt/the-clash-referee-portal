@@ -14,9 +14,9 @@ const MexicanoPage: React.FC = () => {
 
   if (!formatId) return null;
 
-  // The matches page titles itself from ?name=, so carry it back.
+  // Back to the Mexicano tab, where the stage cards are; the tournament screens title themselves from ?name=.
   const name = searchParams.get("name");
-  const back = () => navigate(`/tournaments/${id}/matches${name ? `?name=${encodeURIComponent(name)}` : ""}`);
+  const back = () => navigate(`/tournaments/${id}/mexicano${name ? `?name=${encodeURIComponent(name)}` : ""}`);
 
   return <MexicanoRunner formatId={formatId} canRun={canRunMexicano(user)} onBack={back} />;
 };

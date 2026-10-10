@@ -39,11 +39,10 @@
     }
   }
 
-  // The toolbar sits below the app's own sticky navbar (64px tall, z-index 1000);
-  // pinning it to top: 0 parks it underneath and it disappears on scroll.
+  // The toolbar stays on top while the preview scrolls (this focused screen has no app bar above it).
   .printable-view .print-controls {
     position: sticky;
-    top: 64px;
+    top: 0;
     z-index: 90;
   }
 }

@@ -26,6 +26,7 @@
   z-index: 900; // under the sheets (1100)
   display: flex;
   justify-content: space-around;
+  box-sizing: border-box; // --tabbar-h is the whole bar (padding included) without the safe area
   min-height: var(--tabbar-h);
   padding: 10px 0 max(10px, env(safe-area-inset-bottom, 0px));
   background: var(--card);
