@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Navigate, useParams, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../store";
@@ -99,6 +100,18 @@ const MatchesPage: React.FC = () => {
     setSheetOpen(false);
     open(match);
   };
+
+  // Select mode swaps the app bar for its shorter orange bar (and back): keep the list where it was on screen, so a
+  // long-pressed row stays under the finger.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const keepListStill = (change: () => void) => {
+    const before = bodyRef.current?.getBoundingClientRect().top;
+    flushSync(change);
+    const after = bodyRef.current?.getBoundingClientRect().top;
+    if (before !== undefined && after !== undefined && after !== before) window.scrollBy(0, after - before);
+  };
+  const startSelectMode = (matchId?: string) => keepListStill(() => selection.start(matchId));
+  const leaveSelectMode = () => keepListStill(exitSelectMode);
 
   // Another tab, any filter or the search leaves select mode.
   const filtersKey = JSON.stringify(filters);
@@ -226,7 +239,7 @@ const MatchesPage: React.FC = () => {
           tab={filters.tab}
           showDates={filters.date === "all"}
           onOpen={openSheet}
-          onLongPress={fullAccess ? (match) => selection.start(match.id) : undefined}
+          onLongPress={fullAccess ? (match) => startSelectMode(match.id) : undefined}
           selecting={selecting}
           selectedIds={selectedIds}
           onToggle={(match) => selection.toggle(match.id)}
@@ -250,7 +263,7 @@ const MatchesPage: React.FC = () => {
             <SelectModeBar
               count={selectedIds.size}
               total={ids.length}
-              onExit={exitSelectMode}
+              onExit={leaveSelectMode}
               onSelectAll={selection.selectAll}
               onClear={selection.clear}
             />
@@ -290,7 +303,7 @@ const MatchesPage: React.FC = () => {
         onOpenFilters={() => setFiltersOpen(true)}
       />
 
-      <div className="matches-page__body">
+      <div className="matches-page__body" ref={bodyRef}>
         <div className="matches-page__tabs">
           <div className="matches-page__seg">
             <Segmented
@@ -301,7 +314,7 @@ const MatchesPage: React.FC = () => {
             />
           </div>
           {fullAccess && !selecting && matches.length > 0 ? (
-            <button type="button" className="matches-page__select" onClick={() => selection.start()}>
+            <button type="button" className="matches-page__select" onClick={() => startSelectMode()}>
               Select
             </button>
           ) : null}

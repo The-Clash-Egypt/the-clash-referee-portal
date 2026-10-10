@@ -1,7 +1,8 @@
 // The bulk score sheet: every selected match on one screen, grouped by court. The Drawer supplies the sheet / panel,
 // its header and the footer bar; court headers and rows run edge to edge, so the body has no padding here.
 .bulk-score-drawer {
-  .drawer__body {
+  // Beats the phone sheet's own body padding too.
+  &.drawer .drawer__body {
     padding: 0;
   }
 
@@ -264,20 +265,35 @@
       padding: 10px 16px;
     }
 
+    // Time, round and the row's state with its × on one line; the score boxes get the whole width under it.
     .bulk-row {
+      grid-template-areas:
+        "rail side"
+        "grid grid"
+        "messages messages";
       grid-template-columns: minmax(0, 1fr) auto;
       row-gap: 8px;
       padding: 12px 16px;
 
       &__rail {
-        grid-column: 1 / -1;
+        grid-area: rail;
         flex-direction: row;
+        flex-wrap: wrap;
         align-items: baseline;
-        gap: 8px;
+        gap: 2px 8px;
+        min-width: 0;
+      }
+
+      &__side {
+        grid-area: side;
+      }
+
+      &__grid {
+        grid-area: grid;
       }
 
       &__messages {
-        grid-column: 1 / -1;
+        grid-area: messages;
       }
     }
 
