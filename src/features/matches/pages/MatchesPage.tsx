@@ -11,6 +11,7 @@ import { Segmented } from "../../../ui/Segmented";
 import { SkeletonRows } from "../../../ui/Spinner";
 import { useToast } from "../../../ui/Toast";
 import { hasFullAccess } from "../../auth/permissions";
+import { useTournaments } from "../../tournaments/hooks";
 import { AppBarSlot, AppBarTakeover } from "../../tournament-shell/AppBarSlot";
 import Drawer from "../../shared/components/Drawer";
 import AssignRefereeModal from "../components/AssignRefereeModal";
@@ -32,10 +33,11 @@ import { useMatchList } from "../hooks/useMatchList";
 import { useSelection } from "../hooks/useSelection";
 import { Match, MatchGameScore } from "../types/match";
 import { initials } from "../utils/matchDisplay";
-import { defaultDate, defaultTab, MatchTab } from "../utils/timeline";
+import { defaultDate, defaultTab, isTournamentOver, MatchTab } from "../utils/timeline";
 import "./MatchesPage.scss";
 
 const TABS: { value: MatchTab; label: string }[] = [
+  { value: "all", label: "All" },
   { value: "live", label: "Live" },
   { value: "next", label: "Up next" },
   { value: "done", label: "Done" },
@@ -43,7 +45,8 @@ const TABS: { value: MatchTab; label: string }[] = [
 
 /**
  * A tournament's matches (mockup matches-layout.html option B "Timeline"): search and Filters in the app bar, the
- * active filters as chips, Live · Up next · Done with counts, then the matches under time headers, 30 at a time.
+ * active filters as chips, All · Live · Up next · Done with counts, then the matches under time headers, 30 at a time
+ * (All: 100).
  * Tapping a match opens its sheet; Score, Referee, Edit and QR open today's dialogs from there. With full access,
  * holding a match (or "Select") starts select mode: the bar turns orange, rows get ticks, and the bulk actions take the
  * tab bar's place (mockup match-flow-v2.html phone 5).
@@ -59,13 +62,26 @@ const MatchesPage: React.FC = () => {
   const { show } = useToast();
   const { matches, counts, filterOptions } = list;
 
-  // First load: Day = today when the tournament plays today (else all days), then the tab: Live while anything is
-  // live, else Up next — worked out from the counts for that day. Both land in the URL, so they stick.
+  // First load: Day = today when the tournament plays today (else all days), then the tab, from the counts for that
+  // day: Done once the tournament is over (its end date, from the cached tournaments list: wait while it loads), else
+  // Live, Up next or Done, whichever has matches first (defaultTab). Both land in the URL, so they stick.
+  const tournaments = useTournaments();
+  const tournamentOver = isTournamentOver(tournaments.data?.find((t) => t.id === id)?.endDate, new Date());
+  const tournamentsLoading = tournaments.isLoading;
   useEffect(() => {
     if (!list.countsReady) return;
     if (!hasExplicitDate) setFilter("date", defaultDate(filterOptions.dates, new Date()));
-    else if (!hasExplicitTab) setFilter("tab", defaultTab(counts));
-  }, [list.countsReady, hasExplicitDate, hasExplicitTab, filterOptions.dates, counts, setFilter]);
+    else if (!hasExplicitTab && !tournamentsLoading) setFilter("tab", defaultTab({ counts, tournamentOver }));
+  }, [
+    list.countsReady,
+    hasExplicitDate,
+    hasExplicitTab,
+    tournamentsLoading,
+    tournamentOver,
+    filterOptions.dates,
+    counts,
+    setFilter,
+  ]);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -264,7 +280,6 @@ const MatchesPage: React.FC = () => {
           matches={matches}
           tab={filters.tab}
           showDates={filters.date === "all"}
-          courts={filterOptions.venues}
           onOpen={openSheet}
           onLongPress={fullAccess ? (match) => startSelectMode(match.id) : undefined}
           selecting={selecting}

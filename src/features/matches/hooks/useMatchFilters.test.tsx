@@ -103,3 +103,21 @@ test("search reaches the URL 300 ms after the last keystroke", () => {
   expect(result.current.filters.search).toBe("shar");
   expect(result.current.searchInput).toBe("shar");
 });
+
+// Task 10 (owner): the All tab lives in the same `status` param, as "all" (the API's own value for no status filter).
+test("the All tab round-trips through status=all", () => {
+  const { result } = setup("/m?name=X&status=all&date=all");
+  expect(result.current.filters.tab).toBe("all");
+  expect(result.current.hasExplicitTab).toBe(true);
+
+  act(() => result.current.setFilter("tab", "live"));
+  expect(params(result.current.location.search).get("status")).toBe("in-progress");
+  expect(result.current.filters.tab).toBe("live");
+
+  act(() => result.current.setFilter("tab", "all"));
+  expect(params(result.current.location.search).get("status")).toBe("all");
+  expect(result.current.filters.tab).toBe("all");
+  expect(result.current.hasExplicitTab).toBe(true);
+  // The tab is not a filter.
+  expect(result.current.activeCount).toBe(0);
+});

@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Match } from "../../types/match";
-import { courtLabels, groupLiveMatches, groupMatchesBySlot, MatchTab, TimelineGroup } from "../../utils/timeline";
+import { groupLiveMatches, groupMatchesBySlot, MatchTab, TimelineGroup } from "../../utils/timeline";
 import MatchRow from "./MatchRow";
 import "./MatchesTimeline.scss";
 
@@ -9,8 +9,6 @@ interface MatchesTimelineProps {
   tab: MatchTab;
   /** Day = all: a date header on the first slot of each day. */
   showDates: boolean;
-  /** The tournament's courts, so two of them never get the same short label on the rows. */
-  courts?: string[];
   onOpen: (match: Match) => void;
   /** Full access: holding a row starts select mode with it. */
   onLongPress?: (match: Match) => void;
@@ -21,15 +19,14 @@ interface MatchesTimelineProps {
 }
 
 /**
- * The matches under time headers (mockup `.slot`): Up next in time order, Done newest first, each with date headers
- * when every day is shown. Live is one "Now" group, court by court (then, with every day shown, any match from an
- * earlier day that was never closed, under its day).
+ * The matches under time headers (mockup `.slot`): All and Up next in time order, Done newest first, each with date
+ * headers when every day is shown. Live is one "Now" group, court by court (then, with every day shown, any match from
+ * an earlier day that was never closed, under its day).
  */
 const MatchesTimeline: React.FC<MatchesTimelineProps> = ({
   matches,
   tab,
   showDates,
-  courts = [],
   onOpen,
   onLongPress,
   selecting = false,
@@ -43,7 +40,6 @@ const MatchesTimeline: React.FC<MatchesTimelineProps> = ({
         : groupMatchesBySlot(matches, { showDates, descending: tab === "done" }),
     [matches, tab, showDates]
   );
-  const courtLabel = useMemo(() => courtLabels([...courts, ...matches.map((match) => match.venue)]), [courts, matches]);
 
   return (
     <div className="matches-timeline">
@@ -58,7 +54,6 @@ const MatchesTimeline: React.FC<MatchesTimelineProps> = ({
               <li key={match.id} className="matches-timeline__item">
                 <MatchRow
                   match={match}
-                  court={courtLabel(match.venue)}
                   onOpen={onOpen}
                   onLongPress={onLongPress}
                   selecting={selecting}

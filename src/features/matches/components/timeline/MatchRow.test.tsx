@@ -60,7 +60,7 @@ test("a live match: red stripe, Live · Set N, earlier sets muted and the curren
   expect(screen.getByText("9")).toHaveClass("match-row__set--current");
   expect(screen.getByText("21")).toHaveClass("match-row__set--done");
   expect(screen.getByText(/Ahmed K\./)).toHaveClass("match-row__ref");
-  expect(screen.getByText("C1")).toBeInTheDocument();
+  expect(screen.getByText("Court 1")).toHaveClass("match-row__court");
   expect(screen.getByText("15:00")).toBeInTheDocument();
 });
 
@@ -135,4 +135,55 @@ test("a Mexicano match shows its points as the score, not the games won", () => 
 test("a match without a court or a time", () => {
   render(<MatchRow match={{ ...base, venue: undefined, startTime: undefined }} onOpen={jest.fn()} />);
   expect(screen.getAllByText("—")).toHaveLength(2);
+});
+
+// ---- Task 10 (owner): "show it as court 2 instead of c2" ----
+
+test("the court as stored: Court 2, not C2", () => {
+  render(<MatchRow match={{ ...base, venue: "Court 2" }} onOpen={jest.fn()} />);
+  const court = screen.getByText("Court 2");
+  expect(court).toHaveClass("match-row__court");
+  expect(court).toHaveAttribute("title", "Court 2");
+  expect(screen.queryByText("C2")).not.toBeInTheDocument();
+});
+
+test("no court: a dash in the court's place", () => {
+  const { container } = render(<MatchRow match={{ ...base, venue: undefined }} onOpen={jest.fn()} />);
+  const court = container.querySelector(".match-row__court");
+  expect(court).toHaveTextContent(/^—$/);
+  expect(court).not.toHaveAttribute("title");
+  expect(screen.getByText("15:00")).toHaveClass("match-row__time");
+});
+
+test("a long court name beside a 40-character team: the name stays whole in its column and the score on screen", () => {
+  const longCourt = "Main Stadium Centre Court Number Three";
+  const longName = "New Cairo Beach Volleyball Academy Elite";
+  const { container } = render(
+    <MatchRow
+      match={{
+        ...base,
+        venue: longCourt,
+        homeTeamName: longName,
+        startedAt: "2026-10-12T15:02:00",
+        gameScores: [{ gameNumber: 1, homeScore: 14, awayScore: 11 }],
+      }}
+      onOpen={jest.fn()}
+    />
+  );
+
+  // Two lines at most, then an ellipsis (MatchRow.scss); the full name stays in the title.
+  const court = screen.getByText(longCourt);
+  expect(court).toHaveClass("match-row__court");
+  expect(court).toHaveAttribute("title", longCourt);
+  expect(court.parentElement).toHaveClass("match-row__side");
+  expect(court.nextElementSibling).toHaveClass("match-row__time");
+  // The teams and scores keep their own column.
+  expect(screen.getByText(longName).nextElementSibling).toHaveClass("match-row__sets");
+  expect(setsOf(container)).toEqual([["14"], ["11"]]);
+});
+
+test("select mode names the court in full too", () => {
+  render(<MatchRow match={{ ...base, venue: "Court 2" }} onOpen={jest.fn()} selecting />);
+  expect(screen.getByRole("checkbox", { name: "Sand Sharks vs Blue Wave, Court 2, 15:00" })).toBeInTheDocument();
+  expect(screen.getByText("Court 2")).toHaveClass("match-row__court");
 });

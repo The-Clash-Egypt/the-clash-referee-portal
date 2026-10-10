@@ -4,7 +4,7 @@ import "@testing-library/jest-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import userReducer, { User } from "../../../store/slices/userSlice";
 import { AdminRole } from "../../auth/types/adminRoles";
 import { getMexicanoStages } from "../../mexicano/api/mexicano";
@@ -103,6 +103,16 @@ const respond = (items: object[], f: MatchFilters) => ({
 
 const LocationProbe = () => <output data-testid="location">{useLocation().search}</output>;
 
+/** The browser's Back button (MemoryRouter keeps the history). */
+const HistoryBack = () => {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate(-1)}>
+      Browser back
+    </button>
+  );
+};
+
 function renderMatches(path: string, user: User) {
   const store = configureStore({
     reducer: { user: userReducer },
@@ -125,7 +135,15 @@ function renderMatches(path: string, user: User) {
                     </>
                   }
                 />
-                <Route path="courts" element={<p>Courts page</p>} />
+                <Route
+                  path="courts"
+                  element={
+                    <>
+                      <p>Courts page</p>
+                      <HistoryBack />
+                    </>
+                  }
+                />
               </Route>
             </Routes>
           </MemoryRouter>
@@ -382,4 +400,203 @@ test("full access: a referee picked in the referee sheet is assigned by user and
   await waitFor(() => expect(assignRefereeToMatch).toHaveBeenCalledWith("u-mona", "m1"));
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   expect(apiCalls()).toBeGreaterThan(before);
+});
+
+// ---- Task 10 (owner): an All tab next to Live · Up next · Done ----
+
+const nextMatch = {
+  ...liveMatch,
+  id: "m2",
+  venue: "Court 2",
+  startTime: new Date(Date.now() + 40 * 60000).toISOString(),
+  startedAt: undefined,
+  homeTeamName: "Net Ninjas",
+  awayTeamName: "Spike Club",
+  gameScores: [],
+};
+const doneMatch = {
+  ...liveMatch,
+  id: "m3",
+  venue: "Court 3",
+  startTime: new Date(Date.now() - 120 * 60000).toISOString(),
+  startedAt: new Date(Date.now() - 118 * 60000).toISOString(),
+  homeTeamName: "Dune Dogs",
+  awayTeamName: "Salty Six",
+  isCompleted: true,
+  homeScore: 2,
+  awayScore: 0,
+  gameScores: [
+    { gameNumber: 1, homeScore: 21, awayScore: 12 },
+    { gameNumber: 2, homeScore: 21, awayScore: 17 },
+  ],
+};
+
+/** One live, one upcoming and one finished match; status "all" lists them as the server does: upcoming first. */
+const respondThree = (f: MatchFilters) => {
+  const items =
+    f.status === "in-progress" ? [liveMatch] : f.status === "upcoming" ? [nextMatch] : f.status === "completed" ? [doneMatch] : [nextMatch, doneMatch, liveMatch];
+  const response = respond(items, f);
+  Object.assign(response.data.data, { inProgressCount: 1, incomingCount: 1, completedCount: 1 });
+  return response;
+};
+
+const rowTexts = () => Array.from(document.querySelectorAll(".match-row")).map((row) => row.textContent ?? "");
+const tabTexts = () => screen.getAllByRole("tab").map((tab) => tab.textContent);
+const countsCalls = () => api.mock.calls.filter(([f]) => f.status === "all" && f.pageSize === 1);
+
+test("four tabs, All first, each with its count; status=all opens All: every match in time order, 100 at a time", async () => {
+  api.mockImplementation((f: MatchFilters) => Promise.resolve(respondThree(f)));
+  renderMatches("/tournaments/t1/matches?status=all&date=all", referee);
+
+  expect(await screen.findByText("Net Ninjas")).toBeInTheDocument();
+  expect(tabTexts()).toEqual(["All 3", "Live 1", "Up next 1", "Done 1"]);
+  expect(screen.getByRole("tab", { name: /^All/ })).toHaveAttribute("aria-selected", "true");
+  expect(urlParams().get("status")).toBe("all");
+  expect(api).toHaveBeenCalledWith(expect.objectContaining({ status: "all", pageSize: 100, pageNumber: 1, tournament: "t1" }));
+
+  // Played, live, upcoming: time order, though the server sent the upcoming match first.
+  const rows = rowTexts();
+  expect(rows).toHaveLength(3);
+  expect(rows[0]).toMatch(/Dune Dogs.*Salty Six/);
+  expect(rows[1]).toMatch(/Sand Sharks.*Blue Wave/);
+  expect(rows[2]).toMatch(/Net Ninjas.*Spike Club/);
+  // The live match keeps its live tag, the finished one its scores; rows name their courts in full.
+  expect(screen.getByText("Live · Set 1")).toBeInTheDocument();
+  expect(screen.getAllByText("21")).toHaveLength(2);
+  expect(screen.getByTitle("Court 3")).toHaveTextContent(/^Court 3$/);
+});
+
+test("tapping All writes status=all and reuses the counts; the Filters sheet shows the All count", async () => {
+  api.mockImplementation((f: MatchFilters) => Promise.resolve(respondThree(f)));
+  renderMatches("/tournaments/t1/matches?status=in-progress&date=all", referee);
+  expect(await screen.findByText("Sand Sharks")).toBeInTheDocument();
+  expect(countsCalls()).toHaveLength(1);
+
+  fireEvent.click(screen.getByRole("tab", { name: /^All/ }));
+
+  await waitFor(() => expect(urlParams().get("status")).toBe("all"));
+  expect(await screen.findByText("Net Ninjas")).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /^All/ })).toHaveAttribute("aria-selected", "true");
+  expect(countsCalls()).toHaveLength(1);
+
+  fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+  expect(within(await screen.findByRole("dialog")).getByRole("button", { name: "Show 3 matches" })).toBeInTheDocument();
+});
+
+test("All is never the tab a tournament opens on", async () => {
+  api.mockImplementation((f: MatchFilters) => Promise.resolve(respondThree(f)));
+  renderMatches("/tournaments/t1/matches?date=all", referee);
+
+  await waitFor(() => expect(urlParams().get("status")).toBe("in-progress"));
+  expect(screen.getByRole("tab", { name: /^Live/ })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("tab", { name: /^All/ })).toHaveAttribute("aria-selected", "false");
+});
+
+test("All comes back after leaving the page: Back, or the Matches tab", async () => {
+  api.mockImplementation((f: MatchFilters) => Promise.resolve(respondThree(f)));
+  renderMatches("/tournaments/t1/matches?status=all&date=all&name=X", superadmin);
+  expect(await screen.findByText("Net Ninjas")).toBeInTheDocument();
+
+  const courtsLink = () => within(screen.getAllByRole("navigation", { name: "Sections" })[0]).getByRole("link", { name: /courts/i });
+  fireEvent.click(courtsLink());
+  expect(await screen.findByText("Courts page")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Browser back" }));
+
+  expect(await screen.findByText("Net Ninjas")).toBeInTheDocument();
+  expect(urlParams().get("status")).toBe("all");
+  expect(screen.getByRole("tab", { name: /^All/ })).toHaveAttribute("aria-selected", "true");
+
+  fireEvent.click(courtsLink());
+  expect(await screen.findByText("Courts page")).toBeInTheDocument();
+  fireEvent.click(within(screen.getAllByRole("navigation", { name: "Sections" })[0]).getByRole("link", { name: /matches/i }));
+
+  expect(await screen.findByText("Net Ninjas")).toBeInTheDocument();
+  expect(urlParams().get("status")).toBe("all");
+  expect(screen.getByRole("tab", { name: /^All/ })).toHaveAttribute("aria-selected", "true");
+});
+
+test("select mode works on All", async () => {
+  api.mockImplementation((f: MatchFilters) => Promise.resolve(respondThree(f)));
+  renderMatches("/tournaments/t1/matches?status=all&date=all", superadmin);
+  await screen.findByText("Net Ninjas");
+
+  fireEvent.click(screen.getByRole("button", { name: "Select" }));
+  fireEvent.click(screen.getByRole("button", { name: "Select all 3" }));
+
+  expect(screen.getByText("3 selected")).toBeInTheDocument();
+  expect(screen.getAllByRole("checkbox", { checked: true })).toHaveLength(3);
+});
+
+// ---- Task 10 (owner): "when a tournament is done, open the matches tab on the done filter" ----
+
+const dayAt = (daysAgo: number) => `${ymd(new Date(Date.now() - daysAgo * 86400000))}T00:00:00`;
+const finishedTournament = {
+  id: "t1",
+  name: "Summer Clash Open",
+  status: "completed",
+  categories: [],
+  startDate: dayAt(4),
+  endDate: dayAt(2),
+};
+/** A finished tournament: its matches were days ago, one of them never closed (so it still counts as live). */
+const respondFinished = (f: MatchFilters) => {
+  const response = respondThree(f);
+  response.data.data.filters.dates = [dayAt(2).slice(0, 10), dayAt(3).slice(0, 10)];
+  return response;
+};
+
+test("a tournament that is over opens on Done, all days, even beside a match nobody closed", async () => {
+  (getTournaments as jest.Mock).mockResolvedValue({ data: { data: [finishedTournament] } });
+  api.mockImplementation((f: MatchFilters) => Promise.resolve(respondFinished(f)));
+  renderMatches("/tournaments/t1/matches?name=Summer%20Clash%20Open", referee);
+
+  await waitFor(() => expect(urlParams().get("status")).toBe("completed"));
+  expect(urlParams().get("date")).toBe("all");
+  expect(screen.getByRole("tab", { name: /^Done/ })).toHaveAttribute("aria-selected", "true");
+  expect(await screen.findByText("Dune Dogs")).toBeInTheDocument();
+  expect(api).toHaveBeenCalledWith(expect.objectContaining({ status: "completed", pageSize: 30 }));
+  expect(api).not.toHaveBeenCalledWith(expect.objectContaining({ status: "in-progress" }));
+});
+
+test("the default tab waits for the tournament's dates", async () => {
+  let resolveTournaments: (value: unknown) => void = () => undefined;
+  (getTournaments as jest.Mock).mockReturnValue(
+    new Promise((resolve) => {
+      resolveTournaments = resolve;
+    })
+  );
+  api.mockImplementation((f: MatchFilters) => Promise.resolve(respondFinished(f)));
+  renderMatches("/tournaments/t1/matches?date=all", referee);
+
+  // The counts are in, but whether the tournament is over isn't known yet: no tab is picked.
+  expect(await screen.findByRole("tab", { name: /^Done 1/ })).toBeInTheDocument();
+  await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+  expect(urlParams().get("status")).toBeNull();
+
+  await act(async () => resolveTournaments({ data: { data: [finishedTournament] } }));
+  await waitFor(() => expect(urlParams().get("status")).toBe("completed"));
+});
+
+test("a status in the URL always wins over the default, over or not", async () => {
+  (getTournaments as jest.Mock).mockResolvedValue({ data: { data: [finishedTournament] } });
+  api.mockImplementation((f: MatchFilters) => Promise.resolve(respondFinished(f)));
+  renderMatches("/tournaments/t1/matches?status=upcoming&date=all", referee);
+
+  expect(await screen.findByText("Net Ninjas")).toBeInTheDocument();
+  await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+  expect(urlParams().get("status")).toBe("upcoming");
+  expect(screen.getByRole("tab", { name: /^Up next/ })).toHaveAttribute("aria-selected", "true");
+  expect(api).not.toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
+});
+
+test("during the event, with only finished matches left, the tab opens on Done", async () => {
+  api.mockImplementation((f: MatchFilters) => {
+    const response = respond(f.status === "completed" || f.status === "all" ? [doneMatch] : [], f);
+    Object.assign(response.data.data, { inProgressCount: 0, incomingCount: 0, completedCount: 1 });
+    return Promise.resolve(response);
+  });
+  renderMatches("/tournaments/t1/matches?date=all", referee);
+
+  await waitFor(() => expect(urlParams().get("status")).toBe("completed"));
+  expect(await screen.findByText("Dune Dogs")).toBeInTheDocument();
 });

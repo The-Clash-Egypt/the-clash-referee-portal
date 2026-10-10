@@ -77,7 +77,7 @@ test("counts come from one status=all call that tab switches reuse", async () =>
   await waitFor(() => expect(result.current.matches.map((m) => m.id)).toEqual(["m1", "m2"]));
   expect(callsWith("all")).toEqual([expect.objectContaining({ status: "all", pageSize: 1, pageNumber: 1, tournament: "t1" })]);
   expect(callsWith("in-progress")).toEqual([expect.objectContaining({ pageSize: 30, pageNumber: 1, tournament: "t1" })]);
-  expect(result.current.counts).toEqual({ live: 2, next: 3, done: 0 });
+  expect(result.current.counts).toEqual({ all: 5, live: 2, next: 3, done: 0 });
   // Courts in natural order, knockout rounds after the others.
   expect(result.current.filterOptions.venues).toEqual(["Court 2", "Court 10"]);
   expect(result.current.filterOptions.rounds).toEqual(["Round 1", "Final"]);
@@ -218,7 +218,7 @@ test("Up next ends with the matches that have no start time yet", async () => {
   const { result } = renderHook(() => useMatchList("t1", { ...base, tab: "next" }), { wrapper: wrapper() });
 
   await waitFor(() => expect(result.current.matches.map((m) => m.id)).toEqual(["m1", "m2", "m3"]));
-  expect(result.current.counts).toEqual({ live: 0, next: 3, done: 1 });
+  expect(result.current.counts).toEqual({ all: 4, live: 0, next: 3, done: 1 });
   expect(callsWith("all").map((f) => f.pageSize)).toEqual([1, 30]);
 });
 
@@ -297,4 +297,67 @@ test("a failed counts call is an error (nothing to work the defaults out from)",
   const { result } = renderHook(() => useMatchList("t1", base, { enabled: false }), { wrapper: wrapper() });
 
   await waitFor(() => expect(result.current.isError).toBe(true));
+});
+
+// ---- Task 10 (owner): the All tab ----
+
+test("All asks for every status 100 at a time and lists the matches in time order; its count is the counts call's total", async () => {
+  const played = match(1, { isCompleted: true, gameScores: [{ gameNumber: 1, homeScore: 21, awayScore: 15 }] });
+  const live = match(2, { startedAt: "x" });
+  const upcoming = [match(30), match(31)];
+  const untimed = { ...match(40), startTime: undefined };
+  api.mockImplementation((f: MatchFilters) => {
+    const counts = { live: 1, next: 2, done: 1 };
+    if (f.status === "in-progress") return Promise.resolve(page([live], f.pageNumber!, f.pageSize!, counts));
+    // Like the server: no start time first, then upcoming, then played, each by start time.
+    return Promise.resolve(page([untimed, ...upcoming, played, live], f.pageNumber!, f.pageSize!, counts));
+  });
+
+  const { result, rerender } = renderHook(({ filters }) => useMatchList("t1", filters), {
+    wrapper: wrapper(),
+    initialProps: { filters: base },
+  });
+  await waitFor(() => expect(result.current.matches.map((m) => m.id)).toEqual(["m2"]));
+  // 5 in all: 1 live, 2 upcoming + 1 without a time (Up next), 1 done.
+  expect(result.current.counts).toEqual({ all: 5, live: 1, next: 3, done: 1 });
+
+  rerender({ filters: { ...base, tab: "all" } });
+
+  await waitFor(() => expect(result.current.matches.map((m) => m.id)).toEqual(["m1", "m2", "m30", "m31", "m40"]));
+  const allCalls = callsWith("all");
+  expect(allCalls.filter((f) => f.pageSize === 100)).toEqual([
+    expect.objectContaining({ status: "all", pageSize: 100, pageNumber: 1, tournament: "t1" }),
+  ]);
+  // Switching tabs reuses the counts: still the one counts call.
+  expect(allCalls.filter((f) => f.pageSize === 1)).toHaveLength(1);
+  expect(allCalls).toHaveLength(2);
+  expect(result.current.counts.all).toBe(5);
+  expect(result.current.hasMore).toBe(false);
+});
+
+test("All: Load more brings the next 100 and slots them into time order", async () => {
+  const clock = (k: number) =>
+    `2026-10-12T${String(8 + Math.floor(k / 60)).padStart(2, "0")}:${String(k % 60).padStart(2, "0")}:00`;
+  const played = Array.from({ length: 60 }, (_, k) => ({ ...match(0), id: `p${k}`, startTime: clock(k), isCompleted: true }));
+  const upcoming = Array.from({ length: 60 }, (_, k) => ({ ...match(0), id: `u${k}`, startTime: clock(60 + k) }));
+  // The server sends the upcoming matches first, then the played ones.
+  api.mockImplementation((f: MatchFilters) =>
+    Promise.resolve(page([...upcoming, ...played], f.pageNumber!, f.pageSize!, { live: 0, next: 60, done: 60 }))
+  );
+
+  const { result } = renderHook(() => useMatchList("t1", { ...base, tab: "all" }), { wrapper: wrapper() });
+
+  // The first 100: every upcoming match and the first 40 played ones, which come first in time order.
+  await waitFor(() => expect(result.current.matches).toHaveLength(100));
+  expect(result.current.matches.slice(0, 2).map((m) => m.id)).toEqual(["p0", "p1"]);
+  expect(result.current.matches.slice(39, 41).map((m) => m.id)).toEqual(["p39", "u0"]);
+  expect(result.current.counts.all).toBe(120);
+  expect(result.current.hasMore).toBe(true);
+
+  act(() => result.current.loadMore());
+
+  await waitFor(() => expect(result.current.matches).toHaveLength(120));
+  expect(result.current.matches.map((m) => m.id)).toEqual([...played, ...upcoming].map((m) => m.id));
+  expect(callsWith("all").filter((f) => f.pageSize === 100).map((f) => f.pageNumber)).toEqual([1, 2]);
+  expect(result.current.hasMore).toBe(false);
 });

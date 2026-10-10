@@ -4,14 +4,12 @@ import { Checkbox } from "../../../../ui/Checkbox";
 import { Icon } from "../../../../ui/Icon";
 import { Tag } from "../../../../ui/Tag";
 import { useLongPress } from "../../hooks/useLongPress";
-import { courtShort, formatTime, isLive } from "../../utils/timeline";
+import { courtName, formatTime, isLive } from "../../utils/timeline";
 import { categoryAndRound, liveTagLabel, matchWinner, refereeSummary, scoreCells, ScoreCell } from "../../utils/matchDisplay";
 import "./MatchRow.scss";
 
 interface MatchRowProps {
   match: Match;
-  /** The court's label (default: its short name, "C1"); the timeline passes the full name when two courts clash. */
-  court?: string;
   /** Tapping the row (opens the match sheet). */
   onOpen: (match: Match) => void;
   /** Full access: holding the row for 500 ms starts select mode with it. */
@@ -34,14 +32,14 @@ const Scores = ({ cells, side }: { cells: ScoreCell[]; side: "home" | "away" }) 
   ) : null;
 
 /**
- * One match on the timeline (mockup `.mrow`): court and time on the left; both sides with their set scores (winner
- * bold, loser muted, the set being played red while live); a live tag or "category · round"; who referees it, or an
- * orange "No referee". A red stripe marks a live match. The whole row opens the match sheet; in select mode it is a
- * checkbox with a tick on the left (mockup match-flow-v2.html phone 5).
+ * One match on the timeline (mockup `.mrow`): the court's name as stored ("Court 2", two lines at most) and the time
+ * on the left; both sides with their set scores (winner bold, loser muted, the set being played red while live); a
+ * live tag or "category · round"; who referees it, or an orange "No referee". A red stripe marks a live match. The
+ * whole row opens the match sheet; in select mode it is a checkbox with a tick on the left (mockup match-flow-v2.html
+ * phone 5).
  */
 const MatchRow: React.FC<MatchRowProps> = ({
   match,
-  court,
   onOpen,
   onLongPress,
   selecting = false,
@@ -65,8 +63,8 @@ const MatchRow: React.FC<MatchRowProps> = ({
     <>
       {live ? <span className="match-row__stripe" aria-hidden="true" /> : null}
       <span className="match-row__side">
-        <span className="match-row__court" title={match.venue || undefined}>
-          {court ?? courtShort(match.venue)}
+        <span className="match-row__court" title={match.venue?.trim() || undefined}>
+          {courtName(match.venue)}
         </span>
         <span className="match-row__time">{time || "—"}</span>
       </span>

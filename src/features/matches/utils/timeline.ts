@@ -1,10 +1,14 @@
-import { Match } from "../types/match";
+import { Match, MatchFilters } from "../types/match";
 
-/** The matches screen's tabs: Live · Up next · Done. */
-export type MatchTab = "live" | "next" | "done";
+/** The matches screen's tabs: All · Live · Up next · Done. */
+export type MatchTab = "all" | "live" | "next" | "done";
 
-/** The API `status` behind each tab (live = not completed and started by its start time; next = starts later). */
-export const TAB_STATUS: Record<MatchTab, "in-progress" | "upcoming" | "completed"> = {
+/**
+ * The API `status` behind each tab (all = no status filter; live = not completed and started by its start time;
+ * next = starts later).
+ */
+export const TAB_STATUS: Record<MatchTab, NonNullable<MatchFilters["status"]>> = {
+  all: "all",
   live: "in-progress",
   next: "upcoming",
   done: "completed",
@@ -133,6 +137,19 @@ export const sortByCourt = (matches: Match[]): Match[] =>
     .map(({ match }) => match);
 
 /**
+ * Stable sort by start time, earliest first; matches without a (readable) start time go last. The All tab's list:
+ * the server sends it upcoming first, then the matches already played.
+ */
+export const sortByStartTime = (matches: Match[]): Match[] =>
+  matches
+    .map((match, index) => ({ match, index, at: startOf(match) }))
+    .sort((a, b) => {
+      if (a.at === null || b.at === null) return Number(a.at === null) - Number(b.at === null) || a.index - b.index;
+      return a.at - b.at || a.index - b.index;
+    })
+    .map(({ match }) => match);
+
+/**
  * The Live tab: one "Now" group, court by court. The server keeps a match in progress from its start time until it is
  * completed, so with every day shown (`showDates`) Live can also hold matches from earlier days that were never closed:
  * those follow under their own day and time, newest first, so they don't read as being played now.
@@ -153,9 +170,23 @@ export function groupLiveMatches(
   return groups.concat(groupMatchesBySlot(earlier, { showDates: true, descending: true, timeZone: opts.timeZone }));
 }
 
-/** The tab a tournament opens on: Live while anything is live, else Up next. */
-export function defaultTab(counts: { live: number; next: number; done: number }): MatchTab {
-  return counts.live > 0 ? "live" : "next";
+/**
+ * The tab a tournament opens on (never All): Done once the tournament is over and has finished matches (a match nobody
+ * closed would otherwise open it on Live); else Live while anything is live, then Up next while anything is to come,
+ * then Done when only finished matches are left; with no matches at all, Up next.
+ */
+export function defaultTab({
+  counts,
+  tournamentOver = false,
+}: {
+  counts: { live: number; next: number; done: number };
+  tournamentOver?: boolean;
+}): MatchTab {
+  if (tournamentOver && counts.done > 0) return "done";
+  if (counts.live > 0) return "live";
+  if (counts.next > 0) return "next";
+  if (counts.done > 0) return "done";
+  return "next";
 }
 
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -174,6 +205,12 @@ export function defaultDate(dates: string[], today: Date): string {
   return dates.find((entry) => localDayOfEntry(entry) === todayKey) ?? "all";
 }
 
+/** Whether a tournament is over: its end date ("2026-10-12" or a date-time) is a day before `today` (local days). */
+export function isTournamentOver(endDate: string | null | undefined, today: Date): boolean {
+  const endDay = endDate ? localDayOfEntry(endDate) : null;
+  return endDay !== null && endDay < localParts(today).day;
+}
+
 /**
  * The pages to request for the Done tab, newest first. The server lists oldest first, so Done starts from the last
  * page: (65, 30) => [3, 2, 1]; nothing done => [].
@@ -183,7 +220,10 @@ export function doneRequestPages(total: number, pageSize: number): number[] {
   return Array.from({ length: pages }, (_, i) => pages - i);
 }
 
-/** A court's short name for the timeline: "Court 1" => "C1", "Centre Court" => "Centre", none => "—". See courtLabels. */
+/** A court's name on a match row, as stored ("Court 2"); none => "—". */
+export const courtName = (venue?: string | null): string => (venue ?? "").trim() || "—";
+
+/** A court's short name for the Filters sheet's chips: "Court 1" => "C1", "Centre Court" => "Centre", none => "—". */
 export function courtShort(venue?: string | null): string {
   const name = (venue ?? "").trim();
   if (!name) return "—";
@@ -193,25 +233,6 @@ export function courtShort(venue?: string | null): string {
   if (lettered) return `C${lettered[1].toUpperCase()}`;
   const withoutCourt = name.replace(/\bcourt\b/i, " ").replace(/\s+/g, " ").trim();
   return (withoutCourt || name).split(" ")[0];
-}
-
-/**
- * The timeline's court labels for a tournament's courts: the short name, unless two of the courts would read the same
- * ("Court 1" and "Beach Court 1" are both "C1"): those keep their full names.
- */
-export function courtLabels(venues: (string | null | undefined)[]): (venue?: string | null) => string {
-  const namesByShort = new Map<string, Set<string>>();
-  venues.forEach((venue) => {
-    const name = (venue ?? "").trim();
-    if (!name) return;
-    const short = courtShort(name);
-    namesByShort.set(short, (namesByShort.get(short) ?? new Set<string>()).add(name));
-  });
-  return (venue) => {
-    const name = (venue ?? "").trim();
-    const short = courtShort(name);
-    return name && (namesByShort.get(short)?.size ?? 0) > 1 ? name : short;
-  };
 }
 
 /** "Sat 12 Oct" for a start time or a "yyyy-mm-dd" day; "" when unreadable. */

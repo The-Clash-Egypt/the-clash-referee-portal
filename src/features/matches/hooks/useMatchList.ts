@@ -2,12 +2,15 @@ import { useCallback, useMemo } from "react";
 import { InfiniteData, keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRefereeMatches } from "../api/matches";
 import { FilterOptions, Match, MatchFilters } from "../types/match";
-import { doneRequestPages, TAB_STATUS } from "../utils/timeline";
+import { doneRequestPages, sortByStartTime, TAB_STATUS } from "../utils/timeline";
 import { normalizeFilterOptions } from "../utils/filterOptions";
 import { MatchFilterState } from "./useMatchFilters";
 
 /** Matches per "Load more". */
 export const PAGE_SIZE = 30;
+
+/** Matches per "Load more" on the All tab: a tournament day rarely has more. */
+export const ALL_PAGE_SIZE = 100;
 
 type CountsFilters = Omit<MatchFilterState, "tab">;
 
@@ -47,6 +50,8 @@ interface ListPage {
 }
 
 export interface MatchCounts {
+  /** Every match under the filters, those without a start time included. */
+  all: number;
   live: number;
   next: number;
   done: number;
@@ -62,6 +67,8 @@ export interface MatchCounts {
  *   the search), the first answer's own page count corrects it, and a refresh starts from that. The last page is often
  *   short (31 done = 1 match), so Done opens with the page before it too.
  * Matches without a start time are in no status; Up next ends with them (they come first in a status "all" list).
+ * All asks for status "all", 100 a page, and shows what it has loaded in time order (the server sends the upcoming
+ * matches first, then the played ones); its count is the counts call's total.
  * A refresh that fails while matches are on screen keeps them (`refreshFailed`); `isError` means nothing to show.
  */
 export function useMatchList(
@@ -118,6 +125,7 @@ export function useMatchList(
     : 0;
   const counts: MatchCounts = useMemo(
     () => ({
+      all: countsData?.matches?.pagination?.total || 0,
       live: countsData?.inProgressCount || 0,
       next: (countsData?.incomingCount || 0) + unscheduled,
       done: countsData?.completedCount || 0,
@@ -143,7 +151,7 @@ export function useMatchList(
           await getRefereeMatches({
             ...toApiFilters(tournamentId, rest),
             status: TAB_STATUS[tab],
-            pageSize: PAGE_SIZE,
+            pageSize: tab === "all" ? ALL_PAGE_SIZE : PAGE_SIZE,
             pageNumber: page,
           })
         ).data.data.matches;
@@ -224,6 +232,7 @@ export function useMatchList(
   });
 
   const matches = useMemo(() => {
+    if (tab === "all") return sortByStartTime(listMatches);
     if (tab !== "next" || !unscheduledQuery.data?.length) return listMatches;
     const ids = new Set(listMatches.map((match) => match.id));
     return listMatches.concat(unscheduledQuery.data.filter((match) => !ids.has(match.id)));
