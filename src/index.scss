@@ -1,8 +1,6 @@
-/* Import shared styles: the brand tokens and fonts first */
+/* The brand tokens and fonts first, then the legacy colour names remapped onto them */
 @import "./styles/brand.scss";
 @import "./styles/colors.scss";
-@import "./styles/utilities.scss";
-@import "./styles/components.scss";
 
 body {
   margin: 0;

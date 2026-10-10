@@ -7,7 +7,7 @@ $drawer-exit: 220ms; // keep equal to DRAWER_EXIT_MS in Drawer.tsx
 $drawer-ease-in: cubic-bezier(0.22, 1, 0.36, 1);
 $drawer-ease-out: cubic-bezier(0.4, 0, 1, 1);
 
-// Above the app bar, the tab bar (900) and the old sticky navbar (1000); under the toasts.
+// Above the app bar, the tab bar (900) and the full-screen scoreboard (1000); under the toasts.
 .drawer-root {
   position: fixed;
   inset: 0;

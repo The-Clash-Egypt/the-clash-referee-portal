@@ -174,6 +174,26 @@ it("names the match's referee teams on the card", async () => {
   expect(name.closest(".referees-section")?.querySelector(".section-title")).toHaveTextContent("Referee team");
 });
 
+// Ported from the old MatchCard's read-only guest list (MatchCard.test.tsx, deleted with the card).
+it("lists several referee teams read-only, and has no referee section without teams", async () => {
+  load.mockResolvedValueOnce(
+    guest({ isCompleted: true, homeTeamSets: 2, awayTeamSets: 0, refereeTeamNames: ["Eagles", "Hawks"] })
+  );
+  const { unmount } = renderView();
+
+  const section = (await screen.findByText("Eagles")).closest(".referees-section");
+  expect(section?.querySelector(".section-title")).toHaveTextContent(/^Referee teams$/);
+  expect(section).toHaveTextContent("Hawks");
+  expect(section?.querySelectorAll("button")).toHaveLength(0);
+  unmount();
+
+  load.mockResolvedValueOnce(guest({ isCompleted: true, homeTeamSets: 2, awayTeamSets: 0, refereeTeamNames: [] }));
+  const { container } = renderView();
+
+  await screen.findByText(/Scores for this match are final/);
+  expect(container.querySelector(".referees-section")).toBeNull();
+});
+
 it("does not open the scoreboard for a completed match or undecided teams", async () => {
   load.mockResolvedValueOnce(guest({ isCompleted: true, homeTeamSets: 2, awayTeamSets: 0 }));
   renderView();

@@ -2,8 +2,6 @@
 // and a status tag), Round · Players · Leaderboard tabs and, for organizers, a sticky Start round bar. No tournament
 // tabs here. Phone first; from 900px the lists use two columns inside the centred content column.
 .mexicano-runner {
-  // "Not here" when it's on (mockup `.tri .on-away`); the brand has no token for this grey.
-  --mexicano-away: #8a8d94;
   // The organizer's bar on wide screens: a centred dock rather than a 1100px-wide button.
   --mexicano-dock: 560px;
 

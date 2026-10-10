@@ -139,7 +139,7 @@ const toMember = (player: GuestMatchPlayer, key: string): TeamMember => ({
   email: "",
 });
 
-/** Adapts the guest payload to the portal's Match so MatchCard and UpdateScoreDialog can render it. */
+/** Adapts the guest payload to the portal's Match so the match page and UpdateScoreDialog can render it. */
 export const guestMatchToMatch = (guest: GuestMatch): Match => ({
   id: guest.id,
   tournamentName: guest.tournamentName,

@@ -23,35 +23,3 @@
     padding-left: 0;
   }
 }
-
-// ---------------------------------------------------------------------------------------------------------------
-// Legacy global, kept as it was: this file is always in the bundle, and the dialogs that still use `.btn`
-// (score, edit, bulk edit, bulk score, MatchCard) take their padding and gap from it. Task 9's style sweep removes it
-// once they have all moved to the UI kit's Button.
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  &--primary {
-    background: var(--primary-color);
-    color: var(--white);
-
-    &:hover:not(:disabled) {
-      background: var(--primary-color-hover);
-    }
-  }
-}

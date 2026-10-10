@@ -9,3 +9,13 @@
     background: var(--page);
   }
 }
+
+// While the signed-in user loads, before any screen: the brand spinner on the page grey.
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--page);
+}
