@@ -187,3 +187,49 @@ it("keeps the page still while open, and scrollable once it closes, when it open
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(document.body.style.overflow).toBe("");
 });
+
+// Review C1: the board and the sheets share one page lock, so neither lets the page scroll while the other is up.
+describe("with a sheet open under it", () => {
+  const Page: React.FC<{ sheet: boolean; board: boolean }> = ({ sheet, board }) => (
+    <>
+      <Drawer isOpen={sheet} onClose={jest.fn()} title="Filters">
+        x
+      </Drawer>
+      <UpdateScoreDialog isOpen={board} match={board ? sandSharks() : null} onClose={jest.fn()} onSubmit={jest.fn()} loading={false} />
+    </>
+  );
+  const slideOut = () =>
+    act(() => {
+      jest.advanceTimersByTime(DRAWER_EXIT_MS);
+    });
+
+  it("keeps the page still until both are closed: the board first", () => {
+    jest.useFakeTimers();
+    const { rerender } = render(<Page sheet board />);
+    expect(screen.getByRole("dialog", { name: "Scoreboard" })).toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("hidden");
+
+    rerender(<Page sheet board={false} />);
+    expect(screen.queryByRole("dialog", { name: "Scoreboard" })).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("hidden"); // the sheet still holds it
+
+    rerender(<Page sheet={false} board={false} />);
+    slideOut();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  it("keeps the page still until both are closed: the sheet first", () => {
+    jest.useFakeTimers();
+    const { rerender } = render(<Page sheet board />);
+
+    rerender(<Page sheet={false} board />);
+    slideOut();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(document.body.style.overflow).toBe("hidden"); // the board still holds it
+
+    rerender(<Page sheet={false} board={false} />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("");
+  });
+});

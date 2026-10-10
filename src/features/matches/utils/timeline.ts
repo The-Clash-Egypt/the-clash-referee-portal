@@ -132,6 +132,27 @@ export const sortByCourt = (matches: Match[]): Match[] =>
     .sort((a, b) => compareCourts(a.match.venue, b.match.venue) || a.index - b.index)
     .map(({ match }) => match);
 
+/**
+ * The Live tab: one "Now" group, court by court. The server keeps a match in progress from its start time until it is
+ * completed, so with every day shown (`showDates`) Live can also hold matches from earlier days that were never closed:
+ * those follow under their own day and time, newest first, so they don't read as being played now.
+ */
+export function groupLiveMatches(
+  matches: Match[],
+  opts: { showDates: boolean; now?: Date; timeZone?: string }
+): TimelineGroup[] {
+  const today = localParts(opts.now ?? new Date(), opts.timeZone).day;
+  const current: Match[] = [];
+  const earlier: Match[] = [];
+  matches.forEach((match) => {
+    const at = startOf(match);
+    const before = opts.showDates && at !== null && localParts(new Date(at), opts.timeZone).day < today;
+    (before ? earlier : current).push(match);
+  });
+  const groups: TimelineGroup[] = current.length > 0 ? [{ key: "now", label: "Now", matches: sortByCourt(current) }] : [];
+  return groups.concat(groupMatchesBySlot(earlier, { showDates: true, descending: true, timeZone: opts.timeZone }));
+}
+
 /** The tab a tournament opens on: Live while anything is live, else Up next. */
 export function defaultTab(counts: { live: number; next: number; done: number }): MatchTab {
   return counts.live > 0 ? "live" : "next";
@@ -162,7 +183,7 @@ export function doneRequestPages(total: number, pageSize: number): number[] {
   return Array.from({ length: pages }, (_, i) => pages - i);
 }
 
-/** A court's short name for the timeline: "Court 1" => "C1", "Centre Court" => "Centre", none => "—". */
+/** A court's short name for the timeline: "Court 1" => "C1", "Centre Court" => "Centre", none => "—". See courtLabels. */
 export function courtShort(venue?: string | null): string {
   const name = (venue ?? "").trim();
   if (!name) return "—";
@@ -172,6 +193,25 @@ export function courtShort(venue?: string | null): string {
   if (lettered) return `C${lettered[1].toUpperCase()}`;
   const withoutCourt = name.replace(/\bcourt\b/i, " ").replace(/\s+/g, " ").trim();
   return (withoutCourt || name).split(" ")[0];
+}
+
+/**
+ * The timeline's court labels for a tournament's courts: the short name, unless two of the courts would read the same
+ * ("Court 1" and "Beach Court 1" are both "C1"): those keep their full names.
+ */
+export function courtLabels(venues: (string | null | undefined)[]): (venue?: string | null) => string {
+  const namesByShort = new Map<string, Set<string>>();
+  venues.forEach((venue) => {
+    const name = (venue ?? "").trim();
+    if (!name) return;
+    const short = courtShort(name);
+    namesByShort.set(short, (namesByShort.get(short) ?? new Set<string>()).add(name));
+  });
+  return (venue) => {
+    const name = (venue ?? "").trim();
+    const short = courtShort(name);
+    return name && (namesByShort.get(short)?.size ?? 0) > 1 ? name : short;
+  };
 }
 
 /** "Sat 12 Oct" for a start time or a "yyyy-mm-dd" day; "" when unreadable. */
@@ -193,7 +233,6 @@ export function formatTime(startTime?: string | null): string {
   return Number.isNaN(at) ? "" : localParts(new Date(at)).time;
 }
 
-/** Whether a start time falls on the given day (local). */
 /** "15:00", or "Sun 11 Oct 15:00" when the match isn't today; empty without a start time. */
 export function formatWhen(startTime?: string | null, now: Date = new Date()): string {
   const time = formatTime(startTime);
@@ -201,6 +240,7 @@ export function formatWhen(startTime?: string | null, now: Date = new Date()): s
   return isSameLocalDay(startTime, now) ? time : `${formatDayLabel(startTime)} ${time}`;
 }
 
+/** Whether a start time falls on the given day (local). */
 export function isSameLocalDay(startTime: string | undefined | null, day: Date): boolean {
   if (!startTime) return false;
   const at = Date.parse(startTime);

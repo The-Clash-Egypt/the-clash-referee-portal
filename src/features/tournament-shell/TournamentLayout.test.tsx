@@ -164,3 +164,24 @@ it("logs out from More: clears the cached data and the user, then goes home", as
   expect(store.getState().user.user).toBeNull();
   expect(client.getQueryData(["referee-matches", "secret"])).toBeUndefined();
 });
+
+// Review M4: the Matches filters ride only on the tabs that use them (Matches itself, and More's prints).
+it("carries the Matches filters to Matches and More only; Courts and Mexicano get the tournament's name alone", async () => {
+  stages.mockResolvedValue([{ formatId: "m1", categoryName: "Men's A", stageName: "Mexicano" }]);
+  const filters = "?name=Summer%20Clash&status=upcoming&venues=Court%201&search=sharks";
+  renderAt(`/tournaments/t1/matches${filters}`, superadmin);
+  await screen.findAllByRole("link", { name: "Mexicano" });
+
+  const hrefs = (name: string) => screen.getAllByRole("link", { name }).map((link) => link.getAttribute("href"));
+  expect(hrefs("Matches")).toEqual([`/tournaments/t1/matches${filters}`, `/tournaments/t1/matches${filters}`]);
+  expect(hrefs("More")).toEqual([`/tournaments/t1/more${filters}`, `/tournaments/t1/more${filters}`]);
+  expect(hrefs("Courts")).toEqual(["/tournaments/t1/courts?name=Summer%20Clash", "/tournaments/t1/courts?name=Summer%20Clash"]);
+  expect(hrefs("Mexicano")).toEqual(["/tournaments/t1/mexicano?name=Summer%20Clash", "/tournaments/t1/mexicano?name=Summer%20Clash"]);
+
+  // Over on Courts, the way back to Matches (and on to More) still has the filters.
+  fireEvent.click(screen.getAllByRole("link", { name: "Courts" })[0]);
+  expect(await screen.findByText("Courts page")).toBeInTheDocument();
+  expect(hrefs("Matches")[0]).toBe(`/tournaments/t1/matches${filters}`);
+  expect(hrefs("More")[0]).toBe(`/tournaments/t1/more${filters}`);
+  expect(hrefs("Mexicano")[0]).toBe("/tournaments/t1/mexicano?name=Summer%20Clash");
+});

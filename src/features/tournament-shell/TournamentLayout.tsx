@@ -58,14 +58,26 @@ const TournamentLayout: React.FC = () => {
     ...((stages?.length ?? 0) > 0 ? (["mexicano"] as const) : []),
     "more",
   ];
-  // Every tab keeps the query string (?name= and any filters) so moving between tabs loses nothing.
+
+  const current = tabMatch?.params.tab;
+
+  // Every tab link keeps the tournament's ?name=. The Matches filters go only where they are used: back to Matches,
+  // and to More (its prints take them). Courts and Mexicano get the name alone, so their own params can't collide.
+  const name = new URLSearchParams(search).get("name");
+  const nameOnly = name ? `?name=${encodeURIComponent(name)}` : "";
+  const onMatchesQuery = current === "matches" || current === "more";
+  const [lastMatchesQuery, setLastMatchesQuery] = useState<string | null>(null);
+  useEffect(() => {
+    if (onMatchesQuery) setLastMatchesQuery(search);
+  }, [onMatchesQuery, search]);
+  const matchesQuery = onMatchesQuery ? search : lastMatchesQuery ?? nameOnly;
+
   const items: TabItem[] = keys.map((key) => ({
-    to: `/tournaments/${id}/${key}${search}`,
+    to: `/tournaments/${id}/${key}${key === "matches" || key === "more" ? matchesQuery : nameOnly}`,
     label: TABS[key].label,
     icon: TABS[key].icon,
   }));
 
-  const current = tabMatch?.params.tab;
   const eyebrow = [info.sport, isTabKey(current) ? TABS[current].label : undefined].filter(Boolean).join(" · ");
 
   // A tab opens at its top, not at the scroll position of the tab before it.

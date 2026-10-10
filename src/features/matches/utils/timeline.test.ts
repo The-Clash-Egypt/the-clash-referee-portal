@@ -1,4 +1,14 @@
-import { groupMatchesBySlot, defaultTab, defaultDate, doneRequestPages, courtShort, isLive, TAB_STATUS } from "./timeline";
+import {
+  groupMatchesBySlot,
+  groupLiveMatches,
+  defaultTab,
+  defaultDate,
+  doneRequestPages,
+  courtLabels,
+  courtShort,
+  isLive,
+  TAB_STATUS,
+} from "./timeline";
 
 const m = (id: string, startTime?: string, extra: object = {}) => ({ id, startTime, isCompleted: false, ...extra }) as any;
 
@@ -91,4 +101,46 @@ test("live means started and not completed; tabs map to the API statuses", () =>
   expect(isLive(m("a", undefined, { startedAt: "2026-10-12T15:00:00", isCompleted: true }))).toBe(false);
   expect(isLive(m("a", "2026-10-12T15:00:00"))).toBe(false);
   expect(TAB_STATUS).toEqual({ live: "in-progress", next: "upcoming", done: "completed" });
+});
+
+// Review M1: with every day shown, Live also lists matches from earlier days that were never closed.
+test("Live: today's matches under Now, court by court; earlier days' under their day, newest first", () => {
+  const now = new Date(2026, 9, 12, 16, 0);
+  const g = groupLiveMatches(
+    [
+      m("c2", "2026-10-12T15:00:00", { venue: "Court 2" }),
+      m("old", "2026-10-10T09:00:00", { venue: "Court 1" }),
+      m("c1", "2026-10-12T15:40:00", { venue: "Court 1" }),
+      m("older", "2026-10-11T18:30:00", { venue: "Court 3" }),
+    ],
+    { showDates: true, now }
+  );
+  expect(g.map((x) => [x.label, x.dateLabel, x.matches.map((match) => match.id)])).toEqual([
+    ["Now", undefined, ["c1", "c2"]],
+    ["18:30", "Sun 11 Oct", ["older"]],
+    ["09:00", "Sat 10 Oct", ["old"]],
+  ]);
+});
+
+test("Live: one Now group when a single day is shown, or when every match is today's", () => {
+  const now = new Date(2026, 9, 12, 16, 0);
+  const matches = [m("a", "2026-10-11T09:00:00", { venue: "Court 2" }), m("b", "2026-10-12T15:00:00", { venue: "Court 1" })];
+  expect(groupLiveMatches(matches, { showDates: false, now }).map((x) => [x.label, x.matches.map((match) => match.id)])).toEqual([
+    ["Now", ["b", "a"]],
+  ]);
+  expect(groupLiveMatches([matches[1]], { showDates: true, now }).map((x) => x.label)).toEqual(["Now"]);
+  // Nothing from today: no "Now" header over an old match.
+  expect(groupLiveMatches([matches[0]], { showDates: true, now }).map((x) => [x.label, x.dateLabel])).toEqual([["09:00", "Sun 11 Oct"]]);
+});
+
+// Review M6: "Court 1" and "Beach Court 1" both read "C1".
+test("court labels keep the full name only for courts whose short names clash", () => {
+  const label = courtLabels(["Court 1", "Beach Court 1", "Court 2", "Centre Court", null]);
+  expect(label("Court 1")).toBe("Court 1");
+  expect(label("Beach Court 1")).toBe("Beach Court 1");
+  expect(label("Court 2")).toBe("C2");
+  expect(label("Centre Court")).toBe("Centre");
+  expect(label(undefined)).toBe("—");
+  // The same court twice isn't a clash.
+  expect(courtLabels(["Court 1", "Court 1 "])("Court 1")).toBe("C1");
 });

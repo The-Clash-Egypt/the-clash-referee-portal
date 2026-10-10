@@ -40,15 +40,16 @@ const formatDateRange = (startDate: string, endDate: string): string => {
   return `${day(start)} – ${day(end)}${year(end)}`;
 };
 
+/** The calendar day of a date, as a day number (time of day and DST don't matter). */
+const dayNumber = (date: Date) => Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000;
+
+/** How many days it runs, both ends counted (mockup: "11 – 13 Oct · 3 days", "12 Oct · 1 day"). */
 const calculateDuration = (startDate: string, endDate: string) => {
   const start = new Date(startDate);
   const end = new Date(endDate);
-  const diffTime = Math.abs(end.getTime() - start.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const diffDays = Number.isNaN(end.getTime()) ? 1 : Math.abs(dayNumber(end) - dayNumber(start)) + 1;
 
-  if (diffDays === 0) {
-    return "Same day";
-  } else if (diffDays === 1) {
+  if (diffDays === 1) {
     return "1 day";
   } else if (diffDays < 7) {
     return `${diffDays} days`;

@@ -42,8 +42,9 @@ interface RefereeChipsProps {
 }
 
 /**
- * Who referees the match, and who will once saved (mockup `.assigned`): orange people, blue teams. On an assigned chip
- * "-" unassigns (after a confirm, one at a time, as today's drawer did for teams); on a picked chip ✕ drops the pick.
+ * Who referees the match, and who will once saved (mockup `.assigned`): orange people, blue teams. Every chip ends in a
+ * ✕: on an assigned chip it unassigns (after a confirm, one at a time, as today's drawer did for teams), on a picked
+ * chip it drops the pick. Their names tell them apart ("Unassign …" / "Remove …").
  */
 export const RefereeChips: React.FC<RefereeChipsProps> = ({
   assignedPeople = [],
@@ -82,9 +83,7 @@ export const RefereeChips: React.FC<RefereeChipsProps> = ({
       title={title}
       aria-label={`Unassign ${name}`}
     >
-      <span className="ref-chip__minus" aria-hidden="true">
-        -
-      </span>
+      <Icon name="close" size={12} />
     </button>
   );
 

@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { InfiniteData, keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRefereeMatches } from "../api/matches";
 import { FilterOptions, Match, MatchFilters } from "../types/match";
 import { doneRequestPages, TAB_STATUS } from "../utils/timeline";
@@ -59,8 +59,10 @@ export interface MatchCounts {
  *   switching tabs reuses it.
  * - The server lists oldest first, so Done asks for its pages from the last one back and shows each page reversed:
  *   newest first. The last page comes from the completed count; when the search leaves fewer pages (the counts ignore
- *   the search), the first answer's own page count corrects it.
+ *   the search), the first answer's own page count corrects it, and a refresh starts from that. The last page is often
+ *   short (31 done = 1 match), so Done opens with the page before it too.
  * Matches without a start time are in no status; Up next ends with them (they come first in a status "all" list).
+ * A refresh that fails while matches are on screen keeps them (`refreshFailed`); `isError` means nothing to show.
  */
 export function useMatchList(
   tournamentId: string,
@@ -71,7 +73,10 @@ export function useMatchList(
   counts: MatchCounts;
   filterOptions: FilterOptions;
   isLoading: boolean;
+  /** Nothing to show: the first load failed (or the counts it needs never came). */
   isError: boolean;
+  /** The last refresh failed, but what was loaded before is still on screen. */
+  refreshFailed: boolean;
   refetch: () => void;
   hasMore: boolean;
   loadMore: () => void;
@@ -81,6 +86,7 @@ export function useMatchList(
 } {
   const { enabled = true } = options;
   const { tab, ...rest } = filters;
+  const queryClient = useQueryClient();
 
   const countsQuery = useQuery({
     queryKey: matchListKeys.counts(tournamentId, rest),
@@ -99,7 +105,8 @@ export function useMatchList(
   });
 
   const countsData = countsQuery.data;
-  const countsReady = countsQuery.isSuccess && !countsQuery.isPlaceholderData;
+  // Answered for these filters (a failed refresh keeps that answer; another filter's answer shown meanwhile doesn't count).
+  const countsReady = countsData !== undefined && !countsQuery.isPlaceholderData;
   const unscheduled = countsData
     ? Math.max(
         0,
@@ -124,11 +131,12 @@ export function useMatchList(
   const nothingDone = descending && countsReady && doneTotal === 0;
   const listEnabled = enabled && !!tournamentId && (!descending || (countsReady && !nothingDone));
 
+  const listKey = matchListKeys.list(tournamentId, filters);
   const listQuery = useInfiniteQuery({
-    queryKey: matchListKeys.list(tournamentId, filters),
+    queryKey: listKey,
     enabled: listEnabled,
     staleTime: 0,
-    initialPageParam: { page: descending ? doneRequestPages(doneTotal, PAGE_SIZE)[0] ?? 1 : 1, first: true } as PageParam,
+    initialPageParam: { page: 1, first: true } as PageParam,
     queryFn: async ({ pageParam }): Promise<ListPage> => {
       const request = async (page: number) =>
         (
@@ -140,21 +148,42 @@ export function useMatchList(
           })
         ).data.data.matches;
 
-      let page = pageParam.page;
-      let result = await request(page);
-      if (descending && pageParam.first) {
-        const lastPage = result?.pagination?.totalPages || 0;
-        if (lastPage > 0 && lastPage !== page) {
-          page = lastPage;
-          result = await request(page);
-        }
+      if (!descending) {
+        const result = await request(pageParam.page);
+        return { page: pageParam.page, totalPages: result?.pagination?.totalPages || 0, items: result?.items ?? [] };
       }
-      const items = result?.items ?? [];
-      return {
-        page,
-        totalPages: result?.pagination?.totalPages || 0,
-        items: descending ? items.slice().reverse() : items,
-      };
+
+      if (!pageParam.first) {
+        const result = await request(pageParam.page);
+        return {
+          page: pageParam.page,
+          totalPages: result?.pagination?.totalPages || 0,
+          items: (result?.items ?? []).slice().reverse(),
+        };
+      }
+
+      // Done's first page is the last one, worked out afresh on every load (the stored first page goes stale): from the
+      // completed count as of this render; while searching (the count ignores the search), from the page count the
+      // list last reported. Either way the answer's own page count corrects it.
+      const searched = rest.search
+        ? queryClient.getQueryData<InfiniteData<ListPage, PageParam>>(listKey)?.pages[0]?.totalPages
+        : undefined;
+      let page = searched || doneRequestPages(doneTotal, PAGE_SIZE)[0] || 1;
+      let result = await request(page);
+      const lastPage = result?.pagination?.totalPages || 0;
+      if (lastPage > 0 && lastPage !== page) {
+        page = lastPage;
+        result = await request(page);
+      }
+      const totalPages = result?.pagination?.totalPages || 0;
+      let items = (result?.items ?? []).slice().reverse();
+      // A short last page (31 done = 1 match) would open Done nearly empty: take the page before it as well.
+      if (page > 1 && page === totalPages && items.length < PAGE_SIZE) {
+        const before = await request(page - 1);
+        items = items.concat((before?.items ?? []).slice().reverse());
+        page -= 1;
+      }
+      return { page, totalPages, items };
     },
     getNextPageParam: (last: ListPage): PageParam | undefined => {
       if (descending) return last.page > 1 ? { page: last.page - 1, first: false } : undefined;
@@ -215,8 +244,10 @@ export function useMatchList(
     counts,
     filterOptions,
     isLoading: !nothingDone && (listEnabled ? listQuery.isPending : !(descending && countsQuery.isError)),
-    // No counts at all (first load, or Done which pages by them) is an error too: there is nothing to show.
-    isError: listQuery.isError || (countsQuery.isError && (!countsData || descending)),
+    // Only when there is nothing to show: the list never loaded, or no counts ever came (the defaults and Done's paging
+    // need them). A failed refresh, or a failed "Load more", keeps what is on screen.
+    isError: (listQuery.isError && !listQuery.data) || (countsQuery.isError && !countsData),
+    refreshFailed: (listQuery.isError && !!listQuery.data) || (countsQuery.isError && !!countsData),
     refetch,
     hasMore: !!listQuery.hasNextPage,
     loadMore,

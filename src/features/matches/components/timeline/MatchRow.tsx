@@ -10,6 +10,8 @@ import "./MatchRow.scss";
 
 interface MatchRowProps {
   match: Match;
+  /** The court's label (default: its short name, "C1"); the timeline passes the full name when two courts clash. */
+  court?: string;
   /** Tapping the row (opens the match sheet). */
   onOpen: (match: Match) => void;
   /** Full access: holding the row for 500 ms starts select mode with it. */
@@ -39,6 +41,7 @@ const Scores = ({ cells, side }: { cells: ScoreCell[]; side: "home" | "away" }) 
  */
 const MatchRow: React.FC<MatchRowProps> = ({
   match,
+  court,
   onOpen,
   onLongPress,
   selecting = false,
@@ -63,7 +66,7 @@ const MatchRow: React.FC<MatchRowProps> = ({
       {live ? <span className="match-row__stripe" aria-hidden="true" /> : null}
       <span className="match-row__side">
         <span className="match-row__court" title={match.venue || undefined}>
-          {courtShort(match.venue)}
+          {court ?? courtShort(match.venue)}
         </span>
         <span className="match-row__time">{time || "—"}</span>
       </span>

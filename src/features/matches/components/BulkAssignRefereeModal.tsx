@@ -195,7 +195,13 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
       title={`Referees · ${plural(selectedMatches.length, "match", "matches")}`}
       subtitle={courts.length > 0 ? courts.join(" · ") : undefined}
       headerAction={
-        <button type="button" className="drawer__link" onClick={handleClose}>
+        // With picks waiting, Done saves them (as the footer button does) rather than dropping them unsaved.
+        <button
+          type="button"
+          className="drawer__link"
+          onClick={pickCount > 0 ? handleAssign : handleClose}
+          disabled={busy}
+        >
           Done
         </button>
       }

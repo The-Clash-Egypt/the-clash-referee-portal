@@ -4,6 +4,7 @@ import { usePlayerSuggestions, useDebounce, useRefereeTeamOptions } from "../hoo
 import Drawer from "../../shared/components/Drawer";
 import { Button } from "../../../ui/Button";
 import { SearchInput } from "../../../ui/SearchInput";
+import { useToast } from "../../../ui/Toast";
 import RefereeTeamsSection from "./RefereeTeamsSection";
 import { RefereeChips, RefereePeopleSection } from "./RefereeSheetParts";
 import { formatWhen } from "../utils/timeline";
@@ -19,7 +20,7 @@ interface AssignRefereeModalProps {
   onAssignTeams: (teamIds: string[], matchIds: string[]) => Promise<RefereeTeamAssignResult[] | null>;
   onUnassignTeam: (matchId: string, teamId: string) => Promise<void>;
   loading: boolean;
-  /** Takes a referee off the match at once (their chip's "-"). Without it, assigned referees are only listed. */
+  /** Takes a referee off the match, once confirmed (their chip's ✕). Without it, assigned referees are only listed. */
   onUnassignReferee?: (refereeId: string, matchId: string) => void | Promise<void>;
 }
 
@@ -43,6 +44,7 @@ const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({
   const [teams, setTeams] = useState<RefereeTeamOption[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const { show } = useToast();
 
   const debouncedTerm = useDebounce(term.trim(), 300);
   const { data: suggestions = [], isLoading: suggestionsLoading } = usePlayerSuggestions(debouncedTerm);
@@ -110,7 +112,7 @@ const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({
           results,
           (teamId) => pickedTeams.find((team) => team.teamId === teamId)?.teamName ?? "a team"
         );
-        if (skipped) window.alert(skipped);
+        if (skipped) show(skipped, { tone: "info" });
         setTeams([]);
       }
       if (refereeIds.length > 0) {
@@ -174,7 +176,13 @@ const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({
       title="Referees"
       subtitle={context}
       headerAction={
-        <button type="button" className="drawer__link" onClick={handleClose}>
+        // With picks waiting, Done saves them (as the footer button does) rather than dropping them unsaved.
+        <button
+          type="button"
+          className="drawer__link"
+          onClick={pickCount > 0 ? handleAssign : handleClose}
+          disabled={busy}
+        >
           Done
         </button>
       }

@@ -99,18 +99,74 @@ test("Done starts from the last page and lists the newest first", async () => {
 
   const { result } = renderHook(() => useMatchList("t1", { ...base, tab: "done" }), { wrapper: wrapper() });
 
-  await waitFor(() => expect(result.current.matches).toHaveLength(5));
-  expect(callsWith("completed")[0]).toEqual(expect.objectContaining({ pageNumber: 3, pageSize: 30 }));
-  expect(result.current.matches.map((m) => m.id)).toEqual(["m65", "m64", "m63", "m62", "m61"]);
+  // The last page has only 5: the page before it comes along, so Done opens with 35.
+  await waitFor(() => expect(result.current.matches).toHaveLength(35));
+  expect(callsWith("completed").map((f) => [f.pageNumber, f.pageSize])).toEqual([
+    [3, 30],
+    [2, 30],
+  ]);
+  expect(result.current.matches.slice(0, 6).map((m) => m.id)).toEqual(["m65", "m64", "m63", "m62", "m61", "m60"]);
+  expect(result.current.matches[34].id).toBe("m31");
   expect(result.current.hasMore).toBe(true);
 
   act(() => result.current.loadMore());
 
-  await waitFor(() => expect(result.current.matches).toHaveLength(35));
-  expect(callsWith("completed")[1]).toEqual(expect.objectContaining({ pageNumber: 2 }));
-  expect(result.current.matches[5].id).toBe("m60");
-  expect(result.current.matches[34].id).toBe("m31");
+  await waitFor(() => expect(result.current.matches).toHaveLength(65));
+  expect(callsWith("completed")[2]).toEqual(expect.objectContaining({ pageNumber: 1 }));
+  expect(result.current.matches[35].id).toBe("m30");
+  expect(result.current.matches[64].id).toBe("m1");
+  expect(result.current.hasMore).toBe(false);
+});
+
+// Review I3: 31 or 61 completed matches used to open Done on a single match.
+test("Done opens with a full first view when the last page is short: 61 done shows 31, newest first", async () => {
+  const done = Array.from({ length: 61 }, (_, i) => match(i + 1, { isCompleted: true }));
+  api.mockImplementation((f: MatchFilters) => Promise.resolve(page(done, f.pageNumber!, f.pageSize!, { live: 0, next: 0, done: 61 })));
+
+  const { result } = renderHook(() => useMatchList("t1", { ...base, tab: "done" }), { wrapper: wrapper() });
+
+  await waitFor(() => expect(result.current.matches).toHaveLength(31));
+  expect(result.current.matches[0].id).toBe("m61");
+  expect(result.current.matches[1].id).toBe("m60");
+  expect(result.current.matches[30].id).toBe("m31");
+  expect(callsWith("completed").map((f) => f.pageNumber)).toEqual([3, 2]);
   expect(result.current.hasMore).toBe(true);
+});
+
+// Review M7: the first page param is stored at the first load; refreshes used to ask for that stale page first.
+test("a Done refresh starts from the last page as the latest counts have it", async () => {
+  let doneCount = 30;
+  api.mockImplementation((f: MatchFilters) => {
+    const done = Array.from({ length: doneCount }, (_, i) => match(i + 1, { isCompleted: true }));
+    return Promise.resolve(page(done, f.pageNumber!, f.pageSize!, { live: 0, next: 0, done: doneCount }));
+  });
+
+  const { result } = renderHook(() => useMatchList("t1", { ...base, tab: "done" }), { wrapper: wrapper() });
+  await waitFor(() => expect(result.current.matches).toHaveLength(30));
+  expect(callsWith("completed").map((f) => f.pageNumber)).toEqual([1]);
+
+  // One more finishes. The refresh that learns it still starts from the old last page, then corrects itself…
+  doneCount = 31;
+  act(() => result.current.refetch());
+  await waitFor(() => expect(result.current.matches).toHaveLength(31));
+  expect(callsWith("completed").map((f) => f.pageNumber)).toEqual([1, 1, 2, 1]);
+
+  // …and the next one asks for the new last page straight away (the stored first page would still say 1).
+  act(() => result.current.refetch());
+  await waitFor(() => expect(callsWith("completed")).toHaveLength(6));
+  expect(callsWith("completed").map((f) => f.pageNumber).slice(4)).toEqual([2, 1]);
+  expect(result.current.matches[0].id).toBe("m31");
+});
+
+test("Done doesn't fetch a page before a full last page", async () => {
+  const done = Array.from({ length: 60 }, (_, i) => match(i + 1, { isCompleted: true }));
+  api.mockImplementation((f: MatchFilters) => Promise.resolve(page(done, f.pageNumber!, f.pageSize!, { live: 0, next: 0, done: 60 })));
+
+  const { result } = renderHook(() => useMatchList("t1", { ...base, tab: "done" }), { wrapper: wrapper() });
+
+  await waitFor(() => expect(result.current.matches).toHaveLength(30));
+  expect(result.current.matches[0].id).toBe("m60");
+  expect(callsWith("completed").map((f) => f.pageNumber)).toEqual([2]);
 });
 
 test("Done jumps to the real last page when the search leaves fewer pages than the counts", async () => {
@@ -128,6 +184,12 @@ test("Done jumps to the real last page when the search leaves fewer pages than t
   expect(callsWith("completed").map((f) => f.pageNumber)).toEqual([3, 1]);
   expect(callsWith("completed")[0]).toEqual(expect.objectContaining({ search: "sharks" }));
   expect(result.current.hasMore).toBe(false);
+
+  // Review M7: a refresh starts from the page the list last reported, not the counts' guess again.
+  act(() => result.current.refetch());
+  await waitFor(() => expect(callsWith("completed")).toHaveLength(3));
+  expect(callsWith("completed").map((f) => f.pageNumber)).toEqual([3, 1, 1]);
+  expect(result.current.matches.map((m) => m.id)).toEqual(["m9", "m7"]);
 });
 
 test("nothing done: no list request, not loading", async () => {
@@ -168,6 +230,63 @@ test("waits while not enabled", async () => {
   await waitFor(() => expect(result.current.counts.live).toBe(1));
   expect(callsWith("in-progress")).toHaveLength(0);
   expect(result.current.isLoading).toBe(true);
+});
+
+// Review I1: a refresh that fails (weak signal courtside, back from WhatsApp) must not blank a list that loaded.
+test("a failed refresh keeps the matches on screen and says so; it isn't the full-page error", async () => {
+  let offline = false;
+  api.mockImplementation((f: MatchFilters) =>
+    offline ? Promise.reject(new Error("offline")) : Promise.resolve(page([match(1)], 1, f.pageSize!, { live: 1, next: 0, done: 0 }))
+  );
+
+  const { result } = renderHook(() => useMatchList("t1", base), { wrapper: wrapper() });
+  await waitFor(() => expect(result.current.matches.map((m) => m.id)).toEqual(["m1"]));
+  expect(result.current.refreshFailed).toBe(false);
+
+  offline = true;
+  act(() => result.current.refetch());
+
+  await waitFor(() => expect(result.current.refreshFailed).toBe(true));
+  expect(result.current.isError).toBe(false);
+  expect(result.current.matches.map((m) => m.id)).toEqual(["m1"]);
+  expect(result.current.counts.live).toBe(1);
+
+  offline = false;
+  act(() => result.current.refetch());
+  await waitFor(() => expect(result.current.refreshFailed).toBe(false));
+});
+
+test("Done keeps its matches when only the counts' refresh fails", async () => {
+  let countsOffline = false;
+  const done = [match(1, { isCompleted: true }), match(2, { isCompleted: true })];
+  api.mockImplementation((f: MatchFilters) =>
+    f.status === "all" && countsOffline
+      ? Promise.reject(new Error("offline"))
+      : Promise.resolve(page(done, f.pageNumber!, f.pageSize!, { live: 0, next: 0, done: 2 }))
+  );
+
+  const { result } = renderHook(() => useMatchList("t1", { ...base, tab: "done" }), { wrapper: wrapper() });
+  await waitFor(() => expect(result.current.matches).toHaveLength(2));
+
+  countsOffline = true;
+  act(() => result.current.refetch());
+
+  await waitFor(() => expect(result.current.refreshFailed).toBe(true));
+  expect(result.current.isError).toBe(false);
+  expect(result.current.isLoading).toBe(false);
+  expect(result.current.matches.map((m) => m.id)).toEqual(["m2", "m1"]);
+});
+
+test("a list that never loaded is the full-page error", async () => {
+  api.mockImplementation((f: MatchFilters) =>
+    f.status === "in-progress" ? Promise.reject(new Error("offline")) : Promise.resolve(page([match(1)], 1, f.pageSize!, { live: 1, next: 0, done: 0 }))
+  );
+
+  const { result } = renderHook(() => useMatchList("t1", base), { wrapper: wrapper() });
+
+  await waitFor(() => expect(result.current.isError).toBe(true));
+  expect(result.current.refreshFailed).toBe(false);
+  expect(result.current.matches).toEqual([]);
 });
 
 test("a failed counts call is an error (nothing to work the defaults out from)", async () => {

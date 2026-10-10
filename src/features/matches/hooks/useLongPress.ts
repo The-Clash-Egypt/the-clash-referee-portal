@@ -9,13 +9,16 @@ const MOVE_TOLERANCE_PX = 10;
 /**
  * The click that ends a long-press (mouse up, or a lifted finger on some phones) must not also open or toggle the
  * row: the row under the pointer has just been swapped for its select-mode version, so that click is swallowed at the
- * window, whatever element it lands on. Only a click with no new press before it: the next real tap goes through.
+ * window, whatever element it lands on. It stays armed for as long as the press lasts, and ends one task after the
+ * release (that click comes with the release, if at all), or at the next press: the next real tap goes through.
  */
 const swallowTrailingClick = () => {
   let timeout = 0;
   function disarm() {
     window.removeEventListener("click", swallow, true);
     window.removeEventListener("pointerdown", disarm, true);
+    window.removeEventListener("pointerup", released, true);
+    window.removeEventListener("pointercancel", released, true);
     window.clearTimeout(timeout);
   }
   function swallow(event: MouseEvent) {
@@ -23,9 +26,14 @@ const swallowTrailingClick = () => {
     event.preventDefault();
     disarm();
   }
+  function released() {
+    window.clearTimeout(timeout);
+    timeout = window.setTimeout(disarm, 0);
+  }
   window.addEventListener("click", swallow, true);
   window.addEventListener("pointerdown", disarm, true);
-  timeout = window.setTimeout(disarm, 1500);
+  window.addEventListener("pointerup", released, true);
+  window.addEventListener("pointercancel", released, true);
 };
 
 type LongPressHandlers = Pick<

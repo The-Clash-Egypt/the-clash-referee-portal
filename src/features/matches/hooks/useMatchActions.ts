@@ -228,25 +228,31 @@ export function useMatchActions(tournamentId: string) {
     }
   };
 
-  const unassignTeam = async (matchId: string, teamId: string): Promise<void> => {
-    if (!fullAccess) return;
+  /** Resolves true once the team is off the match (a failure is reported). */
+  const unassignTeam = async (matchId: string, teamId: string): Promise<boolean> => {
+    if (!fullAccess) return false;
     try {
       await unassignRefereeTeam(matchId, teamId);
       await refreshAfterRefereeTeamChange();
+      return true;
     } catch (error) {
       console.error("Error unassigning referee team:", error);
       fail(describeSaveError(error, "Failed to unassign the referee team. Please try again."));
+      return false;
     }
   };
 
-  const unassignReferee = async (refereeId: string, matchId: string): Promise<void> => {
-    if (!fullAccess) return;
+  /** Resolves true once the referee is off the match (a failure is reported). */
+  const unassignReferee = async (refereeId: string, matchId: string): Promise<boolean> => {
+    if (!fullAccess) return false;
     try {
       await unassignRefereeFromMatch(refereeId, matchId);
       await refresh();
+      return true;
     } catch (error) {
       console.error("Error unassigning referee:", error);
       fail("Failed to unassign referee. Please try again.");
+      return false;
     }
   };
 

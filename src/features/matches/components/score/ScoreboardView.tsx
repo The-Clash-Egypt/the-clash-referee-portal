@@ -5,6 +5,7 @@ import { Button } from "../../../../ui/Button";
 import { Icon, IconName } from "../../../../ui/Icon";
 import { Tag } from "../../../../ui/Tag";
 import { Match } from "../../types/match";
+import { lockPageScroll, takeFocus } from "../../../shared/layers";
 import FinishConfirm from "./FinishConfirm";
 import { featuredPlayers } from "./players";
 import { useForcedLandscape } from "./useForcedLandscape";
@@ -57,23 +58,15 @@ const ScoreboardView: React.FC<ScoreboardViewProps> = ({ match, score, loading }
   const sideways = !viewportPortrait || forced;
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // On screen it holds the page still and takes the focus, and gives both back when it goes. A sheet still sliding out
-  // as it opens (the match sheet whose Score button opened it) puts back the page's scroll when it unmounts, whenever
-  // that is: the board holds the page again at once, for as long as it is up. Only the sheets and the board lock the
-  // page and the board is the top layer, so it unlocks to the page's own (empty) value rather than to what it found.
+  // On screen it holds the page still and takes the focus, and gives both back when it goes. Both are shared with the
+  // sheets (shared/layers): the match sheet whose Score button opened the board is still sliding out as it opens, and a
+  // sheet can be open under it. The page scrolls again only once neither holds it.
   useEffect(() => {
-    const body = document.body;
-    const previousFocus = document.activeElement as HTMLElement | null;
-    body.style.overflow = "hidden";
-    rootRef.current?.focus();
-    const keepHeld = new MutationObserver(() => {
-      if (body.style.overflow !== "hidden") body.style.overflow = "hidden";
-    });
-    keepHeld.observe(body, { attributes: true, attributeFilter: ["style"] });
+    const releaseScroll = lockPageScroll();
+    const releaseFocus = takeFocus(rootRef.current);
     return () => {
-      keepHeld.disconnect();
-      body.style.overflow = "";
-      if (previousFocus?.isConnected) previousFocus.focus();
+      releaseScroll();
+      releaseFocus();
     };
   }, []);
 

@@ -191,3 +191,34 @@ it("hands referees alone to the page without keepOpen, and clears the picks", as
   expect(props.onAssignTeams).not.toHaveBeenCalled();
   await waitFor(() => expect(assignButton()).not.toBeInTheDocument());
 });
+
+// Review I2: "Done" on a phone reads as save-and-close, so it must not drop what was picked.
+it("saves the picks waiting when Done is tapped, staying open on the teams' outcome; Done then closes", async () => {
+  const props = handlers();
+  props.onAssignTeams.mockResolvedValue([
+    { matchId: "m1", assignedTeamIds: ["t-waves"], unchangedTeamIds: [], skipped: [] },
+    { matchId: "m2", assignedTeamIds: ["t-waves"], unchangedTeamIds: [], skipped: [] },
+  ]);
+  render(<BulkAssignRefereeModal isOpen selectedMatches={matches} {...props} />);
+
+  fireEvent.click(screen.getByRole("checkbox", { name: /^Waves/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/^Assigned to 2 matches$/));
+  expect(props.onAssignTeams).toHaveBeenCalledWith(["t-waves"], ["m1", "m2"]);
+  expect(props.onClose).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  expect(props.onClose).toHaveBeenCalledTimes(1);
+});
+
+it("hands referees picked alone to the page on Done (which closes the sheet)", async () => {
+  const props = handlers();
+  render(<BulkAssignRefereeModal isOpen selectedMatches={matches} {...props} />);
+
+  fireEvent.change(screen.getByPlaceholderText("Search name, email or team"), { target: { value: "mo" } });
+  fireEvent.click(await screen.findByText("Mona Salah"));
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+
+  await waitFor(() => expect(props.onAssign).toHaveBeenCalledWith(["u-mona"], ["m1", "m2"], false));
+});

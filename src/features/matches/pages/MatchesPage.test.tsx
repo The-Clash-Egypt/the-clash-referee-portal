@@ -9,7 +9,8 @@ import userReducer, { User } from "../../../store/slices/userSlice";
 import { AdminRole } from "../../auth/types/adminRoles";
 import { getMexicanoStages } from "../../mexicano/api/mexicano";
 import { getTournaments } from "../../tournaments/api";
-import { getRefereeMatches } from "../api/matches";
+import { ToastProvider } from "../../../ui/Toast";
+import { assignRefereeToMatch, getPlayerSuggestions, getRefereeMatches, unassignRefereeFromMatch } from "../api/matches";
 import { getRefereeTeamOptions } from "../api/refereeTeams";
 import { MatchFilters } from "../types/match";
 import TournamentLayout from "../../tournament-shell/TournamentLayout";
@@ -34,7 +35,13 @@ jest.mock("../../mexicano/api/mexicano", () => ({
   getMexicanoStages: jest.fn(),
 }));
 jest.mock("../../tournaments/api", () => ({ getTournaments: jest.fn() }));
-jest.mock("../api/matches", () => ({ ...jest.requireActual("../api/matches"), getRefereeMatches: jest.fn() }));
+jest.mock("../api/matches", () => ({
+  ...jest.requireActual("../api/matches"),
+  getRefereeMatches: jest.fn(),
+  getPlayerSuggestions: jest.fn(),
+  assignRefereeToMatch: jest.fn(),
+  unassignRefereeFromMatch: jest.fn(),
+}));
 jest.mock("../api/refereeTeams", () => ({ ...jest.requireActual("../api/refereeTeams"), getRefereeTeamOptions: jest.fn() }));
 
 const api = getRefereeMatches as jest.Mock;
@@ -102,28 +109,31 @@ function renderMatches(path: string, user: User) {
     preloadedState: { user: { user, token: "x", isAuthenticated: true } },
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const view = render(
     <Provider store={store}>
       <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={[path]}>
-          <Routes>
-            <Route path="/tournaments/:id" element={<TournamentLayout />}>
-              <Route
-                path="matches"
-                element={
-                  <>
-                    <MatchesPage />
-                    <LocationProbe />
-                  </>
-                }
-              />
-              <Route path="courts" element={<p>Courts page</p>} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[path]}>
+            <Routes>
+              <Route path="/tournaments/:id" element={<TournamentLayout />}>
+                <Route
+                  path="matches"
+                  element={
+                    <>
+                      <MatchesPage />
+                      <LocationProbe />
+                    </>
+                  }
+                />
+                <Route path="courts" element={<p>Courts page</p>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
       </QueryClientProvider>
     </Provider>
   );
+  return { ...view, client };
 }
 
 const urlParams = () => new URLSearchParams(screen.getByTestId("location").textContent ?? "");
@@ -278,4 +288,98 @@ test("changing the tab leaves select mode", async () => {
   await waitFor(() => expect(urlParams().get("status")).toBe("upcoming"));
   expect(screen.queryByRole("group", { name: "Bulk actions" })).not.toBeInTheDocument();
   expect(screen.getAllByRole("navigation", { name: "Sections" })).toHaveLength(2);
+});
+
+// ---- Changes go through today's API, and the sheets hand over cleanly ----
+
+const apiCalls = () => api.mock.calls.length;
+
+// Review C1: Score, Referee, QR code and Edit close the match sheet and open their own in the same render.
+test("an action opened from the match sheet takes its place; closing it gives the page back its scroll and focus", async () => {
+  renderMatches("/tournaments/t1/matches?status=in-progress&date=all", superadmin);
+  const row = await screen.findByRole("button", { name: /Sand Sharks/ });
+  row.focus();
+  fireEvent.click(row);
+  fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Referee" }));
+
+  const sheet = await screen.findByRole("dialog", { name: "Referees" });
+  // The match sheet slides out under it: the page stays still, and keyboard focus stays in the sheet that's open.
+  await waitFor(() => expect(screen.getAllByRole("dialog")).toHaveLength(1));
+  expect(document.body.style.overflow).toBe("hidden");
+  expect(sheet).toHaveFocus();
+
+  fireEvent.click(within(sheet).getByRole("button", { name: "Close" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  expect(document.body.style.overflow).not.toBe("hidden");
+  expect(row).toHaveFocus();
+});
+
+// Review I1
+test("a refresh that fails keeps the list on screen, with a way to try again", async () => {
+  const { client } = renderMatches("/tournaments/t1/matches?status=in-progress&date=all", referee);
+  expect(await screen.findByText("Sand Sharks")).toBeInTheDocument();
+  const online = api.getMockImplementation()!;
+
+  api.mockRejectedValue(new Error("offline"));
+  await act(() => client.refetchQueries());
+
+  expect(await screen.findByText("An error occurred while loading data")).toBeInTheDocument();
+  expect(screen.getByText("Sand Sharks")).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Error" })).not.toBeInTheDocument();
+
+  api.mockImplementation(online);
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  await waitFor(() => expect(screen.queryByText("An error occurred while loading data")).not.toBeInTheDocument());
+  expect(screen.getByText("Sand Sharks")).toBeInTheDocument();
+});
+
+test("a first load that fails is the full-page error", async () => {
+  api.mockRejectedValue(new Error("offline"));
+  renderMatches("/tournaments/t1/matches?status=in-progress&date=all", referee);
+
+  expect(await screen.findByRole("heading", { name: "Error" })).toBeInTheDocument();
+  expect(screen.getByText("An error occurred while loading data")).toBeInTheDocument();
+});
+
+// Review M2 + M10: the match sheet's ✕ unassigns at once (as the old match card did), through today's API call.
+test("full access: the match sheet's ✕ unassigns a referee with the referee's and the match's ids, refreshes and says so", async () => {
+  const confirm = jest.spyOn(window, "confirm");
+  const refereed = {
+    ...liveMatch,
+    referees: [{ id: "r1", userId: "u-mona", fullName: "Mona Salah", email: "mona@example.com", phoneNumber: "201001234567" }],
+  };
+  api.mockImplementation((f: MatchFilters) => Promise.resolve(respond(f.status === "upcoming" ? [] : [refereed], f)));
+  (unassignRefereeFromMatch as jest.Mock).mockResolvedValue({ data: {} });
+  renderMatches("/tournaments/t1/matches?status=in-progress&date=all", superadmin);
+
+  fireEvent.click(await screen.findByText("Sand Sharks"));
+  const sheet = await screen.findByRole("dialog");
+  const before = apiCalls();
+  fireEvent.click(within(sheet).getByRole("button", { name: "Unassign Mona Salah" }));
+
+  expect(await screen.findByText("Mona Salah unassigned.")).toBeInTheDocument();
+  expect(unassignRefereeFromMatch).toHaveBeenCalledWith("r1", "m1");
+  expect(apiCalls()).toBeGreaterThan(before); // the list and its counts refreshed
+  expect(confirm).not.toHaveBeenCalled();
+  confirm.mockRestore();
+});
+
+test("full access: a referee picked in the referee sheet is assigned by user and match id, then the list refreshes and the sheet closes", async () => {
+  (getPlayerSuggestions as jest.Mock).mockResolvedValue({
+    data: { data: [{ id: "p1", userId: "u-mona", firstName: "Mona", lastName: "Salah", email: "mona@example.com" }] },
+  });
+  (assignRefereeToMatch as jest.Mock).mockResolvedValue({ data: {} });
+  renderMatches("/tournaments/t1/matches?status=in-progress&date=all", superadmin);
+
+  fireEvent.click(await screen.findByText("Sand Sharks"));
+  fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Referee" }));
+  const sheet = await screen.findByRole("dialog", { name: "Referees" });
+  fireEvent.change(within(sheet).getByRole("searchbox", { name: "Search name, email or team" }), { target: { value: "mo" } });
+  fireEvent.click(await within(sheet).findByText("Mona Salah"));
+  const before = apiCalls();
+  fireEvent.click(within(sheet).getByRole("button", { name: "Assign 1 Referee" }));
+
+  await waitFor(() => expect(assignRefereeToMatch).toHaveBeenCalledWith("u-mona", "m1"));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  expect(apiCalls()).toBeGreaterThan(before);
 });

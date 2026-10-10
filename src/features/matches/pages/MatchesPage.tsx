@@ -5,9 +5,11 @@ import { useSelector } from "react-redux";
 import { RootState } from "../../../store";
 import { Button } from "../../../ui/Button";
 import { EmptyState } from "../../../ui/EmptyState";
+import { Icon } from "../../../ui/Icon";
 import { SearchInput } from "../../../ui/SearchInput";
 import { Segmented } from "../../../ui/Segmented";
 import { SkeletonRows } from "../../../ui/Spinner";
+import { useToast } from "../../../ui/Toast";
 import { hasFullAccess } from "../../auth/permissions";
 import { AppBarSlot, AppBarTakeover } from "../../tournament-shell/AppBarSlot";
 import Drawer from "../../shared/components/Drawer";
@@ -54,6 +56,7 @@ const MatchesPage: React.FC = () => {
   const { filters, searchInput, setFilter, clearAll, activeCount, hasExplicitTab, hasExplicitDate } = useMatchFilters();
   const list = useMatchList(id, filters, { enabled: hasExplicitTab && hasExplicitDate });
   const actions = useMatchActions(id);
+  const { show } = useToast();
   const { matches, counts, filterOptions } = list;
 
   // First load: Day = today when the tournament plays today (else all days), then the tab: Live while anything is
@@ -129,6 +132,17 @@ const MatchesPage: React.FC = () => {
 
   // ---- single match ----
 
+  // The match sheet's ✕ takes a referee or a referee team off at once, as the old match card did (the referee sheet
+  // asks first): a toast says it's done.
+  const unassignRefereeFromSheet = async (refereeId: string, matchId: string) => {
+    const name = sheetMatch?.referees?.find((referee) => referee.id === refereeId)?.fullName || "Referee";
+    if (await actions.unassignReferee(refereeId, matchId)) show(`${name} unassigned.`);
+  };
+  const unassignTeamFromSheet = async (matchId: string, teamId: string) => {
+    const name = sheetMatch?.refereeTeams?.find((team) => team.teamId === teamId)?.teamName || "Referee team";
+    if (await actions.unassignTeam(matchId, teamId)) show(`${name} unassigned.`);
+  };
+
   const closeAssign = () => setAssignOpen(false);
   const assignMatch = live(assignSnapshot);
 
@@ -196,6 +210,18 @@ const MatchesPage: React.FC = () => {
   const total = counts.live + counts.next + counts.done;
   const filtersLabel = activeCount > 0 ? `Filters · ${activeCount}` : "Filters";
 
+  // A refresh that failed (on return to the tab, after a change) keeps the list on screen and says so above it.
+  const refreshNotice =
+    list.refreshFailed && !list.isError ? (
+      <div className="matches-page__notice" role="alert">
+        <Icon name="alert" size={16} className="matches-page__notice-icon" />
+        <span className="matches-page__notice-text">An error occurred while loading data</span>
+        <Button variant="tint" size="sm" icon="refresh" onClick={list.refetch}>
+          Try again
+        </Button>
+      </div>
+    ) : null;
+
   let content: React.ReactNode;
   if (list.isError) {
     content = (
@@ -238,6 +264,7 @@ const MatchesPage: React.FC = () => {
           matches={matches}
           tab={filters.tab}
           showDates={filters.date === "all"}
+          courts={filterOptions.venues}
           onOpen={openSheet}
           onLongPress={fullAccess ? (match) => startSelectMode(match.id) : undefined}
           selecting={selecting}
@@ -319,7 +346,10 @@ const MatchesPage: React.FC = () => {
             </button>
           ) : null}
         </div>
-        <div className="matches-page__list">{content}</div>
+        <div className="matches-page__list">
+          {refreshNotice}
+          {content}
+        </div>
       </div>
 
       <FiltersSheet
@@ -347,8 +377,8 @@ const MatchesPage: React.FC = () => {
         onShowQR={fromSheet(setQrMatch)}
         onEdit={fromSheet(setEditMatch)}
         onShareWithReferee={actions.shareMatchWithReferee}
-        onUnassignReferee={actions.unassignReferee}
-        onUnassignTeam={actions.unassignTeam}
+        onUnassignReferee={unassignRefereeFromSheet}
+        onUnassignTeam={unassignTeamFromSheet}
       />
 
       <AssignRefereeModal
@@ -359,8 +389,12 @@ const MatchesPage: React.FC = () => {
           if (await actions.assignReferees(assignMatch, refereeIds)) closeAssign();
         }}
         onAssignTeams={actions.assignTeams}
-        onUnassignTeam={actions.unassignTeam}
-        onUnassignReferee={actions.unassignReferee}
+        onUnassignTeam={async (matchId, teamId) => {
+          await actions.unassignTeam(matchId, teamId);
+        }}
+        onUnassignReferee={async (refereeId, matchId) => {
+          await actions.unassignReferee(refereeId, matchId);
+        }}
         loading={actions.assigningReferee}
       />
 

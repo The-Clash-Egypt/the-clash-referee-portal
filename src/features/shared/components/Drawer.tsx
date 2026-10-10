@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 // The components' own files, not the src/ui barrel: the barrel pulls in react-router-dom, which Jest can't resolve.
 import { Icon } from "../../../ui/Icon";
 import { useMediaQuery } from "../../../ui/useMediaQuery";
+import { lockPageScroll, takeFocus } from "../layers";
 import "./Drawer.scss";
 
 export type DrawerSize = "md" | "lg";
@@ -78,16 +79,16 @@ const Drawer: React.FC<DrawerProps> = ({
 
   const mounted = phase !== "closed";
 
-  // Scroll lock and focus hand-off span the whole time the drawer is on screen, slide-out included.
+  // Scroll lock and focus hand-off span the whole time the drawer is on screen, slide-out included. Both are shared
+  // with the other layers (../layers): a drawer often opens in the very render that closes another (the match sheet's
+  // Score, Referee, QR code, Edit), and the two overlap while the first slides out.
   useEffect(() => {
     if (!mounted) return;
-    const previousOverflow = document.body.style.overflow;
-    const previousFocus = document.activeElement as HTMLElement | null;
-    document.body.style.overflow = "hidden";
-    panelRef.current?.focus();
+    const releaseScroll = lockPageScroll();
+    const releaseFocus = takeFocus(panelRef.current);
     return () => {
-      document.body.style.overflow = previousOverflow;
-      previousFocus?.focus?.();
+      releaseScroll();
+      releaseFocus();
     };
   }, [mounted]);
 
