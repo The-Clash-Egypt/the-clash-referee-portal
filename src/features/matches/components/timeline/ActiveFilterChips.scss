@@ -21,11 +21,6 @@
 .active-filters__chip {
   font-size: 10.5px;
   letter-spacing: 0.1em;
-
-  .ui-chip__main {
-    padding-top: 7px;
-    padding-bottom: 7px;
-  }
 }
 
 // Laptop: the content is a centred column, so the chips sit on the page (white) instead of on a white strip.
@@ -42,6 +37,6 @@
   }
 
   .active-filters__chip {
-    background: var(--card);
+    --face: var(--card);
   }
 }

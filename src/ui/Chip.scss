@@ -1,4 +1,7 @@
-// A slanted toggle chip (mockup `.chip`).
+@use "../styles/touch" as *;
+
+// A slanted toggle chip (mockup `.chip`): a 30px face in a 44px-tall tap target (the face is ::before, see
+// slanted-target in styles/_touch.scss). Set --face, not background, to recolour it.
 .ui-chip,
 .ui-chip__main,
 .ui-chip__remove {
@@ -16,21 +19,16 @@
 }
 
 .ui-chip {
+  --face: var(--alt);
+
   display: inline-flex;
   flex: none;
   align-items: center;
-  padding: 8px 12px;
-  clip-path: var(--clip-slant-sm);
-  background: var(--alt);
+  padding: 0 12px;
   color: var(--ink);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: color 0.15s ease;
 
-  &:focus-visible,
-  .ui-chip__main:focus-visible,
-  .ui-chip__remove:focus-visible {
-    outline: none;
-    box-shadow: inset 0 0 0 2px currentColor;
-  }
+  @include slanted-target(30px);
 
   &:disabled {
     opacity: 0.5;
@@ -40,12 +38,14 @@
 
 // A white chip on the grey page (mockup Tournaments / Courts chips).
 .ui-chip--card {
-  background: var(--card);
+  --face: var(--card);
+
   color: var(--muted);
 }
 
 .ui-chip--on {
-  background: var(--spark);
+  --face: var(--spark);
+
   color: var(--on-spark);
 }
 
@@ -64,19 +64,40 @@
 
 .ui-chip__main,
 .ui-chip__remove {
+  position: relative;
   display: inline-flex;
   align-items: center;
   align-self: stretch;
+  padding-top: 0;
+  padding-bottom: 0;
   background: transparent;
   color: inherit;
+
+  // The ring sits on the face (7px in from the 44px target's top and bottom).
+  &:focus-visible {
+    outline: none;
+  }
+
+  &:focus-visible::after {
+    content: "";
+    position: absolute;
+    top: 7px;
+    right: 0;
+    bottom: 7px;
+    left: 0;
+    box-shadow: inset 0 0 0 2px currentColor;
+    pointer-events: none;
+  }
 }
 
 .ui-chip__main {
-  padding: 8px 4px 8px 12px;
+  padding-right: 4px;
+  padding-left: 12px;
 }
 
 .ui-chip__remove {
-  padding: 0 11px 0 6px;
+  padding-right: 11px;
+  padding-left: 6px;
   opacity: 0.75;
 
   &:hover {

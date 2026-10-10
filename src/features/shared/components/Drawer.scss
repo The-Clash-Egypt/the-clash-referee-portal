@@ -1,3 +1,5 @@
+@use "../../../styles/touch" as *;
+
 // Every dialog: a right-hand panel from 768px, a bottom sheet below (mockup `.sheet`, `.handle`, `.sh-head`).
 // Fixed overlays a dialog opens (confirmations, the fullscreen scoreboard) are portalled out of it: the sheet's
 // clip-path would clip anything fixed inside it.
@@ -81,6 +83,8 @@ $drawer-ease-out: cubic-bezier(0.4, 0, 1, 1);
 }
 
 .drawer__link {
+  @include hit-area;
+
   margin: 0;
   padding: 8px 2px;
   border: 0;
@@ -133,8 +137,11 @@ $drawer-ease-out: cubic-bezier(0.4, 0, 1, 1);
   text-transform: uppercase;
 }
 
-// A quiet slanted icon button (mockup `.ib` on white).
+// A quiet slanted icon button (mockup `.ib` on white): a 36 x 34 face in a 44 x 44 tap target.
 .drawer__close {
+  --face: var(--alt);
+  --face-ring: var(--spark);
+
   display: grid;
   flex-shrink: 0;
   place-items: center;
@@ -143,19 +150,13 @@ $drawer-ease-out: cubic-bezier(0.4, 0, 1, 1);
   margin: 0;
   padding: 0;
   border: 0;
-  clip-path: var(--clip-slant-sm);
-  background: var(--alt);
   color: var(--ink);
   cursor: pointer;
-  transition: background-color 0.15s ease;
+
+  @include slanted-target(34px, 36px);
 
   &:hover {
-    background: var(--line);
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: inset 0 0 0 2px var(--spark);
+    --face: var(--line);
   }
 
   .ui-icon {
