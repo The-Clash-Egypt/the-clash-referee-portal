@@ -4,8 +4,8 @@ import "@testing-library/jest-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import GuestVenuePage from "./GuestVenuePage";
-import { getGuestVenue, validateVenueToken } from "../api/venue";
-import { VenueMatch } from "../types/venue";
+import { openCourt, submitCourtScore } from "../api/venue";
+import { GuestCourt, VenueMatch } from "../types/venue";
 
 // Jest 27 (CRA) can't resolve react-router-dom v7; react-router exports the same API (it needs TextEncoder).
 jest.mock(
@@ -21,7 +21,12 @@ jest.mock("../../../api/axios", () => ({
   __esModule: true,
   default: { get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
-jest.mock("../api/venue", () => ({ getGuestVenue: jest.fn(), validateVenueToken: jest.fn() }));
+// The page reads refusals with the real courtAccessDenial; only the two requests are faked.
+jest.mock("../api/venue", () => ({
+  ...jest.requireActual("../api/venue"),
+  openCourt: jest.fn(),
+  submitCourtScore: jest.fn(),
+}));
 // The scoreboard is Task 5's; this stub shows what the court page hands it.
 jest.mock("../../matches/components/UpdateScoreDialog", () => ({
   __esModule: true,
@@ -31,19 +36,39 @@ jest.mock("../../matches/components/UpdateScoreDialog", () => ({
     venueAccessToken?: string;
     openInFullscreen?: boolean;
     onClose: () => void;
+    onSubmit: (gameScores: { gameNumber: number; homeScore: number; awayScore: number }[]) => Promise<void>;
   }) =>
     props.isOpen ? (
       <div role="dialog" aria-label="Scoreboard">
         <p>{`Scoring ${props.match?.id} with ${props.venueAccessToken}${props.openInFullscreen ? " in full screen" : ""}`}</p>
         <button onClick={props.onClose}>Close stub</button>
+        {/* The real dialog stays open when onSubmit rejects. */}
+        <button onClick={() => props.onSubmit(FINAL).catch(() => undefined)}>Save stub</button>
       </div>
     ) : null,
 }));
 
-const validate = validateVenueToken as jest.Mock;
-const loadVenue = getGuestVenue as jest.Mock;
+const loadCourt = openCourt as jest.Mock;
+const saveScore = submitCourtScore as jest.Mock;
 
-const envelope = <T,>(data: T, message = "") => ({ data: { data, success: true, message, errors: [] } });
+const FINAL = [
+  { gameNumber: 1, homeScore: 21, awayScore: 17 },
+  { gameNumber: 2, homeScore: 21, awayScore: 15 },
+];
+
+// The API's 403 { success, reason, message, name?, tournamentName? }, as axios rejects with it.
+const refusal = (status: number, reason: string, message: string, named = false) =>
+  Object.assign(new Error(`Request failed with status code ${status}`), {
+    response: {
+      status,
+      data: {
+        success: false,
+        reason,
+        message,
+        ...(named ? { name: "Court 1", tournamentName: "Summer Open" } : { name: null, tournamentName: null }),
+      },
+    },
+  });
 
 // Local times, so the time headers read the same in any timezone.
 const at = (hour: number, minute = 0) => new Date(2026, 9, 10, hour, minute).toISOString();
@@ -89,15 +114,12 @@ const MATCHES: VenueMatch[] = [
   venueMatch({ id: "m3", startTime: at(14), homeTeamName: "Net Ninjas", awayTeamName: "Spike Club" }),
 ];
 
-const venue = (over: object = {}) => ({
+// What POST /venue/{id}/access returns: no password, no token, no lock flag (a locked court is refused).
+const court = (over: Partial<GuestCourt> = {}): GuestCourt => ({
   id: "v1",
   name: "Court 1",
-  password: "",
-  accessToken: "tok",
-  isLocked: false,
-  tournamentId: "t1",
   tournamentName: "Summer Clash Open",
-  createdAt: "2026-10-01T00:00:00Z",
+  requiresPassword: false,
   matches: MATCHES,
   ...over,
 });
@@ -117,8 +139,13 @@ const rowTexts = (region: HTMLElement) =>
   Array.from(region.querySelectorAll(".match-row")).map((row) => row.textContent ?? "");
 
 beforeEach(() => {
-  validate.mockReset();
-  loadVenue.mockReset();
+  loadCourt.mockReset();
+  saveScore.mockReset();
+  jest.spyOn(window, "alert").mockImplementation(() => undefined);
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 describe("access", () => {
@@ -127,19 +154,28 @@ describe("access", () => {
 
     expect(await screen.findByText("Invalid venue link. Please check the URL and try again.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Access Denied" })).toBeInTheDocument();
-    expect(validate).not.toHaveBeenCalled();
+    expect(loadCourt).not.toHaveBeenCalled();
   });
 
   it("shows the brand spinner while the link is checked", () => {
-    validate.mockReturnValue(new Promise(() => undefined));
+    loadCourt.mockReturnValue(new Promise(() => undefined));
 
     renderPage();
 
     expect(screen.getByRole("status")).toHaveTextContent("Validating access token...");
   });
 
+  it("opens the court through the server with the link's token alone", async () => {
+    loadCourt.mockResolvedValue(court());
+
+    renderPage();
+
+    expect(await screen.findByRole("region", { name: /Up next/ })).toBeInTheDocument();
+    expect(loadCourt).toHaveBeenCalledWith("v1", "tok", undefined);
+  });
+
   it("explains an expired link and offers to try again", async () => {
-    validate.mockResolvedValue(envelope(false, "Token has expired"));
+    loadCourt.mockRejectedValue(refusal(403, "expired", "This court link has expired. Ask the referee desk for a new QR code."));
 
     renderPage();
 
@@ -148,42 +184,31 @@ describe("access", () => {
       screen.getByText("Your access token has expired. Please contact the venue administrator for a new link.")
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try Again" })).toBeInTheDocument();
-    expect(validate).toHaveBeenCalledWith("v1", "tok");
-    expect(loadVenue).not.toHaveBeenCalled();
+    expect(screen.queryByRole("region", { name: /Up next/ })).not.toBeInTheDocument();
   });
 
-  it("refuses an invalid link", async () => {
-    validate.mockResolvedValue(envelope(false, "Invalid token"));
+  it("refuses an invalid link with the server's explanation", async () => {
+    loadCourt.mockRejectedValue(refusal(403, "invalid", "This court link isn't valid."));
 
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Invalid Token" })).toBeInTheDocument();
-    expect(screen.getByText("Invalid token")).toBeInTheDocument();
+    expect(screen.getByText("This court link isn't valid.")).toBeInTheDocument();
   });
 
-  it("explains a link that couldn't be checked", async () => {
-    validate.mockRejectedValue(new Error("Network Error"));
+  it("explains a court that couldn't be loaded", async () => {
+    loadCourt.mockRejectedValue(new Error("Network Error"));
 
     renderPage();
 
     expect(
-      await screen.findByText("Failed to validate access token. Please check your connection and try again.")
+      await screen.findByText("Failed to load venue information. Please check your connection and try again.")
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Access Denied" })).toBeInTheDocument();
   });
 
-  it("explains a court that couldn't be loaded", async () => {
-    validate.mockResolvedValue(envelope(true));
-    loadVenue.mockRejectedValue(new Error("Network Error"));
-
-    renderPage();
-
-    expect(await screen.findByText("Failed to load venue information. Please try again.")).toBeInTheDocument();
-  });
-
   it("shows a locked court under its name and tournament, without its matches", async () => {
-    validate.mockResolvedValue(envelope(true));
-    loadVenue.mockResolvedValue(envelope(venue({ isLocked: true })));
+    loadCourt.mockRejectedValue(refusal(403, "locked", "This court is locked right now.", true));
 
     renderPage();
 
@@ -193,18 +218,23 @@ describe("access", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Please contact the venue administrator for more information.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Court 1" })).toBeInTheDocument();
-    expect(screen.getByText("Summer Clash Open")).toBeInTheDocument();
+    expect(screen.getByText("Summer Open")).toBeInTheDocument();
     expect(document.querySelector(".match-row")).toBeNull();
   });
 
-  it("asks for the court's password, and shows the matches once it is right", async () => {
-    validate.mockResolvedValue(envelope(true));
-    loadVenue.mockResolvedValue(envelope(venue({ password: "1234" })));
+  it("asks for the court's password, lets the server check it, and shows the matches once it is right", async () => {
+    loadCourt.mockImplementation((_venueId: string, _token: string, password?: string) => {
+      if (password === undefined) return Promise.reject(refusal(403, "password-required", "This court needs its password.", true));
+      if (password !== "1234") return Promise.reject(refusal(403, "wrong-password", "Incorrect password. Please try again.", true));
+      return Promise.resolve(court({ requiresPassword: true }));
+    });
 
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Password Required" })).toBeInTheDocument();
     expect(screen.getByText("This venue requires a password to view matches.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Court 1" })).toBeInTheDocument();
+    expect(screen.getByText("Summer Open")).toBeInTheDocument();
     expect(document.querySelector(".match-row")).toBeNull();
 
     const field = screen.getByLabelText("Enter venue password");
@@ -212,21 +242,41 @@ describe("access", () => {
     fireEvent.change(field, { target: { value: "0000" } });
     fireEvent.click(screen.getByRole("button", { name: "Access Matches" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Incorrect password. Please try again.");
-    expect(field).toHaveValue("");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Incorrect password. Please try again.");
+    expect(loadCourt).toHaveBeenLastCalledWith("v1", "tok", "0000");
+    expect(screen.getByLabelText("Enter venue password")).toHaveValue("");
 
-    fireEvent.change(field, { target: { value: " 1234 " } });
+    fireEvent.change(screen.getByLabelText("Enter venue password"), { target: { value: " 1234 " } });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Access Matches" }));
 
     expect(await screen.findByRole("region", { name: /Up next/ })).toBeInTheDocument();
+    expect(loadCourt).toHaveBeenLastCalledWith("v1", "tok", "1234");
+  });
+
+  it("asks again when the same wrong password is sent twice", async () => {
+    loadCourt.mockImplementation((_venueId: string, _token: string, password?: string) =>
+      Promise.reject(
+        password === undefined
+          ? refusal(403, "password-required", "This court needs its password.", true)
+          : refusal(403, "wrong-password", "Incorrect password. Please try again.", true)
+      )
+    );
+
+    renderPage();
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      fireEvent.change(await screen.findByLabelText("Enter venue password"), { target: { value: "0000" } });
+      fireEvent.click(screen.getByRole("button", { name: "Access Matches" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("Incorrect password. Please try again.");
+    }
+    expect(loadCourt).toHaveBeenCalledTimes(3);
   });
 });
 
 describe("matches", () => {
   beforeEach(() => {
-    validate.mockResolvedValue(envelope(true));
-    loadVenue.mockResolvedValue(envelope(venue()));
+    loadCourt.mockResolvedValue(court());
   });
 
   it("names the court and its tournament in the bar", async () => {
@@ -249,15 +299,13 @@ describe("matches", () => {
   });
 
   it("dates the time headers when the court's matches span several days", async () => {
-    loadVenue.mockResolvedValue(
-      envelope(
-        venue({
-          matches: [
-            venueMatch({ id: "d1", startTime: new Date(2026, 9, 10, 10, 0).toISOString(), homeTeamName: "Day One" }),
-            venueMatch({ id: "d2", startTime: new Date(2026, 9, 11, 10, 0).toISOString(), homeTeamName: "Day Two" }),
-          ],
-        })
-      )
+    loadCourt.mockResolvedValue(
+      court({
+        matches: [
+          venueMatch({ id: "d1", startTime: new Date(2026, 9, 10, 10, 0).toISOString(), homeTeamName: "Day One" }),
+          venueMatch({ id: "d2", startTime: new Date(2026, 9, 11, 10, 0).toISOString(), homeTeamName: "Day Two" }),
+        ],
+      })
     );
 
     renderPage();
@@ -283,7 +331,7 @@ describe("matches", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Net Ninjas/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Close stub" }));
 
-    await waitFor(() => expect(loadVenue).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(loadCourt).toHaveBeenCalledTimes(2));
     expect(screen.queryByRole("dialog", { name: "Scoreboard" })).not.toBeInTheDocument();
   });
 
@@ -296,10 +344,83 @@ describe("matches", () => {
   });
 
   it("says so when the court has no matches", async () => {
-    loadVenue.mockResolvedValue(envelope(venue({ matches: [] })));
+    loadCourt.mockResolvedValue(court({ matches: [] }));
 
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "No matches found" })).toBeInTheDocument();
+  });
+});
+
+describe("saving the final score", () => {
+  beforeEach(() => {
+    loadCourt.mockResolvedValue(court());
+  });
+
+  it("saves through the court's score endpoint with the court token, then closes and refreshes", async () => {
+    saveScore.mockResolvedValue(true);
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /Dune Dogs/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save stub" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Scoreboard" })).not.toBeInTheDocument());
+    expect(saveScore).toHaveBeenCalledWith("v1", "m2", { token: "tok", password: undefined }, FINAL);
+    await waitFor(() => expect(loadCourt).toHaveBeenCalledTimes(2));
+  });
+
+  it("sends the court's password with the final score", async () => {
+    loadCourt.mockImplementation((_venueId: string, _token: string, password?: string) =>
+      password === "1234"
+        ? Promise.resolve(court({ requiresPassword: true }))
+        : Promise.reject(refusal(403, "password-required", "This court needs its password.", true))
+    );
+    saveScore.mockResolvedValue(true);
+    renderPage();
+
+    fireEvent.change(await screen.findByLabelText("Enter venue password"), { target: { value: "1234" } });
+    fireEvent.click(screen.getByRole("button", { name: "Access Matches" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Dune Dogs/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save stub" }));
+
+    await waitFor(() => expect(saveScore).toHaveBeenCalledWith("v1", "m2", { token: "tok", password: "1234" }, FINAL));
+  });
+
+  it("keeps the scoreboard open and explains a save that failed", async () => {
+    saveScore.mockRejectedValue(refusal(400, "rejected", "Games must be numbered 1 to 2 without gaps."));
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /Dune Dogs/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save stub" }));
+
+    await waitFor(() => expect(window.alert).toHaveBeenCalledWith("Games must be numbered 1 to 2 without gaps."));
+    expect(screen.getByRole("dialog", { name: "Scoreboard" })).toBeInTheDocument();
+  });
+
+  it("keeps the scoreboard open on a network failure", async () => {
+    saveScore.mockRejectedValue(new Error("Network Error"));
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /Dune Dogs/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save stub" }));
+
+    await waitFor(() => expect(window.alert).toHaveBeenCalledWith("Failed to update scores. Please try again."));
+    expect(screen.getByRole("dialog", { name: "Scoreboard" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["completed", 409, "Scores for this match are final."],
+    ["expired", 403, "This court link has expired. Ask the referee desk for a new QR code."],
+    ["wrong-court", 403, "This match isn't on this court."],
+  ])("closes the scoreboard and refreshes the court when the save is refused as %s", async (reason, status, message) => {
+    saveScore.mockRejectedValue(refusal(status, reason, message));
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /Dune Dogs/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save stub" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Scoreboard" })).not.toBeInTheDocument());
+    await waitFor(() => expect(loadCourt).toHaveBeenCalledTimes(2));
+    expect(window.alert).not.toHaveBeenCalled();
   });
 });

@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getGuestVenue, validateVenueToken } from "../api/venue";
+import { courtAccessDenial, openCourt, submitCourtScore } from "../api/venue";
+import { CourtAccessReason } from "../types/venue";
 import { venueMatchToMatch } from "../utils/toMatch";
 import { Match, MatchGameScore } from "../../matches/types/match";
 import UpdateScoreDialog from "../../matches/components/UpdateScoreDialog";
 import MatchRow from "../../matches/components/timeline/MatchRow";
 import { formatDayLabel, groupMatchesBySlot, TimelineGroup } from "../../matches/utils/timeline";
-import { UnknownMatchFormatError, updateMatchByFormat } from "../../matches/api/matches";
 import GuestFrame from "../../shared/components/GuestFrame";
 import { Button } from "../../../ui/Button";
 import { EmptyState } from "../../../ui/EmptyState";
@@ -17,6 +17,31 @@ import { useToast } from "../../../ui/Toast";
 import "./GuestVenuePage.scss";
 
 const FINAL_SCORES = "Scores for this match are final. Contact the referee desk for corrections.";
+const WRONG_PASSWORD = "Incorrect password. Please try again.";
+const RECHECK_MS = 300000; // the link (expiry, lock) is re-checked every 5 minutes, as before
+
+/** The refusals the password form answers; every other one blocks the page. */
+const PASSWORD_REASONS: CourtAccessReason[] = ["password-required", "wrong-password"];
+
+/**
+ * A refused final save that retrying can't fix — the match is final or moved, or the court access is gone: the
+ * scoreboard closes and the court is reloaded, which shows why. Anything else keeps the scoreboard open.
+ */
+const CLOSES_SCOREBOARD: CourtAccessReason[] = [
+  "completed",
+  "wrong-court",
+  "not-found",
+  "invalid",
+  "expired",
+  "locked",
+  "password-required",
+  "wrong-password",
+];
+
+interface CourtNames {
+  name?: string | null;
+  tournamentName?: string | null;
+}
 
 interface CourtSection {
   key: "next" | "done";
@@ -46,75 +71,57 @@ const courtSections = (matches: Match[]): CourtSection[] => {
 
 /**
  * The public court page (/venue/shared?venueId=&token=), opened from a court's printed QR code: the court's matches as
- * timeline rows; tapping an open one opens the scoreboard with the court's access token. Behind it: the token check
- * (every 5 minutes), the court's lock and its optional password.
+ * timeline rows; tapping an open one opens the scoreboard with the court's access token. The server checks the token,
+ * the court's lock and its optional password (POST /venue/{id}/access, again every 5 minutes) — the page never gets
+ * the court's password or token — and final scores go to the court's own score endpoint with the token and password.
  */
 const GuestVenuePage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const venueId = searchParams.get("venueId");
   const accessToken = searchParams.get("token");
+  const hasLink = !!(venueId && accessToken);
   const toast = useToast();
-  const [error, setError] = useState<string | null>(null);
   const [password, setPassword] = useState<string>("");
-  const [isPasswordValid, setIsPasswordValid] = useState<boolean>(false);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
+  // The password last sent for the server to check; `attempt` makes re-sending the same one a new check.
+  const [sentPassword, setSentPassword] = useState<string | undefined>(undefined);
+  const [attempt, setAttempt] = useState(0);
+  const [passwordEdited, setPasswordEdited] = useState(false);
+  const [passwordHint, setPasswordHint] = useState<string | null>(null);
+  // The court as the last password refusal named it: keeps the form up while the next password is checked.
+  const [gate, setGate] = useState<CourtNames | null>(null);
 
   // Score update modal state
   const [showUpdateScoreModal, setShowUpdateScoreModal] = useState(false);
   const [selectedMatchForScore, setSelectedMatchForScore] = useState<Match | null>(null);
   const [updatingScore, setUpdatingScore] = useState(false);
 
-  // Token validation query
   const {
-    data: tokenValidationResponse,
-    isLoading: isTokenValidating,
-    error: tokenValidationError,
-  } = useQuery({
-    queryKey: ["validate-token", venueId, accessToken],
-    queryFn: () => validateVenueToken(venueId!, accessToken!),
-    enabled: !!(venueId && accessToken),
-    retry: false,
-    refetchInterval: 300000, // Check every 5 minutes
-  });
-
-  // Venue data query (only runs if token is valid)
-  const {
-    data: venueResponse,
-    isLoading: isVenueLoading,
-    error: venueError,
+    data: venueData,
+    error: courtError,
+    isLoading,
+    isFetching,
     refetch: refetchVenueData,
   } = useQuery({
-    queryKey: ["guest-venue", venueId, accessToken],
-    queryFn: () => getGuestVenue(venueId!),
-    enabled: !!(venueId && accessToken && tokenValidationResponse?.data.data === true),
+    queryKey: ["guest-court", venueId, accessToken, sentPassword ?? null, attempt],
+    queryFn: () => openCourt(venueId!, accessToken!, sentPassword),
+    enabled: hasLink,
     retry: false,
+    refetchInterval: (query) => (query.state.data ? RECHECK_MS : false),
   });
 
-  const venueData = venueResponse?.data.data;
-  const isTokenValid = tokenValidationResponse?.data.data === true;
-  const tokenMessage = tokenValidationResponse?.data.message;
+  const denial = courtError ? courtAccessDenial(courtError) : null;
+  const asksForPassword = denial !== null && PASSWORD_REASONS.includes(denial.reason);
 
-  // Check if password is required and validate it
-  const requiresPassword = venueData?.password && venueData.password.trim() !== "";
-  const shouldShowPasswordPrompt = requiresPassword && !isPasswordValid;
+  const denialReason = denial?.reason;
+  const denialName = denial?.name;
+  const denialTournament = denial?.tournamentName;
+  useEffect(() => {
+    if (denialReason && PASSWORD_REASONS.includes(denialReason)) {
+      setGate({ name: denialName, tournamentName: denialTournament });
+    }
+  }, [denialReason, denialName, denialTournament]);
 
   const sections = useMemo(() => courtSections((venueData?.matches ?? []).map(venueMatchToMatch)), [venueData]);
-
-  useEffect(() => {
-    if (!venueId || !accessToken) {
-      setError("Invalid venue link. Please check the URL and try again.");
-    }
-  }, [venueId, accessToken]);
-
-  useEffect(() => {
-    if (tokenValidationError) {
-      setError("Failed to validate access token. Please check your connection and try again.");
-    } else if (tokenValidationResponse && !isTokenValid) {
-      setError(tokenMessage || "Access token is invalid or has expired.");
-    } else if (venueError) {
-      setError("Failed to load venue information. Please try again.");
-    }
-  }, [tokenValidationError, tokenValidationResponse, isTokenValid, tokenMessage, venueError]);
 
   // Handle update score
   const handleUpdateScore = (match: Match) => {
@@ -139,119 +146,86 @@ const GuestVenuePage: React.FC = () => {
     await refetchVenueData();
   };
 
-  // Handle score submission
+  // The final score goes to the court's own endpoint (scores only), with the court's token and password.
   const handleSubmitScore = async (gameScores: MatchGameScore[]) => {
-    if (!selectedMatchForScore) return;
+    if (!selectedMatchForScore || !venueId || !accessToken) return;
 
     try {
       setUpdatingScore(true);
 
-      await updateMatchByFormat(selectedMatchForScore.formatType, selectedMatchForScore.id, { gameScores });
+      await submitCourtScore(
+        venueId,
+        selectedMatchForScore.id,
+        { token: accessToken, password: venueData?.requiresPassword ? sentPassword : undefined },
+        gameScores
+      );
 
-      // Refresh venue data to show updated scores
-      if (venueId) {
-        // Refetch the venue data to get updated scores
-        await refetchVenueData();
-      }
+      // Refresh the court to show the saved scores
+      await refetchVenueData();
 
       setShowUpdateScoreModal(false);
       setSelectedMatchForScore(null);
-    } catch (error: any) {
-      if (error instanceof UnknownMatchFormatError) {
-        // Never close the modal as if saved (silent data loss): rejecting keeps UpdateScoreDialog open.
-        alert(`${error.message} Please contact the tournament organizer.`);
-        throw error;
+    } catch (error: unknown) {
+      const refused = courtAccessDenial(error);
+      if (refused && CLOSES_SCOREBOARD.includes(refused.reason)) {
+        toast.show(refused.reason === "completed" ? FINAL_SCORES : refused.message || "This score couldn't be saved.", {
+          tone: refused.reason === "completed" ? "info" : "error",
+        });
+        setShowUpdateScoreModal(false);
+        setSelectedMatchForScore(null);
+        void refetchVenueData();
+        return;
       }
       console.error("Error updating scores:", error);
-      alert("Failed to update scores. Please try again.");
+      alert(refused?.message || "Failed to update scores. Please try again.");
+      throw error; // keeps UpdateScoreDialog open so nothing typed is lost
     } finally {
       setUpdatingScore(false);
     }
   };
 
-  // Handle password validation
+  // The password goes to the server, which says whether it is right.
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setPasswordError(null);
-
-    if (!venueData?.password) {
-      setPasswordError("No password required for this venue.");
+    const typed = password.trim();
+    if (!typed) {
+      setPasswordHint("Please enter the court's password.");
       return;
     }
-
-    if (password.trim() === venueData.password) {
-      setIsPasswordValid(true);
-      setPasswordError(null);
-    } else {
-      setPasswordError("Incorrect password. Please try again.");
-      setPassword("");
-    }
+    setPasswordHint(null);
+    setPasswordEdited(false);
+    setPassword("");
+    setSentPassword(typed);
+    setAttempt((count) => count + 1);
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value);
-    if (passwordError) {
-      setPasswordError(null);
-    }
+    setPasswordEdited(true);
+    setPasswordHint(null);
   };
 
-  if (isTokenValidating || isVenueLoading) {
+  if (!hasLink) {
     return (
       <GuestFrame narrow>
-        <Spinner size={32} label={isTokenValidating ? "Validating access token..." : "Loading venue information..."} />
-      </GuestFrame>
-    );
-  }
-
-  if (error || !isTokenValid || !venueData) {
-    const expired = tokenMessage === "Token has expired";
-    return (
-      <GuestFrame eyebrow={venueData?.tournamentName} title={venueData?.name} narrow>
         <EmptyState
-          icon={expired ? "clock" : "alert"}
-          title={expired ? "Token Expired" : tokenMessage === "Invalid token" ? "Invalid Token" : "Access Denied"}
-          body={
-            error || expired ? (
-              <>
-                {error ? <p className="guest-venue__line">{error}</p> : null}
-                {expired ? (
-                  <p className="guest-venue__line">
-                    Your access token has expired. Please contact the venue administrator for a new link.
-                  </p>
-                ) : null}
-              </>
-            ) : undefined
-          }
+          icon="alert"
+          title="Access Denied"
+          body={<p className="guest-venue__line">Invalid venue link. Please check the URL and try again.</p>}
           action={<Button onClick={() => window.location.reload()}>Try Again</Button>}
         />
       </GuestFrame>
     );
   }
 
-  // Check if venue is locked
-  if (venueData.isLocked) {
+  // Show the password form while the court asks for one, and while a typed password is being checked
+  const checkingPassword = gate !== null && !venueData && isFetching;
+  if (asksForPassword || checkingPassword) {
+    const names = asksForPassword ? denial : gate;
+    const passwordError =
+      passwordHint ?? (denial?.reason === "wrong-password" && !passwordEdited && !isFetching ? WRONG_PASSWORD : null);
     return (
-      <GuestFrame eyebrow={venueData.tournamentName} title={venueData.name} narrow>
-        <EmptyState
-          icon="lock"
-          title="Venue is Currently Locked"
-          body={
-            <>
-              <p className="guest-venue__line">
-                This venue is currently locked and matches are not available for viewing.
-              </p>
-              <p className="guest-venue__line">Please contact the venue administrator for more information.</p>
-            </>
-          }
-        />
-      </GuestFrame>
-    );
-  }
-
-  // Show password prompt if password is required
-  if (shouldShowPasswordPrompt) {
-    return (
-      <GuestFrame eyebrow={venueData.tournamentName} title={venueData.name} narrow>
+      <GuestFrame eyebrow={names?.tournamentName ?? undefined} title={names?.name ?? undefined} narrow>
         <div className="guest-venue__gate-card">
           <EmptyState
             icon="lock"
@@ -279,13 +253,70 @@ const GuestVenuePage: React.FC = () => {
                     {passwordError}
                   </p>
                 ) : null}
-                <Button type="submit" size="lg" block>
+                <Button type="submit" size="lg" block loading={isFetching}>
                   Access Matches
                 </Button>
               </form>
             }
           />
         </div>
+      </GuestFrame>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <GuestFrame narrow>
+        <Spinner size={32} label="Validating access token..." />
+      </GuestFrame>
+    );
+  }
+
+  // A locked court: named, but without its matches
+  if (denial?.reason === "locked") {
+    return (
+      <GuestFrame eyebrow={denial.tournamentName ?? undefined} title={denial.name ?? undefined} narrow>
+        <EmptyState
+          icon="lock"
+          title="Venue is Currently Locked"
+          body={
+            <>
+              <p className="guest-venue__line">
+                This venue is currently locked and matches are not available for viewing.
+              </p>
+              <p className="guest-venue__line">Please contact the venue administrator for more information.</p>
+            </>
+          }
+        />
+      </GuestFrame>
+    );
+  }
+
+  // An expired or invalid link always blocks; a failed refresh keeps the court on screen.
+  if (denial || !venueData) {
+    const expired = denial?.reason === "expired";
+    const message = expired
+      ? null
+      : denial
+        ? denial.message || "Access token is invalid or has expired."
+        : "Failed to load venue information. Please check your connection and try again.";
+    return (
+      <GuestFrame narrow>
+        <EmptyState
+          icon={expired ? "clock" : "alert"}
+          title={expired ? "Token Expired" : denial?.reason === "invalid" ? "Invalid Token" : "Access Denied"}
+          body={
+            <>
+              {message ? <p className="guest-venue__line">{message}</p> : null}
+              {expired ? (
+                <p className="guest-venue__line">
+                  Your access token has expired. Please contact the venue administrator for a new link.
+                </p>
+              ) : null}
+            </>
+          }
+          action={<Button onClick={() => window.location.reload()}>Try Again</Button>}
+        />
       </GuestFrame>
     );
   }

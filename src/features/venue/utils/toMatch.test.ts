@@ -81,27 +81,29 @@ it("keeps both players of each side and the points target of an Americano match"
   );
 });
 
+// The court page gets names only (no ids, nationality or notes), so the member ids are synthetic,
+// as on the match QR page.
 it("turns the players into team members, the captain marked", () => {
   const match = venueMatchToMatch(
     venueMatch({
       homeTeamPlayers: [
-        { id: "tm1", playerId: "p1", firstName: "Ali", lastName: "Hassan", nationality: "Egypt", isCaptain: true },
+        { firstName: "Ali", lastName: "Hassan", isCaptain: true },
+        { firstName: "Karim", lastName: "Adel", isCaptain: false },
       ],
-      awayTeamPlayers: [
-        { id: "tm2", playerId: "p2", firstName: "Omar", lastName: "Nabil", nationality: "Egypt", isCaptain: false },
-      ],
+      awayTeamPlayers: [{ firstName: "Omar", lastName: "Nabil", isCaptain: false }],
     })
   );
 
-  expect(match.homeTeamMembers).toEqual([
+  expect(match.homeTeamMembers?.map((member) => member.id)).toEqual(["home-0", "home-1"]);
+  expect(match.homeTeamMembers?.[0]).toEqual(
     {
-      id: "tm1",
-      teamMemberId: "tm1",
-      playerId: "p1",
+      id: "home-0",
+      teamMemberId: "home-0",
+      playerId: "",
       isCaptain: true,
       firstName: "Ali",
       lastName: "Hassan",
-      nationality: "Egypt",
+      nationality: "",
       gender: "",
       registrationStatus: "",
       paymentStatus: "",
@@ -109,9 +111,9 @@ it("turns the players into team members, the captain marked", () => {
       addedAt: "",
       phoneNumber: "",
       email: "",
-    },
-  ]);
-  expect(match.awayTeamMembers?.[0]).toEqual(expect.objectContaining({ firstName: "Omar", isCaptain: false }));
+    }
+  );
+  expect(match.awayTeamMembers?.[0]).toEqual(expect.objectContaining({ id: "away-0", firstName: "Omar", isCaptain: false }));
 });
 
 it("leaves the members empty when the court sends no players", () => {

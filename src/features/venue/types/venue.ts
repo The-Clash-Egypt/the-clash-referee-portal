@@ -1,11 +1,8 @@
+/** A court match's player, names only: the court page never gets player ids, nationality or notes. */
 export interface VenueMatchPlayer {
-  id: string;
-  playerId: string;
   firstName: string;
   lastName: string;
-  nationality: string;
   isCaptain: boolean;
-  notes?: string;
 }
 
 export interface VenueMatch {
@@ -115,21 +112,38 @@ export interface VenueResponse {
   errors: string[];
 }
 
-export interface VenueDetailResponse {
-  data: {
-    id: string;
-    name: string;
-    password: string;
-    accessToken: string;
-    isLocked: boolean;
-    tournamentId: string;
-    tournamentName: string;
-    createdAt: string;
-    matches: VenueMatch[];
-  };
-  success: boolean;
+/**
+ * The public court page's court, from POST /venue/{id}/access once the server has checked the QR token, the lock
+ * and the password. It never carries the court's password or access token.
+ */
+export interface GuestCourt {
+  id: string;
+  name: string;
+  tournamentName: string;
+  /** The court has a password: it goes with every final score (X-Venue-Password). */
+  requiresPassword: boolean;
+  matches: VenueMatch[];
+}
+
+/** Why the API refused the court page (403 unless noted). */
+export type CourtAccessReason =
+  | "invalid"
+  | "expired"
+  | "locked"
+  | "password-required"
+  | "wrong-password"
+  | "wrong-court"
+  | "not-found" // 404
+  | "completed" // 409
+  | "unsupported-format" // 400
+  | "rejected"; // 400
+
+export interface CourtAccessDenial {
+  reason: CourtAccessReason;
   message: string;
-  errors: string[];
+  /** Sent once the token checked out (locked, password-required, wrong-password), so the page can name the court. */
+  name?: string | null;
+  tournamentName?: string | null;
 }
 
 export interface VenueFilters {

@@ -1,14 +1,15 @@
 import { Match, TeamMember } from "../../matches/types/match";
 import { VenueMatch, VenueMatchPlayer } from "../types/venue";
 
-const toMember = (player: VenueMatchPlayer): TeamMember => ({
-  id: player.id,
-  teamMemberId: player.id,
-  playerId: player.playerId,
+// The court payload names players only, so the member ids are synthetic (as on the match QR page).
+const toMember = (player: VenueMatchPlayer, key: string): TeamMember => ({
+  id: key,
+  teamMemberId: key,
+  playerId: "",
   isCaptain: player.isCaptain,
   firstName: player.firstName,
   lastName: player.lastName,
-  nationality: player.nationality,
+  nationality: "",
   gender: "",
   registrationStatus: "",
   paymentStatus: "",
@@ -50,8 +51,8 @@ export function venueMatchToMatch(venueMatch: VenueMatch): Match {
       awayScore: game.awayScore,
     })),
     referees: [],
-    homeTeamMembers: venueMatch.homeTeamPlayers?.map(toMember) || [],
-    awayTeamMembers: venueMatch.awayTeamPlayers?.map(toMember) || [],
+    homeTeamMembers: venueMatch.homeTeamPlayers?.map((player, index) => toMember(player, `home-${index}`)) || [],
+    awayTeamMembers: venueMatch.awayTeamPlayers?.map((player, index) => toMember(player, `away-${index}`)) || [],
     isCompleted: venueMatch.isCompleted,
   };
 }
