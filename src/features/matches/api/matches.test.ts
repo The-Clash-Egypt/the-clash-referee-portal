@@ -62,6 +62,20 @@ describe("updateLiveScore", () => {
     });
   });
 
+  it("sends the court password, URI-encoded, with the court token", async () => {
+    await updateLiveScore(body, { venueAccessToken: "v", venuePassword: "كلمة سر" });
+    expect(put).toHaveBeenCalledWith("/tournament/matches/live-score", body, {
+      headers: { "X-Venue-Access-Token": "v", "X-Venue-Password": encodeURIComponent("كلمة سر") },
+    });
+  });
+
+  it("never sends a court password without the court token", async () => {
+    await updateLiveScore(body, { matchAccessToken: "tok", venuePassword: "1234" });
+    expect(put).toHaveBeenCalledWith("/tournament/matches/live-score", body, {
+      headers: { "X-Match-Access-Token": "tok" },
+    });
+  });
+
   it("sends no guest header for a signed-in referee", async () => {
     await updateLiveScore(body);
     expect(put).toHaveBeenCalledWith("/tournament/matches/live-score", body, { headers: {} });

@@ -12,6 +12,7 @@ interface UpdateScoreDialogProps {
   onSubmit: (gameScores: MatchGameScore[]) => Promise<void>;
   loading: boolean;
   venueAccessToken?: string;
+  venuePassword?: string; // the court page, when the court has a password
   matchAccessToken?: string; // match QR guest page
   openInFullscreen?: boolean; // guest pages: always the scoreboard; the back arrow keeps the score
 }
@@ -30,6 +31,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
   onSubmit,
   loading,
   venueAccessToken,
+  venuePassword,
   matchAccessToken,
   openInFullscreen = false,
 }) => {
@@ -39,6 +41,7 @@ const UpdateScoreDialog: React.FC<UpdateScoreDialogProps> = ({
     onClose,
     onSubmit,
     venueAccessToken,
+    venuePassword,
     matchAccessToken,
     openInFullscreen,
   });

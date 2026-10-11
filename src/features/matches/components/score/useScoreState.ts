@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { describeRequestError } from "../../../../api/errors";
 import { Match, MatchGameScore, isFixedPointsFormat, sideDisplayName } from "../../types/match";
 import { updateLiveScore } from "../../api/matches";
 import { cellsFromGameScores, hasAnyScore, otherSideScore, validateGameScores } from "../../../../utils/scoreValidation";
@@ -26,6 +27,8 @@ export interface ScoreStateOptions {
   onClose: () => void;
   onSubmit: (gameScores: MatchGameScore[]) => Promise<void>;
   venueAccessToken?: string;
+  /** The court page: the court's password, sent with every live point when the court has one. */
+  venuePassword?: string;
   matchAccessToken?: string;
   /** The guest pages: always the scoreboard, and the back arrow keeps the score for the same match. */
   openInFullscreen: boolean;
@@ -47,6 +50,7 @@ export function useScoreState({
   onClose,
   onSubmit,
   venueAccessToken,
+  venuePassword,
   matchAccessToken,
   openInFullscreen,
 }: ScoreStateOptions) {
@@ -135,14 +139,21 @@ export function useScoreState({
     const call = ++liveCallRef.current;
 
     try {
-      await updateLiveScore({ matchId: match.id, gameScores: scores }, { venueAccessToken, matchAccessToken });
+      await updateLiveScore(
+        { matchId: match.id, gameScores: scores },
+        { venueAccessToken, venuePassword, matchAccessToken }
+      );
       if (call === liveCallRef.current) setLiveStatus("saved");
     } catch (error) {
-      console.error("Failed to update live score:", error);
+      // Never the error itself: its config carries the request's tokens and the court password.
+      console.error("Failed to update live score:", describeRequestError(error));
 
-      if ((error as { response?: { status?: number } })?.response?.status === 401) {
+      const response = (error as { response?: { status?: number; data?: { message?: unknown } } })?.response;
+      if (response?.status === 401 || response?.status === 403) {
+        // The link (or the court's lock or password) no longer lets this scoreboard log points.
+        const reason = response.status === 403 && typeof response.data?.message === "string" ? response.data.message : "";
         setIsUnauthorized(true);
-        setErrors([LINK_EXPIRED]);
+        setErrors([reason || LINK_EXPIRED]);
         // Reset scores to original values
         setGameScores([...originalGameScores]);
       } else {
@@ -266,7 +277,7 @@ export function useScoreState({
       snapshotRef.current = null; // saved: nothing to carry on from
       onClose();
     } catch (error) {
-      console.error("Error updating scores:", error);
+      console.error("Error updating scores:", describeRequestError(error));
       setShowConfirmation(false);
     }
   };

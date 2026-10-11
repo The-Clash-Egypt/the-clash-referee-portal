@@ -10,6 +10,7 @@ import { Button } from "../../../ui/Button";
 import { EmptyState } from "../../../ui/EmptyState";
 import { SearchInput } from "../../../ui/SearchInput";
 import { useToast } from "../../../ui/Toast";
+import { describeRequestError } from "../../../api/errors";
 import "./VenueManagement.scss";
 
 interface VenueManagementProps {
@@ -75,7 +76,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
       { id, data },
       {
         onError: (updateError) => {
-          console.error("Failed to update venue:", updateError);
+          console.error("Failed to update venue:", describeRequestError(updateError));
           fail("Failed to update the court. Please try again.");
         },
       }
@@ -111,7 +112,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
         fail(`Error: ${response.data.message || "Failed to generate share link. Please try again."}`);
       }
     } catch (shareLinkError) {
-      console.error("Error generating share link:", shareLinkError);
+      console.error("Error generating share link:", describeRequestError(shareLinkError));
       fail("Failed to generate share link. Please try again.");
     } finally {
       setLoadingAction(null);
@@ -135,7 +136,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
         fail(`Error: ${response.data.message || "Failed to generate QR code. Please try again."}`);
       }
     } catch (qrError) {
-      console.error("Error generating QR code:", qrError);
+      console.error("Error generating QR code:", describeRequestError(qrError));
       fail("Failed to generate QR code. Please try again.");
     } finally {
       setLoadingAction(null);
@@ -155,7 +156,7 @@ const VenueManagement: React.FC<VenueManagementProps> = ({ tournamentId }) => {
         fail(`Error: ${response.data.message || "Failed to generate a new link. Please try again."}`);
       }
     } catch (tokenError) {
-      console.error("Error force generating token:", tokenError);
+      console.error("Error force generating token:", describeRequestError(tokenError));
       fail("Failed to generate a new link. Please try again.");
     } finally {
       setLoadingAction(null);

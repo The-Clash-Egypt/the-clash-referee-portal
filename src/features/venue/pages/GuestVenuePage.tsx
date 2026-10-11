@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { describeRequestError } from "../../../api/errors";
 import { courtAccessDenial, openCourt, submitCourtScore } from "../api/venue";
 import { CourtAccessReason } from "../types/venue";
 import { venueMatchToMatch } from "../utils/toMatch";
@@ -176,7 +177,8 @@ const GuestVenuePage: React.FC = () => {
         void refetchVenueData();
         return;
       }
-      console.error("Error updating scores:", error);
+      // Never the error itself: its config carries the court token and password headers.
+      console.error("Error updating scores:", describeRequestError(error));
       alert(refused?.message || "Failed to update scores. Please try again.");
       throw error; // keeps UpdateScoreDialog open so nothing typed is lost
     } finally {
@@ -376,6 +378,7 @@ const GuestVenuePage: React.FC = () => {
         onSubmit={handleSubmitScore}
         loading={updatingScore}
         venueAccessToken={accessToken || undefined}
+        venuePassword={venueData?.requiresPassword ? sentPassword : undefined}
         openInFullscreen={true}
       />
     </GuestFrame>

@@ -241,7 +241,8 @@ it("stays open with the typed scores when the save is rejected", async () => {
   expect(onSubmit).toHaveBeenCalledWith([game(1, 21, 17)]);
   expect(onClose).not.toHaveBeenCalled();
   expect(screen.getAllByRole("spinbutton").map((input) => (input as HTMLInputElement).value)).toEqual(["21", "17"]);
-  expect(errorSpy).toHaveBeenCalledWith("Error updating scores:", expect.any(Error));
+  // A description, never the error object (an axios error carries the request's headers).
+  expect(errorSpy).toHaveBeenCalledWith("Error updating scores:", "refused");
 });
 
 it("fills in the other side of a typed Mexicano score", () => {
@@ -419,4 +420,72 @@ it("falls back to the drawer when a guest's link has expired, and the page scrol
   fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   expect(document.body.style.overflow).not.toBe("hidden");
+});
+
+describe("security review 2026-10-12", () => {
+  const SECRETS = ["court-secret", "qr-secret", "jwt-secret"];
+  // What axios rejects with: the request's headers ride along in config.
+  const refused = (status: number, data: object) => ({
+    message: `Request failed with status code ${status}`,
+    response: { status, data },
+    config: { headers: { Authorization: "Bearer jwt-secret", "X-Venue-Access-Token": "qr-secret", "X-Venue-Password": "court-secret" } },
+  });
+  const logged = (spy: jest.SpyInstance) => JSON.stringify(spy.mock.calls);
+
+  it("sends the court password with every live point on the court page", async () => {
+    liveScore.mockResolvedValue({ data: { success: true } });
+    render(
+      <UpdateScoreDialog
+        isOpen
+        match={match()}
+        onClose={jest.fn()}
+        onSubmit={jest.fn()}
+        loading={false}
+        venueAccessToken="qr-token"
+        venuePassword="1234"
+        openInFullscreen
+      />
+    );
+
+    addPoint("home");
+
+    await waitFor(() =>
+      expect(liveScore).toHaveBeenCalledWith(
+        expect.objectContaining({ matchId: MATCH_A }),
+        expect.objectContaining({ venueAccessToken: "qr-token", venuePassword: "1234" })
+      )
+    );
+  });
+
+  it("stops live scoring and says why when the court refuses the point (403)", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    liveScore.mockRejectedValue(refused(403, { success: false, reason: "locked", message: "This court is locked right now." }));
+    render(<Page matches={[match()]} submit={jest.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Score Falcons" }));
+    addPoint("home");
+
+    const drawer = await screen.findByRole("dialog", { name: "Enter Match Scores" });
+    expect(drawer).toHaveTextContent("This court is locked right now.");
+    expect(errorSpy).toHaveBeenCalledWith("Failed to update live score:", "HTTP 403 locked: This court is locked right now.");
+    SECRETS.forEach((secret) => expect(logged(errorSpy)).not.toContain(secret));
+    errorSpy.mockRestore();
+  });
+
+  it("logs a rejected final save without the request it carried", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const onSubmit = jest.fn().mockRejectedValue(refused(400, { reason: "rejected", message: "Games must be numbered 1 to 1." }));
+    render(<UpdateScoreDialog isOpen match={match()} onClose={jest.fn()} onSubmit={onSubmit} loading={false} />);
+
+    typeScores();
+    const [home, away] = screen.getAllByRole("spinbutton");
+    fireEvent.change(home, { target: { value: "21" } });
+    fireEvent.change(away, { target: { value: "17" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Scores" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(errorSpy).toHaveBeenCalled());
+    SECRETS.forEach((secret) => expect(logged(errorSpy)).not.toContain(secret));
+    errorSpy.mockRestore();
+  });
 });

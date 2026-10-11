@@ -34,6 +34,7 @@ jest.mock("../../matches/components/UpdateScoreDialog", () => ({
     isOpen: boolean;
     match: { id: string } | null;
     venueAccessToken?: string;
+    venuePassword?: string;
     openInFullscreen?: boolean;
     onClose: () => void;
     onSubmit: (gameScores: { gameNumber: number; homeScore: number; awayScore: number }[]) => Promise<void>;
@@ -41,6 +42,7 @@ jest.mock("../../matches/components/UpdateScoreDialog", () => ({
     props.isOpen ? (
       <div role="dialog" aria-label="Scoreboard">
         <p>{`Scoring ${props.match?.id} with ${props.venueAccessToken}${props.openInFullscreen ? " in full screen" : ""}`}</p>
+        <p data-testid="live-password">{props.venuePassword ?? "(none)"}</p>
         <button onClick={props.onClose}>Close stub</button>
         {/* The real dialog stays open when onSubmit rejects. */}
         <button onClick={() => props.onSubmit(FINAL).catch(() => undefined)}>Save stub</button>
@@ -406,6 +408,55 @@ describe("saving the final score", () => {
 
     await waitFor(() => expect(window.alert).toHaveBeenCalledWith("Failed to update scores. Please try again."));
     expect(screen.getByRole("dialog", { name: "Scoreboard" })).toBeInTheDocument();
+  });
+
+  it("hands the court password to the scoreboard for its live points", async () => {
+    loadCourt.mockImplementation((_venueId: string, _token: string, password?: string) =>
+      password === "1234"
+        ? Promise.resolve(court({ requiresPassword: true }))
+        : Promise.reject(refusal(403, "password-required", "This court needs its password.", true))
+    );
+    renderPage();
+
+    fireEvent.change(await screen.findByLabelText("Enter venue password"), { target: { value: "1234" } });
+    fireEvent.click(screen.getByRole("button", { name: "Access Matches" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Dune Dogs/ }));
+
+    expect(await screen.findByTestId("live-password")).toHaveTextContent("1234");
+  });
+
+  it("gives the scoreboard no password on a court without one", async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /Dune Dogs/ }));
+
+    expect(await screen.findByTestId("live-password")).toHaveTextContent("(none)");
+  });
+
+  it("never logs the court token or password when a save fails", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    loadCourt.mockImplementation((_venueId: string, _token: string, password?: string) =>
+      password === "court-secret"
+        ? Promise.resolve(court({ requiresPassword: true }))
+        : Promise.reject(refusal(403, "password-required", "This court needs its password.", true))
+    );
+    saveScore.mockRejectedValue(
+      Object.assign(new Error("Network Error"), {
+        config: { headers: { "X-Venue-Access-Token": "qr-secret-token", "X-Venue-Password": "court-secret" } },
+      })
+    );
+    renderPage("/venue/shared?venueId=v1&token=qr-secret-token");
+
+    fireEvent.change(await screen.findByLabelText("Enter venue password"), { target: { value: "court-secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Access Matches" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Dune Dogs/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save stub" }));
+
+    await waitFor(() => expect(window.alert).toHaveBeenCalled());
+    expect(errorSpy).toHaveBeenCalled();
+    const logged = JSON.stringify(errorSpy.mock.calls);
+    expect(logged).not.toContain("court-secret");
+    expect(logged).not.toContain("qr-secret-token");
   });
 
   it.each([

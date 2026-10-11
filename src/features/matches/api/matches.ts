@@ -152,6 +152,8 @@ export const bulkUpdateMatchScores = async (matchScores: { matchId: string; game
 /** Guest credentials for live scoring. Signed-in referees send neither. */
 export interface GuestAccessTokens {
   venueAccessToken?: string;
+  /** The court's password, when it has one: sent only with the court token. */
+  venuePassword?: string;
   matchAccessToken?: string;
 }
 
@@ -161,7 +163,11 @@ export const updateLiveScore = (
   access: GuestAccessTokens = {}
 ): Promise<{ data: LiveScoreResponse }> => {
   const headers: Record<string, string> = {};
-  if (access.venueAccessToken) headers["X-Venue-Access-Token"] = access.venueAccessToken;
+  if (access.venueAccessToken) {
+    headers["X-Venue-Access-Token"] = access.venueAccessToken;
+    // Headers carry Latin-1 only; the API decodes this (as on the court's score endpoint).
+    if (access.venuePassword) headers["X-Venue-Password"] = encodeURIComponent(access.venuePassword);
+  }
   if (access.matchAccessToken) headers["X-Match-Access-Token"] = access.matchAccessToken;
   return api.put("/tournament/matches/live-score", data, { headers });
 };
