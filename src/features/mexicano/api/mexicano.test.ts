@@ -4,7 +4,6 @@ import {
   dissolveMexicanoUnit,
   finishMexicano,
   getMexicanoSession,
-  getMexicanoStages,
   mexicanoErrorMessage,
   startNextMexicanoRound,
   undoMexicanoRound,
@@ -72,37 +71,6 @@ describe("Mexicano session actions", () => {
 
     await expect(dissolveMexicanoUnit("f1", "t 1")).resolves.toEqual(session);
     expect(del).toHaveBeenCalledWith("/Mexicano/units/t%201?formatId=f1");
-  });
-});
-
-describe("getMexicanoStages", () => {
-  it("lists only the tournament's Mexicano stages with their category", async () => {
-    get.mockResolvedValue(
-      envelope({
-        categories: [
-          {
-            name: "Men's Open",
-            formats: [
-              { formatId: "g1", formatName: "Group", aliasName: "", order: 1 },
-              { formatId: "m1", formatName: "Mexicano", aliasName: "Evening", order: 2 },
-            ],
-          },
-          { name: "Mixed", formats: [{ formatId: "m2", formatName: "Mexicano", aliasName: null, order: 1 }] },
-        ],
-      })
-    );
-
-    await expect(getMexicanoStages("t1")).resolves.toEqual([
-      { formatId: "m1", categoryName: "Men's Open", stageName: "Evening" },
-      { formatId: "m2", categoryName: "Mixed", stageName: "Mexicano" },
-    ]);
-    expect(get).toHaveBeenCalledWith("/Tournament/t1/formats");
-  });
-
-  it("copes with a tournament that has no categories", async () => {
-    get.mockResolvedValue(envelope(null));
-
-    await expect(getMexicanoStages("t1")).resolves.toEqual([]);
   });
 });
 

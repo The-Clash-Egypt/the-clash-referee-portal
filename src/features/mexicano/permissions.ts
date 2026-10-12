@@ -9,3 +9,9 @@ const RUN_ROLES = [AdminRole.REFEREE_ADMIN, AdminRole.SUPERADMIN, AdminRole.BRAC
  */
 export const canRunMexicano = (user: Pick<User, "adminRoles"> | null | undefined): boolean =>
   !!user?.adminRoles?.some((role) => RUN_ROLES.includes(role));
+
+/**
+ * Who can finish an Americano stage early. The backend's finish endpoint allows the same roles as MexicanoRunPolicy
+ * (RefereeAdmin, BracketManager, TournamentManager, Superadmin) — wider than hasFullAccess.
+ */
+export const canFinishAmericano = canRunMexicano;

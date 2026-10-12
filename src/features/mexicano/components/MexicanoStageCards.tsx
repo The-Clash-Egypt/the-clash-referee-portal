@@ -1,23 +1,27 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Icon } from "../../../ui/Icon";
 import { Tag, TagTone } from "../../../ui/Tag";
-import { getMexicanoSession, getMexicanoStages } from "../api/mexicano";
+import { getMexicanoSession } from "../api/mexicano";
 import { roundLabel, statusLine } from "../sessionText";
-import { MexicanoSession, MexicanoStage } from "../types";
+import { stageKeys, stagesLabel, useTournamentStages } from "../stages";
+import { MexicanoSession, TournamentStage } from "../types";
+import AmericanoStageCard from "./AmericanoStageCard";
 import "./MexicanoStageCards.scss";
 
 interface MexicanoStageCardsProps {
   tournamentId: string;
+  /** Opens a Mexicano stage's runner. Americano stages have none: their cards aren't links. */
   onOpen: (formatId: string) => void;
-  /** Shown while the stages load (e.g. a spinner on the Mexicano tab). Nothing by default. */
+  /** Organizer controls on the cards (Americano: Finish early). */
+  canRun?: boolean;
+  /** Shown while the stages load (e.g. a spinner on the stages tab). Nothing by default. */
   loading?: React.ReactNode;
-  /** Shown when the tournament has no Mexicano stage. Nothing by default. */
+  /** Shown when the tournament has no Americano or Mexicano stage. Nothing by default. */
   empty?: React.ReactNode;
   /** Shown when the stages couldn't load; `retry` asks again. Nothing by default. */
   failed?: (retry: () => void) => React.ReactNode;
 }
-
-type Card = { stage: MexicanoStage; session: MexicanoSession | null };
 
 /** Grey before round 1 and once finished, orange tint while scores are due, green when the next round can start. */
 const statusTone = (session: MexicanoSession): TagTone => {
@@ -25,69 +29,78 @@ const statusTone = (session: MexicanoSession): TagTone => {
   return session.currentRoundScored < session.currentRoundTotal ? "warn" : "ok";
 };
 
-/**
- * The way into a Mexicano stage's live page (spec 2026-09-29 §4.1): one white card per stage on the tournament's
- * Mexicano tab, saying where the event stands. Without a stage, or when they can't load, it renders `empty` /
- * `failed` (nothing by default).
- */
-const MexicanoStageCards: React.FC<MexicanoStageCardsProps> = ({ tournamentId, onOpen, loading, empty, failed }) => {
-  const [cards, setCards] = useState<Card[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoaded(false);
-    setLoadFailed(false);
-    (async () => {
-      try {
-        const stages = await getMexicanoStages(tournamentId);
-        if (cancelled) return;
-        if (stages.length === 0) {
-          // Most tournaments: nothing to show. Returning prev skips the re-render when already empty.
-          setCards((prev) => (prev.length === 0 ? prev : []));
-          return;
-        }
-        // A stage whose session fails to load still gets a card: its page shows the error.
-        const sessions = await Promise.all(stages.map((stage) => getMexicanoSession(stage.formatId).catch(() => null)));
-        if (!cancelled) setCards(stages.map((stage, i) => ({ stage, session: sessions[i] })));
-      } catch {
-        if (!cancelled) {
-          setCards([]);
-          setLoadFailed(true);
-        }
-      } finally {
-        if (!cancelled) setLoaded(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tournamentId, attempt]);
-
-  if (!loaded && loading) return <>{loading}</>;
-  if (loaded && loadFailed && failed) return <>{failed(() => setAttempt((n) => n + 1))}</>;
-  if (cards.length === 0) return loaded && !loadFailed && empty ? <>{empty}</> : null;
+/** The way into a Mexicano stage's live page, saying where the event stands. */
+const MexicanoStageCard: React.FC<{ stage: TournamentStage; showDefaultName: boolean; onOpen: () => void }> = ({
+  stage,
+  showDefaultName,
+  onOpen,
+}) => {
+  // Read again on every visit: rounds move on in the runner. A stage whose session fails to load still gets a card
+  // (its page shows the error).
+  const { data: session } = useQuery({
+    queryKey: stageKeys.mexicanoSession(stage.formatId),
+    queryFn: () => getMexicanoSession(stage.formatId),
+    staleTime: 0,
+  });
 
   return (
-    <section className="mexicano-stage-cards" aria-label="Mexicano stages">
-      {cards.map(({ stage, session }) => (
-        <button key={stage.formatId} type="button" className="mexicano-stage-card" onClick={() => onOpen(stage.formatId)}>
-          {session && (
-            <span className="mexicano-stage-card__tags">
-              <Tag tone={statusTone(session)}>{statusLine(session)}</Tag>
-            </span>
-          )}
-          <span className="mexicano-stage-card__title">{stage.categoryName}</span>
-          <span className="mexicano-stage-card__meta">
-            {/* The default stage name says nothing on the Mexicano tab; a stage's own name does. */}
-            {stage.stageName !== "Mexicano" && <span>{stage.stageName}</span>}
-            <span>{session ? roundLabel(session) : "Tap to open"}</span>
-          </span>
-          <Icon name="chevron-right" size={16} className="mexicano-stage-card__chevron" />
-        </button>
-      ))}
+    <button type="button" className="mexicano-stage-card" onClick={onOpen}>
+      {session && (
+        <span className="mexicano-stage-card__tags">
+          <Tag tone={statusTone(session)}>{statusLine(session)}</Tag>
+        </span>
+      )}
+      <span className="mexicano-stage-card__title">{stage.categoryName}</span>
+      <span className="mexicano-stage-card__meta">
+        {/* The default stage name says nothing on the Mexicano tab; a stage's own name does (and next to Americano
+            stages, the default one does too). */}
+        {(showDefaultName || stage.stageName !== "Mexicano") && <span>{stage.stageName}</span>}
+        <span>{session ? roundLabel(session) : "Tap to open"}</span>
+      </span>
+      <Icon name="chevron-right" size={16} className="mexicano-stage-card__chevron" />
+    </button>
+  );
+};
+
+/**
+ * The tournament's stages tab (spec 2026-09-29 §4.1): one white card per Americano or Mexicano stage, saying where it
+ * stands. Mexicano cards open their runner; Americano cards carry Finish early for organizers. Without a stage, or
+ * when they can't load, it renders `empty` / `failed` (nothing by default).
+ */
+const MexicanoStageCards: React.FC<MexicanoStageCardsProps> = ({
+  tournamentId,
+  onOpen,
+  canRun = false,
+  loading,
+  empty,
+  failed,
+}) => {
+  // The tab bar's list, read again on every visit to the tab.
+  const { data: stages, isError, isFetching, refetch } = useTournamentStages(tournamentId, { staleTime: 0 });
+
+  if (!stages) {
+    if (isError && !isFetching) return failed ? <>{failed(() => refetch())}</> : null;
+    return loading ? <>{loading}</> : null;
+  }
+  if (stages.length === 0) return empty ? <>{empty}</> : null;
+
+  const label = stagesLabel(stages);
+  const mixed = label === "Stages";
+
+  return (
+    <section className="mexicano-stage-cards" aria-label={mixed ? "Stages" : `${label} stages`}>
+      {stages.map((stage) =>
+        stage.kind === "Americano" ? (
+          <AmericanoStageCard key={stage.formatId} tournamentId={tournamentId} stage={stage} canRun={canRun} />
+        ) : (
+          <MexicanoStageCard
+            key={stage.formatId}
+            stage={stage}
+            showDefaultName={mixed}
+            onOpen={() => onOpen(stage.formatId)}
+          />
+        )
+      )}
     </section>
   );
 };

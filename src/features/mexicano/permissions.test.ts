@@ -1,4 +1,4 @@
-import { canRunMexicano } from "./permissions";
+import { canFinishAmericano, canRunMexicano } from "./permissions";
 import { AdminRole } from "../auth/types/adminRoles";
 
 it("lets the roles in the backend's MexicanoRunPolicy run the event", () => {
@@ -16,4 +16,13 @@ it("keeps plain referees and other admins to entering scores", () => {
 
 it("uses the backend's number for TournamentManager", () => {
   expect(AdminRole.TOURNAMENT_MANAGER).toBe(7);
+});
+
+it("lets the same roles finish an Americano stage early, as the backend's finish endpoint does", () => {
+  for (const role of [AdminRole.REFEREE_ADMIN, AdminRole.SUPERADMIN, AdminRole.BRACKET_MANAGER, AdminRole.TOURNAMENT_MANAGER]) {
+    expect(canFinishAmericano({ adminRoles: [role] })).toBe(true);
+  }
+  expect(canFinishAmericano({ adminRoles: [] })).toBe(false);
+  expect(canFinishAmericano({ adminRoles: [AdminRole.REGISTRATION_MANAGER] })).toBe(false);
+  expect(canFinishAmericano(null)).toBe(false);
 });

@@ -7,7 +7,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import userReducer, { User } from "../../../store/slices/userSlice";
 import { AdminRole } from "../../auth/types/adminRoles";
-import { getMexicanoStages } from "../../mexicano/api/mexicano";
+import { getTournamentStages } from "../../mexicano/api/stages";
 import { getTournaments } from "../../tournaments/api";
 import { ToastProvider } from "../../../ui/Toast";
 import { assignRefereeToMatch, getPlayerSuggestions, getRefereeMatches, unassignRefereeFromMatch } from "../api/matches";
@@ -30,10 +30,7 @@ jest.mock("../../../api/axios", () => ({
   __esModule: true,
   default: { get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
-jest.mock("../../mexicano/api/mexicano", () => ({
-  ...jest.requireActual("../../mexicano/api/mexicano"),
-  getMexicanoStages: jest.fn(),
-}));
+jest.mock("../../mexicano/api/stages", () => ({ getTournamentStages: jest.fn() }));
 jest.mock("../../tournaments/api", () => ({ getTournaments: jest.fn() }));
 jest.mock("../api/matches", () => ({
   ...jest.requireActual("../api/matches"),
@@ -159,7 +156,7 @@ const urlParams = () => new URLSearchParams(screen.getByTestId("location").textC
 beforeEach(() => {
   jest.resetAllMocks();
   (getTournaments as jest.Mock).mockResolvedValue({ data: { data: [] } });
-  (getMexicanoStages as jest.Mock).mockResolvedValue([]);
+  (getTournamentStages as jest.Mock).mockResolvedValue([]);
   (getRefereeTeamOptions as jest.Mock).mockResolvedValue([]);
   api.mockImplementation((f: MatchFilters) =>
     Promise.resolve(respond(f.status === "in-progress" ? [liveMatch] : f.status === "all" ? [liveMatch] : [], f))
