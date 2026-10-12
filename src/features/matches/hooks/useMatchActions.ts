@@ -22,6 +22,7 @@ import { forgetRefereeTeamOptions } from "./useRefereeTeamOptions";
 import { FilterOptions, Match, MatchGameScore, Referee, RefereeTeamAssignResult, sideDisplayName } from "../types/match";
 import type { BulkScoreEntry, BulkScoreResult } from "../components/BulkUpdateScoreModal";
 import { nameForValue } from "../utils/filterOptions";
+import { orderForReschedule } from "../utils/reschedule";
 import { matchListKeys } from "./useMatchList";
 import { MatchFilterState } from "./useMatchFilters";
 
@@ -33,7 +34,9 @@ export const describeSaveError = (error: unknown, fallback = "Couldn't save this
 };
 
 export type MatchEdit = { venue?: string | null; startTime?: string | null; bestOf?: number | null };
-export type BulkMatchEdit = { matchId: string; venue?: string | null; bestOf?: number | null };
+export type BulkMatchEdit = { matchId: string } & MatchEdit;
+/** One match's outcome in a bulk edit: saved, or why not. */
+export type BulkEditResult = { matchId: string; ok: boolean; error?: string };
 export type ExportViewType = "venue" | "referee" | "team" | "general";
 
 /** Saves a match's time/court/best-of through its format's endpoint (unknown formats: nothing to call). */
@@ -273,26 +276,43 @@ export function useMatchActions(tournamentId: string) {
     }
   };
 
-  /** Court and best-of of several matches (`matches` supplies each one's format). */
-  const bulkEditMatches = async (updates: BulkMatchEdit[], matches: Match[]): Promise<boolean> => {
-    if (!fullAccess) return false;
+  /**
+   * Court, start time and best-of of several matches (`matches` supplies each one's format and current time). One at a
+   * time, in an order that keeps moved matches off each other's old slots (the server refuses two matches on one court
+   * at the same time), each with its own outcome: one failure doesn't stop the rest. The list refreshes after.
+   */
+  const bulkEditMatches = async (updates: BulkMatchEdit[], matches: Match[]): Promise<BulkEditResult[]> => {
+    if (!fullAccess) return updates.map(({ matchId }) => ({ matchId, ok: false, error: "Not allowed." }));
+    const byId = new Map(matches.map((match) => [match.id, match]));
+    const ordered = orderForReschedule(updates, (update) => ({
+      from: byId.get(update.matchId)?.startTime,
+      to: update.startTime,
+    }));
+
+    const outcomes = new Map<string, BulkEditResult>();
+    setBulkEditingMatches(true);
     try {
-      setBulkEditingMatches(true);
-      await Promise.all(
-        updates.map(({ matchId, ...data }) => {
-          const match = matches.find((m) => m.id === matchId);
-          return match ? updateByFormat(match, data) : undefined;
-        })
-      );
-      void refresh();
-      return true;
-    } catch (error) {
-      console.error("Error bulk editing matches:", error);
-      fail("Failed to update one or more matches. Please try again.");
-      return false;
+      for (const { matchId, ...data } of ordered) {
+        const match = byId.get(matchId);
+        try {
+          const request = match ? updateByFormat(match, data) : undefined;
+          if (!request) {
+            const error = match ? "This match's format can't be edited here." : "This match is no longer in the list.";
+            outcomes.set(matchId, { matchId, ok: false, error });
+            continue;
+          }
+          await request;
+          outcomes.set(matchId, { matchId, ok: true });
+        } catch (error) {
+          console.error("Error bulk editing match:", error);
+          outcomes.set(matchId, { matchId, ok: false, error: describeSaveError(error) });
+        }
+      }
     } finally {
       setBulkEditingMatches(false);
     }
+    void refresh();
+    return updates.map(({ matchId }) => outcomes.get(matchId) ?? { matchId, ok: false, error: describeSaveError(null) });
   };
 
   /** The bulk score sheet's save: every match through its own format's endpoint, each with its own outcome. */

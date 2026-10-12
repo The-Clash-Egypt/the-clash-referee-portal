@@ -10,7 +10,13 @@ import { AdminRole } from "../../auth/types/adminRoles";
 import { getTournamentStages } from "../../mexicano/api/stages";
 import { getTournaments } from "../../tournaments/api";
 import { ToastProvider } from "../../../ui/Toast";
-import { assignRefereeToMatch, getPlayerSuggestions, getRefereeMatches, unassignRefereeFromMatch } from "../api/matches";
+import {
+  assignRefereeToMatch,
+  getPlayerSuggestions,
+  getRefereeMatches,
+  unassignRefereeFromMatch,
+  updateGroupMatch,
+} from "../api/matches";
 import { getRefereeTeamOptions } from "../api/refereeTeams";
 import { MatchFilters } from "../types/match";
 import TournamentLayout from "../../tournament-shell/TournamentLayout";
@@ -38,6 +44,7 @@ jest.mock("../api/matches", () => ({
   getPlayerSuggestions: jest.fn(),
   assignRefereeToMatch: jest.fn(),
   unassignRefereeFromMatch: jest.fn(),
+  updateGroupMatch: jest.fn(),
 }));
 jest.mock("../api/refereeTeams", () => ({ ...jest.requireActual("../api/refereeTeams"), getRefereeTeamOptions: jest.fn() }));
 
@@ -290,6 +297,51 @@ test("Select, then Select all, then the bulk bar's Referee opens the referee she
   fireEvent.click(within(screen.getByRole("group", { name: "Bulk actions" })).getByRole("button", { name: "Referee" }));
   expect(await screen.findByRole("dialog", { name: "Referees · 1 match" })).toBeInTheDocument();
   expect(getRefereeTeamOptions).toHaveBeenCalledWith(["m1"]);
+});
+
+test("bulk edit: a time shift saves the later match first; a failure keeps just that match on the sheet, with why", async () => {
+  jest.spyOn(console, "error").mockImplementation(() => undefined);
+  const first = { ...liveMatch, formatType: "Group" };
+  const second = {
+    ...liveMatch,
+    id: "m2",
+    formatType: "Group",
+    startTime: new Date(Date.parse(liveMatch.startTime) + 10 * 60000).toISOString(),
+    homeTeamName: "Dune Riders",
+    awayTeamName: "Reef Kings",
+  };
+  api.mockImplementation((f: MatchFilters) => Promise.resolve(respond([first, second], f)));
+  const taken = "There is already a match scheduled at the same time at 'Court 1': Falcons vs Sharks";
+  (updateGroupMatch as jest.Mock).mockImplementation((matchId: string) =>
+    matchId === "m1" ? Promise.reject({ response: { data: { message: taken } } }) : Promise.resolve({ data: {} })
+  );
+  renderMatches("/tournaments/t1/matches?status=in-progress&date=all", superadmin);
+  await screen.findByText("Dune Riders");
+
+  fireEvent.click(screen.getByRole("button", { name: "Select" }));
+  fireEvent.click(screen.getByRole("button", { name: "Select all 2" }));
+  fireEvent.click(within(screen.getByRole("group", { name: "Bulk actions" })).getByRole("button", { name: "Edit" }));
+  const sheet = await screen.findByRole("dialog", { name: "Bulk Edit Matches" });
+  fireEvent.click(within(sheet).getByRole("checkbox", { name: "Update Start Time" }));
+  fireEvent.click(within(sheet).getByRole("button", { name: "Shift by +30 minutes" }));
+  fireEvent.click(within(sheet).getByRole("button", { name: "Update 2 Matches" }));
+
+  expect(await within(sheet).findByText(/Updated 1 of 2 matches/)).toBeInTheDocument();
+  expect((updateGroupMatch as jest.Mock).mock.calls.map(([matchId]) => matchId)).toEqual(["m2", "m1"]);
+  expect(within(sheet).getByText(taken)).toBeInTheDocument();
+  // Only the failed match is still selected (and on the sheet).
+  expect(screen.getByText("1 selected")).toBeInTheDocument();
+  expect(within(sheet).getByRole("button", { name: "Update 1 Match" })).toBeInTheDocument();
+
+  // Try again: it saves, the sheet closes, select mode ends and a toast says so.
+  (updateGroupMatch as jest.Mock).mockResolvedValue({ data: {} });
+  fireEvent.click(within(sheet).getByRole("button", { name: "Update 1 Match" }));
+  expect(await screen.findByText("Updated 1 match.")).toBeInTheDocument();
+  expect(updateGroupMatch).toHaveBeenLastCalledWith("m1", {
+    startTime: new Date(Date.parse(first.startTime) + 30 * 60000).toISOString(),
+  });
+  await waitFor(() => expect(screen.queryByRole("group", { name: "Bulk actions" })).not.toBeInTheDocument());
+  (console.error as jest.Mock).mockRestore();
 });
 
 test("changing the tab leaves select mode", async () => {
