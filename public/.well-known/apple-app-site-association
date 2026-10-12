@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["Z2TJV3WMFQ.com.theclasheg.clash"],
+        "components": [
+          { "/": "/venue/shared", "comment": "Court QR codes" },
+          { "/": "/match/shared", "comment": "Match QR codes" }
+        ]
+      }
+    ]
+  }
+}
