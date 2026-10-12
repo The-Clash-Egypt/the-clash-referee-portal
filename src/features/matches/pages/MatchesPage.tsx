@@ -27,7 +27,7 @@ import FiltersSheet from "../components/timeline/FiltersSheet";
 import MatchesTimeline from "../components/timeline/MatchesTimeline";
 import MatchSheet from "../components/timeline/MatchSheet";
 import SelectModeBar from "../components/timeline/SelectModeBar";
-import { refereesWithPhones, useMatchActions } from "../hooks/useMatchActions";
+import { BulkEditResult, BulkMatchEdit, refereesWithPhones, useMatchActions } from "../hooks/useMatchActions";
 import { useMatchFilters } from "../hooks/useMatchFilters";
 import { useMatchList } from "../hooks/useMatchList";
 import { useSelection } from "../hooks/useSelection";
@@ -182,11 +182,23 @@ const MatchesPage: React.FC = () => {
     return done;
   };
 
-  const bulkEdit = async (updates: { matchId: string; venue?: string | null; bestOf?: number | null }[]) => {
-    if (await actions.bulkEditMatches(updates, matches)) {
+  // Every match saved: the sheet closes, select mode ends and a toast says so. Some failed: the sheet stays open on just
+  // those (the rest are unticked), each with why, to adjust and try again.
+  const bulkEdit = async (updates: BulkMatchEdit[]): Promise<BulkEditResult[]> => {
+    const results = await actions.bulkEditMatches(updates, matches);
+    const failed = new Set(results.filter((result) => !result.ok).map((result) => result.matchId));
+    if (failed.size === 0) {
       setBulkEditOpen(false);
       exitSelectMode();
+      show(`Updated ${results.length} ${results.length === 1 ? "match" : "matches"}.`);
+    } else {
+      deselect(Array.from(selectedIds).filter((matchId) => !failed.has(matchId)));
     }
+    return results;
+  };
+  const removeFromBulkEdit = (matchId: string) => {
+    deselect([matchId]);
+    if (selectedMatches.every((match) => match.id === matchId)) setBulkEditOpen(false);
   };
 
   // The sheet works on a snapshot: refreshing the list after a save must not reshuffle or drop rows mid-edit.
@@ -455,6 +467,7 @@ const MatchesPage: React.FC = () => {
         selectedMatches={selectedMatches}
         onClose={() => setBulkEditOpen(false)}
         onSubmit={bulkEdit}
+        onRemoveMatch={removeFromBulkEdit}
         loading={actions.bulkEditingMatches}
         availableVenues={filterOptions.venues}
       />

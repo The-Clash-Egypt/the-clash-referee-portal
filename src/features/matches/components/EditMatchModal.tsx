@@ -4,24 +4,9 @@ import Drawer from "../../shared/components/Drawer";
 import { Button } from "../../../ui/Button";
 import { Icon } from "../../../ui/Icon";
 import { Tag } from "../../../ui/Tag";
+import { formatDateTimeLocal } from "../utils/reschedule";
 import "./SheetForm.scss";
 import "./EditMatchModal.scss";
-
-// Helper function to convert date to local datetime-local format
-const formatDateTimeLocal = (dateString: string): string => {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "";
-
-  // Get local date components
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-};
 
 interface EditMatchModalProps {
   isOpen: boolean;

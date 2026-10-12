@@ -1,6 +1,7 @@
 @use "../../../styles/touch" as *;
 
-// The bulk edit sheet: how many matches, a note, then each field behind its own tick (fields: SheetForm.scss).
+// The bulk edit sheet: how many matches, any that failed to save, a note, then each field behind its own tick
+// (fields: SheetForm.scss).
 .bulk-edit-match-drawer {
   .matches-count {
     display: flex;
@@ -54,5 +55,190 @@
   // The field under its tick, in line with the tick's label.
   .field-input {
     margin-left: 32px;
+  }
+
+  // Start time: Shift by · Set to, then the minutes (−/+ and presets) or the date and time, then what it does.
+  .time-mode {
+    margin-bottom: 12px;
+
+    // On the white sheet the idle segments are grey, as chips on white.
+    .ui-seg__tab:not(.ui-seg__tab--on) {
+      background: var(--alt);
+    }
+  }
+
+  .time-shift {
+    display: flex;
+    gap: 6px;
+  }
+
+  // −/+ as tall as the field between them.
+  .time-shift__step {
+    flex: none;
+    width: 52px;
+    height: 48px;
+    padding: 0;
+  }
+
+  .time-shift__field {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+
+  // The minutes in the display face, as the score boxes.
+  .time-shift__input {
+    padding: 0 44px;
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-style: italic;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  .time-shift__unit {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-family: var(--font-label);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  .time-shift__presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .time-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0 0;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .time-preview__icon {
+    flex: none;
+    color: var(--muted);
+  }
+
+  // After a save where some failed: just those matches, each with why (as the bulk score sheet's failed rows).
+  .edit-failures {
+    margin-bottom: 18px;
+  }
+
+  .edit-failures__title {
+    margin: 0 0 8px;
+    color: var(--live-badge);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .edit-failures__list {
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    list-style: none;
+  }
+
+  .edit-failure {
+    padding: 8px 6px 10px 16px;
+    box-shadow: inset 4px 0 0 var(--live);
+
+    & + .edit-failure {
+      border-top: 1px solid var(--line);
+    }
+  }
+
+  .edit-failure__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .edit-failure__when {
+    flex: none;
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-style: italic;
+    font-weight: 800;
+  }
+
+  .edit-failure__teams {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .edit-failure__court {
+    display: block;
+    color: var(--muted);
+    font-family: var(--font-label);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .edit-failure__message {
+    margin: 6px 10px 0 0;
+    color: var(--live-badge);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .edit-failure__remove {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+
+    @include touch {
+      width: $touch-min;
+      height: $touch-min;
+    }
+
+    &:hover:not(:disabled) {
+      color: var(--ink);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--spark);
+      outline-offset: -2px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .ui-icon {
+      stroke-width: 2.4;
+    }
   }
 }
