@@ -1,4 +1,4 @@
-import { Match } from "../matches/types/match";
+import { Match, MatchGameScore } from "../matches/types/match";
 
 /** AmericanoTeams.CheckInStatus on the server (spec 2026-09-29). Sent and received as a number. */
 export enum MexicanoStatus {
@@ -62,9 +62,33 @@ export interface MexicanoSession {
   unpaired: UnpairedPlayer[];
 }
 
-/** A Mexicano stage of a tournament, as listed on the matches page. */
-export interface MexicanoStage {
+/** The stages run as rounds of one points game: the block types GET Tournament/{id}/formats names them by. */
+export type StageKind = "Mexicano" | "Americano";
+
+/** An Americano or Mexicano stage of a tournament, as listed on its stages tab. */
+export interface TournamentStage {
+  kind: StageKind;
   formatId: string;
   categoryName: string;
+  /** The stage's own name, else its kind ("Mexicano" / "Americano"). */
   stageName: string;
+  /** The server's completion rule: every planned round played and scored. Null when it didn't say. */
+  isEnded: boolean | null;
+}
+
+/** An item of GET Americano/matches: the stage's whole schedule (Americano draws every round up front). */
+export interface AmericanoMatch {
+  id: string;
+  /** "Round 3" */
+  round?: string | null;
+  isCompleted: boolean;
+  gameScores?: MatchGameScore[] | null;
+  venue?: string | null;
+  startTime?: string | null;
+}
+
+/** POST Americano/finish: what finishing early did. */
+export interface AmericanoFinishResult {
+  roundsPlayed: number;
+  matchesRemoved: number;
 }

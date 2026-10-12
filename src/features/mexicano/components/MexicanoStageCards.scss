@@ -1,4 +1,5 @@
-// The Mexicano tab: one white cut-corner card per stage (like the tournament cards, rest-of-portal.html `.tcard`).
+// The stages tab (Americano and Mexicano): one white cut-corner card per stage (like the tournament cards,
+// rest-of-portal.html `.tcard`).
 .mexicano-stage-cards {
   display: grid;
   gap: 8px;
@@ -66,6 +67,22 @@
     content: "·";
     margin: 0 6px;
   }
+}
+
+// An Americano stage: the same card, but not a link (no runner to open), so no chevron and no hover.
+.mexicano-stage-card--static {
+  padding-right: 16px;
+  cursor: default;
+
+  &:hover {
+    box-shadow: none;
+  }
+}
+
+// Finish early (organizers), under the card's text.
+.mexicano-stage-card__actions {
+  display: flex;
+  margin-top: 12px;
 }
 
 .mexicano-stage-card__chevron {

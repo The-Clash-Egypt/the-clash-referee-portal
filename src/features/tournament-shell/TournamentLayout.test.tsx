@@ -7,7 +7,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import userReducer, { User } from "../../store/slices/userSlice";
 import { AdminRole } from "../auth/types/adminRoles";
-import { getMexicanoStages } from "../mexicano/api/mexicano";
+import { getTournamentStages } from "../mexicano/api/stages";
 import { getTournaments } from "../tournaments/api";
 import TournamentLayout from "./TournamentLayout";
 import MorePage from "./MorePage";
@@ -28,13 +28,10 @@ jest.mock("../../api/axios", () => ({
   __esModule: true,
   default: { get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
-jest.mock("../mexicano/api/mexicano", () => ({
-  ...jest.requireActual("../mexicano/api/mexicano"),
-  getMexicanoStages: jest.fn(),
-}));
+jest.mock("../mexicano/api/stages", () => ({ getTournamentStages: jest.fn() }));
 jest.mock("../tournaments/api", () => ({ getTournaments: jest.fn() }));
 
-const stages = getMexicanoStages as jest.Mock;
+const stages = getTournamentStages as jest.Mock;
 const tournaments = getTournaments as jest.Mock;
 
 const referee: User = {
@@ -59,6 +56,9 @@ const summerClash = {
   startDate: "2026-10-09T00:00:00",
   endDate: "2026-10-11T00:00:00",
 };
+
+const mexicanoStage = { kind: "Mexicano", formatId: "m1", categoryName: "Men's A", stageName: "Mexicano", isEnded: null };
+const americanoStage = { kind: "Americano", formatId: "a1", categoryName: "Mixed", stageName: "Americano", isEnded: false };
 
 function renderAt(path: string, user: User) {
   const store = configureStore({
@@ -121,13 +121,38 @@ it("shows a plain referee only the Matches and More tabs when the tournament has
   expect(screen.getByRole("heading", { name: "Summer Clash Open" })).toBeInTheDocument();
 });
 
-it("shows a superadmin Courts, and Mexicano once a stage exists", async () => {
-  stages.mockResolvedValue([{ formatId: "m1", categoryName: "Men's A", stageName: "Mexicano" }]);
+it("shows a superadmin Courts, and Mexicano once a Mexicano stage exists", async () => {
+  stages.mockResolvedValue([mexicanoStage]);
 
   renderAt("/tournaments/t1/matches", superadmin);
 
   await screen.findAllByRole("link", { name: "Mexicano" });
   expect(tabLabels()).toEqual(["Matches", "Courts", "Mexicano", "More"]);
+});
+
+it("names the stages tab Americano when all the tournament's stages are Americano", async () => {
+  stages.mockResolvedValue([americanoStage, { ...americanoStage, formatId: "a2", categoryName: "Men's A" }]);
+  tournaments.mockResolvedValue({ data: { data: [summerClash] } });
+
+  renderAt("/tournaments/t1/mexicano?name=Summer%20Clash", referee);
+
+  await screen.findAllByRole("link", { name: "Americano" });
+  expect(tabLabels()).toEqual(["Matches", "Americano", "More"]);
+  // The path stays "mexicano", so links to the Mexicano tab keep working.
+  screen
+    .getAllByRole("link", { name: "Americano" })
+    .forEach((link) => expect(link).toHaveAttribute("href", "/tournaments/t1/mexicano?name=Summer%20Clash"));
+  expect(await screen.findByText("Beach Volleyball · Americano")).toBeInTheDocument();
+  expect(stages).toHaveBeenCalledTimes(1);
+});
+
+it("names the stages tab Stages when the tournament has both Americano and Mexicano stages", async () => {
+  stages.mockResolvedValue([mexicanoStage, americanoStage]);
+
+  renderAt("/tournaments/t1/matches", superadmin);
+
+  await screen.findAllByRole("link", { name: "Stages" });
+  expect(tabLabels()).toEqual(["Matches", "Courts", "Stages", "More"]);
 });
 
 it("sends a plain referee who opens the courts tab to the matches tab", async () => {
@@ -167,7 +192,7 @@ it("logs out from More: clears the cached data and the user, then goes home", as
 
 // Review M4: the Matches filters ride only on the tabs that use them (Matches itself, and More's prints).
 it("carries the Matches filters to Matches and More only; Courts and Mexicano get the tournament's name alone", async () => {
-  stages.mockResolvedValue([{ formatId: "m1", categoryName: "Men's A", stageName: "Mexicano" }]);
+  stages.mockResolvedValue([mexicanoStage]);
   const filters = "?name=Summer%20Clash&status=upcoming&venues=Court%201&search=sharks";
   renderAt(`/tournaments/t1/matches${filters}`, superadmin);
   await screen.findAllByRole("link", { name: "Mexicano" });
