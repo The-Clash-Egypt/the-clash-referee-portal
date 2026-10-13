@@ -6,7 +6,7 @@ import SearchableDropdown from "../SearchableDropdown";
 import { FilterOptions } from "../../types/match";
 import { MatchFilterState } from "../../hooks/useMatchFilters";
 import { courtShort, formatDayLabel } from "../../utils/timeline";
-import { formatOption } from "../../utils/filterOptions";
+import { filtersByPlayer, formatOption, teamFilterCopy } from "../../utils/filterOptions";
 import "./FiltersSheet.scss";
 
 interface FiltersSheetProps {
@@ -62,8 +62,8 @@ const OneOf = ({
 
 /**
  * All the match filters in one sheet (mockup match-flow-v2.html phone 1): chips for Day, Category, Court (several),
- * Round and Format (when there is a choice), searchable pickers for Team and Referee. Every change applies at once;
- * the button shows how many matches the open tab now has.
+ * Round and Format (when there is a choice), searchable pickers for Team (Player in an Americano/Mexicano of single
+ * players) and Referee. Every change applies at once; the button shows how many matches the open tab now has.
  */
 const FiltersSheet: React.FC<FiltersSheetProps> = ({
   isOpen,
@@ -81,6 +81,7 @@ const FiltersSheet: React.FC<FiltersSheetProps> = ({
   const shortCourts = venues.map(courtShort);
   const courtLabel = new Set(shortCourts).size === shortCourts.length ? (i: number) => shortCourts[i] : (i: number) => venues[i];
   const formats = filterOptions.formats.map((format) => formatOption(format));
+  const teamCopy = teamFilterCopy(filtersByPlayer(filters.category, filterOptions));
 
   const toggleVenue = (venue: string) =>
     setFilter(
@@ -169,14 +170,14 @@ const FiltersSheet: React.FC<FiltersSheetProps> = ({
         />
       </Group>
 
-      <Group label="Team">
+      <Group label={teamCopy.label}>
         <SearchableDropdown
           options={filterOptions.teams || []}
           value={filters.team}
           onChange={(value) => setFilter("team", value)}
-          placeholder="All Teams"
+          placeholder={teamCopy.allLabel}
           showAllOption={true}
-          allOptionText="All Teams"
+          allOptionText={teamCopy.allLabel}
         />
       </Group>
     </Drawer>

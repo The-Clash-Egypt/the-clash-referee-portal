@@ -9,6 +9,7 @@ export const EMPTY_FILTER_OPTIONS: FilterOptions = {
   teams: [],
   referees: [],
   dates: [],
+  playerCategories: [],
 };
 
 // Knockout rounds in tournament order; any other round (Round 1, Group A, ...) comes first, in natural order.
@@ -58,7 +59,27 @@ export const normalizeFilterOptions = (options?: Partial<FilterOptions> | null):
   teams: options?.teams ?? [],
   referees: options?.referees ?? [],
   dates: options?.dates ?? [],
+  playerCategories: options?.playerCategories ?? [],
 });
+
+/**
+ * Whether the Team filter is a Player filter: the category filtered (with none, every category on offer) is an
+ * Americano/Mexicano of single players, where each "team" is one player. A server that doesn't send
+ * `playerCategories` yet keeps it Team.
+ */
+export const filtersByPlayer = (
+  category: string,
+  options: Pick<FilterOptions, "categories" | "playerCategories">
+): boolean => {
+  const players = options.playerCategories ?? [];
+  if (players.length === 0) return false;
+  if (category !== "all") return players.includes(category);
+  return options.categories.length > 0 && options.categories.every((name) => players.includes(name));
+};
+
+/** The Team filter's words, or the Player filter's (same filter: the API's `teamName`). */
+export const teamFilterCopy = (byPlayer: boolean): { label: string; allLabel: string } =>
+  byPlayer ? { label: "Player", allLabel: "All players" } : { label: "Team", allLabel: "All Teams" };
 
 type NamedOption = string | { id?: string; name?: string; fullName?: string; alias?: string; type?: string };
 
