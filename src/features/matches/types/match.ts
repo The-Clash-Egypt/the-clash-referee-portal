@@ -174,6 +174,11 @@ export interface FilterOptions {
   teams: (string | { id: string; name?: string; fullName?: string })[];
   referees: (string | { id: string; fullName?: string; name?: string })[];
   dates: string[];
+  /**
+   * The categories (of `categories`) whose every match is Americano/Mexicano with unit size 1: a team there is one
+   * player, so the Team filter is offered as Player. Servers before it don't send it.
+   */
+  playerCategories?: string[];
 }
 
 export interface AdminMatchesResponse {
