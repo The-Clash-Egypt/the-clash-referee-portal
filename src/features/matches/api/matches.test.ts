@@ -23,6 +23,8 @@ describe("updateMatchByFormat", () => {
     ["Knockout", "/Knockout/match/m1"],
     ["Americano", "/Americano/match/m1"],
     ["Mexicano", "/Mexicano/match/m1"],
+    // Roulette is run by the live-rounds controller, which answers on the Mexicano prefix for both formats.
+    ["Roulette", "/Mexicano/match/m1"],
   ])("saves %s matches through %s", async (formatType, url) => {
     await updateMatchByFormat(formatType, "m1", { gameScores: [] });
     expect(put).toHaveBeenCalledWith(url, { gameScores: [] });

@@ -45,7 +45,8 @@ const updateByFormat = (match: Match, data: MatchEdit) => {
   if (match.formatType === "League") return updateLeagueMatch(match.id, data);
   if (match.formatType === "Knockout") return updateKnockoutMatch(match.id, data);
   if (match.formatType === "Americano") return updateAmericanoMatch(match.id, data);
-  if (match.formatType === "Mexicano") return updateMexicanoMatch(match.id, data);
+  // Roulette is run live like Mexicano: the live-rounds controller answers on the Mexicano prefix for both.
+  if (match.formatType === "Mexicano" || match.formatType === "Roulette") return updateMexicanoMatch(match.id, data);
   return undefined;
 };
 

@@ -37,6 +37,9 @@ export interface GuestMatch {
   awayTeamName?: string | null;
   homeTeam2Name?: string | null;
   awayTeam2Name?: string | null;
+  /** Units 3+ of each side (Roulette), names only like the rest of this payload. Older backends leave them out. */
+  homeExtraUnitNames?: string[];
+  awayExtraUnitNames?: string[];
   homeTeamSets: number;
   awayTeamSets: number;
   gameScores: MatchGameScore[];
@@ -139,6 +142,10 @@ const toMember = (player: GuestMatchPlayer, key: string): TeamMember => ({
   email: "",
 });
 
+// Names only, so the ids are synthetic (like the referee teams' below); slot 3 is a side's first extra unit.
+const toExtraUnits = (names: string[] | undefined, side: "home" | "away") =>
+  (names ?? []).map((teamName, index) => ({ teamId: `guest-${side}-unit-${index + 3}`, teamName }));
+
 /** Adapts the guest payload to the portal's Match so the match page and UpdateScoreDialog can render it. */
 export const guestMatchToMatch = (guest: GuestMatch): Match => ({
   id: guest.id,
@@ -156,6 +163,8 @@ export const guestMatchToMatch = (guest: GuestMatch): Match => ({
   awayTeamName: guest.awayTeamName ?? undefined,
   homeTeam2Name: guest.homeTeam2Name ?? null,
   awayTeam2Name: guest.awayTeam2Name ?? null,
+  homeExtraUnits: toExtraUnits(guest.homeExtraUnitNames, "home"),
+  awayExtraUnits: toExtraUnits(guest.awayExtraUnitNames, "away"),
   homeScore: guest.homeTeamSets,
   awayScore: guest.awayTeamSets,
   gameScores: guest.gameScores,

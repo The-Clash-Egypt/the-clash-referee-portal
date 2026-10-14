@@ -7,7 +7,13 @@ import { configureStore } from "@reduxjs/toolkit";
 import userReducer, { User } from "../../../store/slices/userSlice";
 import { ToastProvider } from "../../../ui/Toast";
 import { AdminRole } from "../../auth/types/adminRoles";
-import { assignRefereeToMatch, bulkAssignRefereeToMatches, unassignRefereeFromMatch, updateGroupMatch } from "../api/matches";
+import {
+  assignRefereeToMatch,
+  bulkAssignRefereeToMatches,
+  unassignRefereeFromMatch,
+  updateGroupMatch,
+  updateMexicanoMatch,
+} from "../api/matches";
 import { assignRefereeTeams, unassignRefereeTeam } from "../api/refereeTeams";
 import { Match } from "../types/match";
 import { useMatchActions } from "./useMatchActions";
@@ -22,6 +28,7 @@ jest.mock("../api/matches", () => ({
   bulkAssignRefereeToMatches: jest.fn(),
   unassignRefereeFromMatch: jest.fn(),
   updateGroupMatch: jest.fn(),
+  updateMexicanoMatch: jest.fn(),
 }));
 jest.mock("../api/refereeTeams", () => ({
   ...jest.requireActual("../api/refereeTeams"),
@@ -49,6 +56,7 @@ const apiCalls = [
   bulkAssignRefereeToMatches,
   unassignRefereeFromMatch,
   updateGroupMatch,
+  updateMexicanoMatch,
   assignRefereeTeams,
   unassignRefereeTeam,
 ] as jest.Mock[];
@@ -224,5 +232,18 @@ describe("bulk edit", () => {
     ]);
     expect(invalidate).toHaveBeenLastCalledWith({ queryKey: ["referee-matches"] });
     (console.error as jest.Mock).mockRestore();
+  });
+
+  test("a Roulette match saves through the live-rounds route (the Mexicano prefix answers for both)", async () => {
+    const roulette = { ...match, id: "r1", formatType: "Roulette" } as Match;
+    const { result } = renderActions(superadmin);
+
+    let results: unknown;
+    await act(async () => {
+      results = await result.current.bulkEditMatches([{ matchId: "r1", venue: "Court 2" }], [roulette]);
+    });
+
+    expect(updateMexicanoMatch).toHaveBeenCalledWith("r1", { venue: "Court 2" });
+    expect(results).toEqual([{ matchId: "r1", ok: true }]);
   });
 });

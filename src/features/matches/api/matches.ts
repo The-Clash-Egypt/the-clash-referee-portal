@@ -111,6 +111,7 @@ export const updateMatchByFormat = (
     case "Americano":
       return updateAmericanoMatch(matchId, data);
     case "Mexicano":
+    case "Roulette": // run live like Mexicano: its controller answers on the Mexicano prefix too
       return updateMexicanoMatch(matchId, data);
     default:
       return Promise.reject(new UnknownMatchFormatError(formatType));

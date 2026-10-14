@@ -165,4 +165,29 @@ describe("guestMatchToMatch", () => {
   it("reads a backend that doesn't send referee teams as none", () => {
     expect(guestMatchToMatch(guest()).refereeTeams).toEqual([]);
   });
+
+  it("carries a Roulette side's units 3+ (names only) so the side reads in full", () => {
+    const match = guestMatchToMatch(
+      guest({
+        formatType: "Roulette",
+        homeTeam2Name: "Bea",
+        awayTeam2Name: "Dee",
+        homeExtraUnitNames: ["Eve", "Fay"],
+        awayExtraUnitNames: ["Gus"],
+      })
+    );
+
+    expect(match.homeExtraUnits).toEqual([
+      { teamId: "guest-home-unit-3", teamName: "Eve" },
+      { teamId: "guest-home-unit-4", teamName: "Fay" },
+    ]);
+    expect(match.awayExtraUnits).toEqual([{ teamId: "guest-away-unit-3", teamName: "Gus" }]);
+  });
+
+  it("reads a backend that doesn't send extra units as none", () => {
+    const match = guestMatchToMatch(guest());
+
+    expect(match.homeExtraUnits).toEqual([]);
+    expect(match.awayExtraUnits).toEqual([]);
+  });
 });
