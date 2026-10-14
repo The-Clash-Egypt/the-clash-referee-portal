@@ -43,3 +43,23 @@ it("copes with a tournament that has no categories", async () => {
 
   await expect(getTournamentStages("t1")).resolves.toEqual([]);
 });
+
+it("lists Roulette stages too", async () => {
+  get.mockResolvedValue(
+    envelope({
+      categories: [
+        {
+          name: "Open",
+          formats: [
+            { formatId: "r1", formatName: "Roulette", aliasName: null, order: 1, isEnded: false },
+            { formatId: "k1", formatName: "Knockout", aliasName: null, order: 2, isEnded: null },
+          ],
+        },
+      ],
+    })
+  );
+
+  await expect(getTournamentStages("t1")).resolves.toEqual([
+    { kind: "Roulette", formatId: "r1", categoryName: "Open", stageName: "Roulette", isEnded: false },
+  ]);
+});

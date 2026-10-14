@@ -63,14 +63,17 @@ export interface MexicanoSession {
 }
 
 /** The stages run as rounds of one points game: the block types GET Tournament/{id}/formats names them by. */
-export type StageKind = "Mexicano" | "Americano";
+export type StageKind = "Mexicano" | "Americano" | "Roulette";
 
-/** An Americano or Mexicano stage of a tournament, as listed on its stages tab. */
+/** Drawn live, a round at a time, in the runner (Americano draws every round up front instead). */
+export const isLiveStageKind = (kind: StageKind): boolean => kind === "Mexicano" || kind === "Roulette";
+
+/** An Americano, Mexicano or Roulette stage of a tournament, as listed on its stages tab. */
 export interface TournamentStage {
   kind: StageKind;
   formatId: string;
   categoryName: string;
-  /** The stage's own name, else its kind ("Mexicano" / "Americano"). */
+  /** The stage's own name, else its kind ("Mexicano" / "Americano" / "Roulette"). */
   stageName: string;
   /** The server's completion rule: every planned round played and scored. Null when it didn't say. */
   isEnded: boolean | null;

@@ -12,7 +12,8 @@ import "./TournamentLayout.scss";
 
 type TabKey = "matches" | "courts" | "mexicano" | "more";
 
-// The "mexicano" tab lists Americano stages too; its label follows them (stagesLabel), its path stays for old links.
+// The "mexicano" tab lists Americano and Roulette stages too; its label follows them (stagesLabel), its path stays
+// for old links.
 // Its icon, a rising line, fits either kind's leaderboard.
 const TABS: Record<TabKey, { label: string; icon: IconName }> = {
   matches: { label: "Matches", icon: "matches" },
@@ -28,7 +29,7 @@ const isTabKey = (value: string | undefined): value is TabKey =>
  * The frame of a tournament's screens: the blue app bar (back to the tournaments, "Sport · Tab", the tournament's
  * name, the logo) and the section tabs — a bottom bar on phones, a nav inside the app bar from 900px.
  * Matches and More are for everyone; Courts only with full access; the stages tab only when the tournament has an
- * Americano or Mexicano stage — "Mexicano" or "Americano" when all its stages are of that kind, else "Stages".
+ * Americano, Mexicano or Roulette stage — that kind's name when all its stages are of one kind, else "Stages".
  */
 const TournamentLayout: React.FC = () => {
   const { id = "" } = useParams();

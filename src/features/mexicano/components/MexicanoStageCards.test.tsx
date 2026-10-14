@@ -253,3 +253,32 @@ it("falls back to its own message when the server gives no reason", async () => 
 
   await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Couldn't finish the event."));
 });
+
+it("a Roulette stage opens its runner like a Mexicano one, and its default name says nothing on the Roulette tab", async () => {
+  stages.mockResolvedValue([{ kind: "Roulette", formatId: "r1", categoryName: "Open", stageName: "Roulette", isEnded: null }]);
+  load.mockResolvedValue({ currentRound: 2, plannedRounds: 6, currentRoundScored: 1, currentRoundTotal: 2, ended: false });
+
+  const { onOpen } = renderCards();
+
+  expect(await screen.findByRole("region", { name: "Roulette stages" })).toBeInTheDocument();
+  const card = screen.getByRole("button", { name: /Open/ });
+  expect(await within(card).findByText("Round 2 of 6")).toBeInTheDocument();
+  expect(within(card).queryByText("Roulette")).not.toBeInTheDocument();
+  fireEvent.click(card);
+  expect(onOpen).toHaveBeenCalledWith("r1");
+  expect(load).toHaveBeenCalledWith("r1");
+  expect(schedule).not.toHaveBeenCalled();
+});
+
+it("names a Roulette stage's default name next to stages of another kind", async () => {
+  stages.mockResolvedValue([
+    { kind: "Roulette", formatId: "r1", categoryName: "Open", stageName: "Roulette", isEnded: null },
+    mexicano("m1", "Mixed"),
+  ]);
+  load.mockResolvedValue({ currentRound: 0, plannedRounds: 6, currentRoundScored: 0, currentRoundTotal: 0, ended: false });
+
+  renderCards();
+
+  expect(await screen.findByRole("region", { name: "Stages" })).toBeInTheDocument();
+  expect(within(screen.getByRole("button", { name: /Open/ })).getByText("Roulette")).toBeInTheDocument();
+});

@@ -10,8 +10,8 @@ import { canFinishAmericano } from "../permissions";
 import "./MexicanoStagesPage.scss";
 
 /**
- * tournaments/:id/mexicano — the stages tab ("Mexicano", "Americano" or "Stages"): the tournament's stages as cards.
- * A Mexicano card opens its runner, a focused screen outside the tabs (keeping ?name=, which the tournament screens
+ * tournaments/:id/mexicano — the stages tab ("Mexicano", "Americano", "Roulette" or "Stages"): the tournament's stages
+ * as cards. A Mexicano or Roulette card opens its runner, a focused screen outside the tabs (keeping ?name=, which the tournament screens
  * title themselves from); an Americano card lets organizers finish the stage early.
  */
 const MexicanoStagesPage: React.FC = () => {
@@ -27,7 +27,7 @@ const MexicanoStagesPage: React.FC = () => {
         tournamentId={id}
         canRun={canFinishAmericano(user)}
         loading={<Spinner label="Loading stages..." />}
-        empty={<EmptyState icon="list" title="No Americano or Mexicano stages" />}
+        empty={<EmptyState icon="list" title="No Americano, Mexicano or Roulette stages" />}
         failed={(retry) => (
           <EmptyState
             icon="alert"

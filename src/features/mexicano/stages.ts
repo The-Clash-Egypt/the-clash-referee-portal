@@ -10,7 +10,7 @@ export const stageKeys = {
   americanoMatches: (formatId: string): unknown[] => [...stageKeys.all, "americano-matches", formatId],
 };
 
-/** The stages tab's name: the kind when the tournament has one kind ("Mexicano", "Americano"), else "Stages". */
+/** The stages tab's name: the kind when the tournament has one kind ("Mexicano", "Roulette"...), else "Stages". */
 export const stagesLabel = (stages: Pick<TournamentStage, "kind">[]): string => {
   const kinds = Array.from(new Set(stages.map((stage) => stage.kind)));
   return kinds.length === 1 ? kinds[0] : "Stages";
@@ -22,7 +22,7 @@ interface StagesQueryOptions {
   staleTime?: number;
 }
 
-/** The tournament's Americano and Mexicano stages (GET Tournament/{id}/formats). */
+/** The tournament's Americano, Mexicano and Roulette stages (GET Tournament/{id}/formats). */
 export const useTournamentStages = (tournamentId: string, { enabled = true, staleTime }: StagesQueryOptions = {}) =>
   useQuery({
     queryKey: stageKeys.list(tournamentId),
