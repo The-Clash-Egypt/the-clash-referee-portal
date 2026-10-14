@@ -36,12 +36,26 @@ export interface UnpairedPlayer {
   name: string;
 }
 
-/** GET Mexicano/session: everything the Mexicano page shows. */
+/** The formats run live, a round at a time: Mexicano pairs by rank, Roulette draws fresh line-ups. */
+export type LiveStageKind = "Mexicano" | "Roulette";
+
+/** Roulette: how much of the current round was played in earlier rounds. */
+export interface RoundRepeats {
+  lineUps: number;
+  matches: number;
+}
+
+/** GET Mexicano/session: everything the runner shows, for a Mexicano or a Roulette stage. */
 export interface MexicanoSession {
   formatId: string;
   tournamentId: string;
   categoryName: string;
   stageName: string;
+  /** The stage's format. Older servers leave it out: Mexicano. */
+  blockType?: LiveStageKind;
+  /** Units on each side of a match (2 for Mexicano). Older servers leave it out. */
+  unitsPerSide?: number;
+  /** 0 = open-ended (Roulette): rounds go on until Finish. */
   plannedRounds: number;
   courts: number | null;
   pointsPerMatch: number;
@@ -50,6 +64,8 @@ export interface MexicanoSession {
   currentRound: number;
   currentRoundScored: number;
   currentRoundTotal: number;
+  /** Roulette: line-ups / matches of the current round played before. Older servers leave it out. */
+  currentRoundRepeats?: RoundRepeats;
   ended: boolean;
   canStartNextRound: boolean;
   nextRoundBlockedReason: string | null;
@@ -63,14 +79,17 @@ export interface MexicanoSession {
 }
 
 /** The stages run as rounds of one points game: the block types GET Tournament/{id}/formats names them by. */
-export type StageKind = "Mexicano" | "Americano";
+export type StageKind = "Mexicano" | "Americano" | "Roulette";
 
-/** An Americano or Mexicano stage of a tournament, as listed on its stages tab. */
+/** Drawn live, a round at a time, in the runner (Americano draws every round up front instead). */
+export const isLiveStageKind = (kind: StageKind): boolean => kind === "Mexicano" || kind === "Roulette";
+
+/** An Americano, Mexicano or Roulette stage of a tournament, as listed on its stages tab. */
 export interface TournamentStage {
   kind: StageKind;
   formatId: string;
   categoryName: string;
-  /** The stage's own name, else its kind ("Mexicano" / "Americano"). */
+  /** The stage's own name, else its kind ("Mexicano" / "Americano" / "Roulette"). */
   stageName: string;
   /** The server's completion rule: every planned round played and scored. Null when it didn't say. */
   isEnded: boolean | null;

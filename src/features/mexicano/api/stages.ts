@@ -9,12 +9,12 @@ interface TournamentFormats {
   }[];
 }
 
-const STAGE_KINDS: StageKind[] = ["Mexicano", "Americano"];
+const STAGE_KINDS: StageKind[] = ["Mexicano", "Americano", "Roulette"];
 
 const isStageKind = (formatName: string): formatName is StageKind => (STAGE_KINDS as string[]).includes(formatName);
 
 /**
- * The tournament's Americano and Mexicano stages, in the dashboard's order (GET Tournament/{id}/formats; formatName
+ * The tournament's Americano, Mexicano and Roulette stages, in the dashboard's order (GET Tournament/{id}/formats; formatName
  * is the block type). One call answers both the stages tab and its cards.
  */
 export const getTournamentStages = async (tournamentId: string): Promise<TournamentStage[]> => {

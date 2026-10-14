@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Match, TeamMember, sideDisplayName } from "../types/match";
+import { Match, TeamMember, matchSideName } from "../types/match";
 import Drawer from "../../shared/components/Drawer";
 import { Button } from "../../../ui/Button";
 import { Icon } from "../../../ui/Icon";
@@ -141,11 +141,11 @@ const EditMatchModal: React.FC<EditMatchModalProps> = ({
           <div className="teams-section">
             <div className="teams-row">
               <div className="team-card home">
-                <span className="team-name">{sideDisplayName(match.homeTeamName, match.homeTeam2Name)}</span>
+                <span className="team-name">{matchSideName(match, "home")}</span>
                 {renderTeamMembers(match.homeTeamMembers)}
               </div>
               <div className="team-card away">
-                <span className="team-name">{sideDisplayName(match.awayTeamName, match.awayTeam2Name)}</span>
+                <span className="team-name">{matchSideName(match, "away")}</span>
                 {renderTeamMembers(match.awayTeamMembers)}
               </div>
             </div>

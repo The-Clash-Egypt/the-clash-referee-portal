@@ -159,3 +159,25 @@ test("durations only with full access", () => {
   render(<MatchSheet isOpen match={timed} fullAccess {...handlers()} />);
   expect(screen.getByText(/Started 15:02 · Ended 15:48 · Duration 46m/)).toBeInTheDocument();
 });
+
+test("a Roulette side lists one unit per line; a pair stays on one line", () => {
+  open({
+    match: {
+      ...match,
+      formatType: "Roulette",
+      homeTeamName: "Ali",
+      homeTeam2Name: "Bea",
+      homeExtraUnits: [{ teamId: "t3", teamName: "Eve" }],
+      awayTeamName: "Cy",
+      awayTeam2Name: "Dee",
+      awayExtraUnits: [],
+    },
+    fullAccess: false,
+  });
+
+  const sheet = screen.getByRole("dialog");
+  for (const name of ["Ali", "Bea", "Eve"]) {
+    expect(within(sheet).getByText(name)).toHaveClass("side-name__unit");
+  }
+  expect(within(sheet).getByText("Cy & Dee")).toHaveClass("match-sheet__name");
+});

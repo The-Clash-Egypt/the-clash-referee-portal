@@ -43,6 +43,8 @@ export function venueMatchToMatch(venueMatch: VenueMatch): Match {
     homeTeam2Name: venueMatch.homeTeam2Name ?? null,
     awayTeam2Id: venueMatch.awayTeam2Id ?? null,
     awayTeam2Name: venueMatch.awayTeam2Name ?? null,
+    homeExtraUnits: venueMatch.homeExtraUnits ?? [],
+    awayExtraUnits: venueMatch.awayExtraUnits ?? [],
     homeScore: venueMatch.homeTeamSets,
     awayScore: venueMatch.awayTeamSets,
     gameScores: (venueMatch.gameScores ?? []).map((game) => ({

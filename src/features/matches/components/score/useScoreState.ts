@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { describeRequestError } from "../../../../api/errors";
-import { Match, MatchGameScore, isFixedPointsFormat, sideDisplayName } from "../../types/match";
+import { Match, MatchGameScore, isFixedPointsFormat, matchSideName } from "../../types/match";
 import { updateLiveScore } from "../../api/matches";
 import { cellsFromGameScores, hasAnyScore, otherSideScore, validateGameScores } from "../../../../utils/scoreValidation";
 
@@ -338,8 +338,8 @@ export function useScoreState({
     canAddSet,
     isBestOfOne,
     fixedPoints,
-    homeName: match ? sideDisplayName(match.homeTeamName, match.homeTeam2Name) : "",
-    awayName: match ? sideDisplayName(match.awayTeamName, match.awayTeam2Name) : "",
+    homeName: match ? matchSideName(match, "home") : "",
+    awayName: match ? matchSideName(match, "away") : "",
     /** "Best of 3", or "Game to 16 points" for Americano/Mexicano. */
     formatLabel: fixedPoints && match?.pointsPerMatch ? `Game to ${match.pointsPerMatch} points` : `Best of ${bestOf}`,
     bestOf,

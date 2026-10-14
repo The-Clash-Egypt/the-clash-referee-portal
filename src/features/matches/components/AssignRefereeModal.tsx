@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Match, PlayerSuggestion, RefereeTeamAssignResult, RefereeTeamOption, sideDisplayName } from "../types/match";
+import { Match, PlayerSuggestion, RefereeTeamAssignResult, RefereeTeamOption, matchSideName } from "../types/match";
 import { usePlayerSuggestions, useDebounce, useRefereeTeamOptions } from "../hooks";
 import Drawer from "../../shared/components/Drawer";
 import { Button } from "../../../ui/Button";
@@ -131,10 +131,7 @@ const AssignRefereeModal: React.FC<AssignRefereeModalProps> = ({
     ? [
         match.venue,
         formatWhen(match.startTime),
-        `${sideDisplayName(match.homeTeamName, match.homeTeam2Name)} vs ${sideDisplayName(
-          match.awayTeamName,
-          match.awayTeam2Name
-        )}`,
+        `${matchSideName(match, "home")} vs ${matchSideName(match, "away")}`,
       ]
         .filter(Boolean)
         .join(" · ")

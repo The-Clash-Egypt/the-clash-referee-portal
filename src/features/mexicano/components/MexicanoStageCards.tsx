@@ -5,19 +5,19 @@ import { Tag, TagTone } from "../../../ui/Tag";
 import { getMexicanoSession } from "../api/mexicano";
 import { roundLabel, statusLine } from "../sessionText";
 import { stageKeys, stagesLabel, useTournamentStages } from "../stages";
-import { MexicanoSession, TournamentStage } from "../types";
+import { MexicanoSession, TournamentStage, isLiveStageKind } from "../types";
 import AmericanoStageCard from "./AmericanoStageCard";
 import "./MexicanoStageCards.scss";
 
 interface MexicanoStageCardsProps {
   tournamentId: string;
-  /** Opens a Mexicano stage's runner. Americano stages have none: their cards aren't links. */
+  /** Opens a Mexicano or Roulette stage's runner. Americano stages have none: their cards aren't links. */
   onOpen: (formatId: string) => void;
   /** Organizer controls on the cards (Americano: Finish early). */
   canRun?: boolean;
   /** Shown while the stages load (e.g. a spinner on the stages tab). Nothing by default. */
   loading?: React.ReactNode;
-  /** Shown when the tournament has no Americano or Mexicano stage. Nothing by default. */
+  /** Shown when the tournament has no Americano, Mexicano or Roulette stage. Nothing by default. */
   empty?: React.ReactNode;
   /** Shown when the stages couldn't load; `retry` asks again. Nothing by default. */
   failed?: (retry: () => void) => React.ReactNode;
@@ -29,7 +29,7 @@ const statusTone = (session: MexicanoSession): TagTone => {
   return session.currentRoundScored < session.currentRoundTotal ? "warn" : "ok";
 };
 
-/** The way into a Mexicano stage's live page, saying where the event stands. */
+/** The way into a live (Mexicano or Roulette) stage's runner, saying where the event stands. */
 const MexicanoStageCard: React.FC<{ stage: TournamentStage; showDefaultName: boolean; onOpen: () => void }> = ({
   stage,
   showDefaultName,
@@ -52,9 +52,9 @@ const MexicanoStageCard: React.FC<{ stage: TournamentStage; showDefaultName: boo
       )}
       <span className="mexicano-stage-card__title">{stage.categoryName}</span>
       <span className="mexicano-stage-card__meta">
-        {/* The default stage name says nothing on the Mexicano tab; a stage's own name does (and next to Americano
-            stages, the default one does too). */}
-        {(showDefaultName || stage.stageName !== "Mexicano") && <span>{stage.stageName}</span>}
+        {/* The default stage name ("Mexicano", "Roulette") says nothing on a tab named after it; a stage's own name
+            does (and next to stages of another kind, the default one does too). */}
+        {(showDefaultName || stage.stageName !== stage.kind) && <span>{stage.stageName}</span>}
         <span>{session ? roundLabel(session) : "Tap to open"}</span>
       </span>
       <Icon name="chevron-right" size={16} className="mexicano-stage-card__chevron" />
@@ -63,9 +63,9 @@ const MexicanoStageCard: React.FC<{ stage: TournamentStage; showDefaultName: boo
 };
 
 /**
- * The tournament's stages tab (spec 2026-09-29 §4.1): one white card per Americano or Mexicano stage, saying where it
- * stands. Mexicano cards open their runner; Americano cards carry Finish early for organizers. Without a stage, or
- * when they can't load, it renders `empty` / `failed` (nothing by default).
+ * The tournament's stages tab (spec 2026-09-29 §4.1): one white card per Americano, Mexicano or Roulette stage, saying
+ * where it stands. Mexicano and Roulette cards open their runner; Americano cards carry Finish early for organizers.
+ * Without a stage, or when they can't load, it renders `empty` / `failed` (nothing by default).
  */
 const MexicanoStageCards: React.FC<MexicanoStageCardsProps> = ({
   tournamentId,
@@ -90,7 +90,7 @@ const MexicanoStageCards: React.FC<MexicanoStageCardsProps> = ({
   return (
     <section className="mexicano-stage-cards" aria-label={mixed ? "Stages" : `${label} stages`}>
       {stages.map((stage) =>
-        stage.kind === "Americano" ? (
+        !isLiveStageKind(stage.kind) ? (
           <AmericanoStageCard key={stage.formatId} tournamentId={tournamentId} stage={stage} canRun={canRun} />
         ) : (
           <MexicanoStageCard

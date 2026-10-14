@@ -48,10 +48,25 @@ it("maps a court's match onto the portal's Match", () => {
     awayScore: 0,
     gameScores: [{ gameNumber: 1, homeScore: 21, awayScore: 18 }],
     referees: [],
+    homeExtraUnits: [],
+    awayExtraUnits: [],
     homeTeamMembers: [],
     awayTeamMembers: [],
     isCompleted: false,
   });
+});
+
+it("keeps every unit of a Roulette side (units 3+ in slot order)", () => {
+  const extras = [
+    { teamId: "t5", teamName: "Eve" },
+    { teamId: "t6", teamName: "Fay" },
+  ];
+  const match = venueMatchToMatch(
+    venueMatch({ formatType: "Roulette", homeExtraUnits: extras, awayExtraUnits: [{ teamId: "t7", teamName: "Gus" }] })
+  );
+
+  expect(match.homeExtraUnits).toEqual(extras);
+  expect(match.awayExtraUnits).toEqual([{ teamId: "t7", teamName: "Gus" }]);
 });
 
 it("names the format by its type when the stage has no name", () => {

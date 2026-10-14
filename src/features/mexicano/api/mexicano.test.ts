@@ -5,6 +5,7 @@ import {
   finishMexicano,
   getMexicanoSession,
   mexicanoErrorMessage,
+  renameMexicanoUnit,
   startNextMexicanoRound,
   undoMexicanoRound,
   updateMexicanoPlayers,
@@ -64,6 +65,23 @@ describe("Mexicano session actions", () => {
 
     await expect(createMexicanoUnit("f1", ["m1", "m2"])).resolves.toEqual(session);
     expect(post).toHaveBeenCalledWith("/Mexicano/units?formatId=f1", { memberIds: ["m1", "m2"] });
+  });
+
+  it("sends a typed team name, trimmed; a blank one is left out so the server names the team after its players", async () => {
+    post.mockResolvedValue(envelope(session));
+
+    await createMexicanoUnit("f1", ["m1", "m2"], "  Sand Sharks ");
+    await createMexicanoUnit("f1", ["m3", "m4"], "   ");
+
+    expect(post).toHaveBeenNthCalledWith(1, "/Mexicano/units?formatId=f1", { memberIds: ["m1", "m2"], name: "Sand Sharks" });
+    expect(post).toHaveBeenNthCalledWith(2, "/Mexicano/units?formatId=f1", { memberIds: ["m3", "m4"] });
+  });
+
+  it("renames a team by its team id", async () => {
+    put.mockResolvedValue(envelope(session));
+
+    await expect(renameMexicanoUnit("f1", "t 1", "Sand Sharks")).resolves.toEqual(session);
+    expect(put).toHaveBeenCalledWith("/Mexicano/units/t%201?formatId=f1", { name: "Sand Sharks" });
   });
 
   it("breaks a team up by its team id", async () => {

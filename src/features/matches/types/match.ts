@@ -20,6 +20,9 @@ export interface Match {
   homeTeam2Name?: string | null;
   awayTeam2Id?: string | null;
   awayTeam2Name?: string | null;
+  /** Units 3+ of the home side (Roulette), in slot order. Empty otherwise; older servers leave it out. */
+  homeExtraUnits?: MatchSideUnit[];
+  awayExtraUnits?: MatchSideUnit[];
   homeScore?: number;
   awayScore?: number;
   gameScores?: MatchGameScore[];
@@ -242,10 +245,43 @@ export interface PlayerSuggestion {
 
 // The API returns PlayerSuggestion[] directly, not wrapped in a response object
 
-// Americano/Mexicano: matches are a single game to a fixed points total (ties legal and complete the match)
+// Americano/Mexicano/Roulette: matches are a single game to a fixed points total (ties legal and complete the match)
 export const isFixedPointsFormat = (formatType?: string | null): boolean =>
-  formatType === "Americano" || formatType === "Mexicano";
+  formatType === "Americano" || formatType === "Mexicano" || formatType === "Roulette";
 
-// Render a match side that may be two units ("A & B") for Americano/Mexicano
-export const sideDisplayName = (name?: string | null, name2?: string | null): string =>
-  name ? (name2 ? `${name} & ${name2}` : name) : "TBD";
+/** A unit on a match side after the first two (Roulette sides can hold any number). */
+export interface MatchSideUnit {
+  teamId: string;
+  teamName: string;
+}
+
+/** The hidden team individually registered players wait in; it reads as "Individual". */
+const INDIVIDUAL_REGISTRATION = "__INDIVIDUAL_REGISTRATION__";
+
+const unitName = (name: string): string => (name === INDIVIDUAL_REGISTRATION ? "Individual" : name);
+
+/** A side's unit names, in slot order: its first unit, its second, then the rest. Missing names are left out. */
+const sideUnitNames = (name?: string | null, name2?: string | null, extras?: (string | null | undefined)[] | null) =>
+  name ? [name, name2, ...(extras ?? [])].filter((n): n is string => !!n).map(unitName) : [];
+
+/** "A", "A & B", "A, B & C" (commas, then & before the last); "TBD" for no unit. */
+const joinUnits = (names: string[]): string => {
+  if (names.length === 0) return "TBD";
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
+};
+
+/** The one way to name a match side, from its unit names; `extras` are units 3+ (Roulette). */
+export const sideDisplayName = (
+  name?: string | null,
+  name2?: string | null,
+  extras?: (string | null | undefined)[] | null
+): string => joinUnits(sideUnitNames(name, name2, extras));
+
+/** Every unit of a match side, by name, in slot order (for showing one per line). Empty while the side is TBD. */
+export const matchSideUnits = (match: Match, side: "home" | "away"): string[] =>
+  side === "home"
+    ? sideUnitNames(match.homeTeamName, match.homeTeam2Name, match.homeExtraUnits?.map((u) => u.teamName))
+    : sideUnitNames(match.awayTeamName, match.awayTeam2Name, match.awayExtraUnits?.map((u) => u.teamName));
+
+/** A match side's name with all its units ("A, B & C"). */
+export const matchSideName = (match: Match, side: "home" | "away"): string => joinUnits(matchSideUnits(match, side));

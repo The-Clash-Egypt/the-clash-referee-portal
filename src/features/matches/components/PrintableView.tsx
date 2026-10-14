@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "./PrintableView.scss";
 import QRCode from "react-qr-code";
-import { Match, isFixedPointsFormat, sideDisplayName } from "../types/match";
+import { Match, isFixedPointsFormat, matchSideName } from "../types/match";
 import { previewMatchesPDFWithFilename } from "../../../utils/reactPdfExport";
 import { shouldGroupByVenue } from "../../../utils/venueGrouping";
 import { ScoreCell, ScoreDrafts, isCellWinner, scoreCellWidth, scoreCellsFor } from "../../../utils/matchScoreCells";
@@ -183,10 +183,7 @@ const PrintableView: React.FC<PrintableViewProps> = ({
   };
 
   const renderTeamLine = (match: Match, side: "home" | "away", cells: ScoreCell[], width: string) => {
-    const name =
-      side === "home"
-        ? sideDisplayName(match.homeTeamName, match.homeTeam2Name)
-        : sideDisplayName(match.awayTeamName, match.awayTeam2Name);
+    const name = matchSideName(match, side);
     const members = formatMembers(side === "home" ? match.homeTeamMembers : match.awayTeamMembers);
 
     return (

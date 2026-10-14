@@ -70,3 +70,25 @@ test("a scored court shows the winner and no Score when it isn't allowed", () =>
   expect(screen.getByText("Ali & Dee").parentElement).toHaveClass("mexicano-court__team--lose");
   expect(screen.getByText("Referee team: Net Ninjas")).toBeInTheDocument();
 });
+
+test("a Roulette court lists every unit of a side, one per line", () => {
+  renderCourt(
+    court({
+      formatType: "Roulette",
+      homeExtraUnits: [{ teamId: "t3", teamName: "Eve" }],
+      awayExtraUnits: [
+        { teamId: "t6", teamName: "Fay" },
+        { teamId: "t7", teamName: "Gus" },
+      ],
+      isCompleted: true,
+      gameScores: [{ gameNumber: 1, homeScore: 13, awayScore: 11 }],
+    })
+  );
+
+  for (const name of ["Ali", "Dee", "Eve", "Bea", "Cy", "Fay", "Gus"]) {
+    expect(screen.getByText(name)).toHaveClass("side-name__unit");
+  }
+  // The points stay beside the side's names.
+  expect(screen.getByText("Eve").closest(".mexicano-court__team")).toHaveTextContent("13");
+  expect(screen.getByText("Gus").closest(".mexicano-court__team")).toHaveTextContent("11");
+});

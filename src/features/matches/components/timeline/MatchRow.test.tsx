@@ -187,3 +187,27 @@ test("select mode names the court in full too", () => {
   expect(screen.getByRole("checkbox", { name: "Sand Sharks vs Blue Wave, Court 2, 15:00" })).toBeInTheDocument();
   expect(screen.getByText("Court 2")).toHaveClass("match-row__court");
 });
+
+test("a Roulette row names every unit of each side", () => {
+  render(
+    <MatchRow
+      match={{
+        ...base,
+        formatType: "Roulette",
+        homeTeamName: "Ali",
+        homeTeam2Name: "Bea",
+        homeExtraUnits: [{ teamId: "t3", teamName: "Eve" }],
+        awayTeamName: "Cy",
+        awayTeam2Name: "Dee",
+        awayExtraUnits: [
+          { teamId: "t6", teamName: "Fay" },
+          { teamId: "t7", teamName: "Gus" },
+        ],
+      }}
+      onOpen={jest.fn()}
+    />
+  );
+
+  expect(screen.getByText("Ali, Bea & Eve")).toHaveClass("match-row__name");
+  expect(screen.getByText("Cy, Dee, Fay & Gus")).toHaveClass("match-row__name");
+});

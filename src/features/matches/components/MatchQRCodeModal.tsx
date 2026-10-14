@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import moment from "moment";
 import QRCodeModal from "../../shared/components/QRCodeModal";
-import { Match, sideDisplayName } from "../types/match";
+import { Match, matchSideName } from "../types/match";
 import { buildMatchAccessUrl, issueMatchAccessTokens } from "../api/matchAccess";
 import { formatValidUntil } from "../../../utils/matchSheetFormat";
 
@@ -69,8 +69,8 @@ const MatchQRCodeModal: React.FC<MatchQRCodeModalProps> = ({ match, onClose }) =
 
   // Stays mounted after the match is cleared so the drawer can slide out; it keeps showing the last
   // match's QR while it does.
-  const home = match ? sideDisplayName(match.homeTeamName, match.homeTeam2Name) : "";
-  const away = match ? sideDisplayName(match.awayTeamName, match.awayTeam2Name) : "";
+  const home = match ? matchSideName(match, "home") : "";
+  const away = match ? matchSideName(match, "away") : "";
   const when = match?.startTime ? moment(match.startTime).format("ddd D MMM, h:mm A") : "Time TBD";
   const fileName = matchQrFileName(home, away);
 

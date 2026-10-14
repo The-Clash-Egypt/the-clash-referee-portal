@@ -1,3 +1,5 @@
+import { MatchSideUnit } from "../../matches/types/match";
+
 /** A court match's player, names only: the court page never gets player ids, nationality or notes. */
 export interface VenueMatchPlayer {
   firstName: string;
@@ -21,6 +23,9 @@ export interface VenueMatch {
   homeTeam2Name?: string | null;
   awayTeam2Id?: string | null;
   awayTeam2Name?: string | null;
+  /** Units 3+ of each side (Roulette), in slot order. Older servers leave them out. */
+  homeExtraUnits?: MatchSideUnit[];
+  awayExtraUnits?: MatchSideUnit[];
   pointsPerMatch?: number | null;
   bestOf: number;
   winnerTeamId: string;

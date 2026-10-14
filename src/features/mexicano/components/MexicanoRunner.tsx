@@ -17,11 +17,12 @@ import {
   finishMexicano,
   getMexicanoSession,
   mexicanoErrorMessage,
+  renameMexicanoUnit,
   startNextMexicanoRound,
   undoMexicanoRound,
   updateMexicanoPlayers,
 } from "../api/mexicano";
-import { roundLabel, statusLine } from "../sessionText";
+import { repeatNote, roundLabel, stageKind, statusLine } from "../sessionText";
 import { MexicanoSession, MexicanoStatus } from "../types";
 import MexicanoCourt from "./MexicanoCourt";
 import { NewTeamTray, UnpairedList } from "./TeamFormation";
@@ -51,16 +52,16 @@ const STATUS_OPTIONS: { status: MexicanoStatus; label: string; tone: "away" | "p
   { status: MexicanoStatus.SitOut, label: "Sit out", tone: "out" },
 ];
 
-const BACK_LABEL = "Back to Mexicano";
-
 type StatusUpdate = { teamId: string; status: MexicanoStatus };
 
 /** How long a just-made team keeps its Undo button. */
 const UNDO_MS = 6000;
 
 /**
- * One Mexicano stage, run live (spec 2026-09-29 §4): check players in, start / undo / finish
- * rounds, and enter each court's score. Router-free so it can be tested on its own.
+ * One live stage, run a round at a time (spec 2026-09-29 §4): check players in, start / undo / finish rounds, and enter
+ * each court's score. A Roulette stage (spec 2026-10-14 §7.2) runs the same way: rounds are drawn rather than paired by
+ * rank, a round may be open-ended, and a round that had to repeat line-ups says so. Router-free so it can be tested on
+ * its own.
  */
 const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBack, pollMs = 15000 }) => {
   const [session, setSession] = useState<MexicanoSession | null>(null);
@@ -77,6 +78,7 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
   const [picked, setPicked] = useState<string[]>([]);
   const [pairing, setPairing] = useState<string[]>([]); // members hidden while their team is being made
   const [justMade, setJustMade] = useState<string | null>(null); // the team that gets Undo for a moment
+  const [teamName, setTeamName] = useState(""); // optional name for the team being picked
   const searchBox = useRef<HTMLDivElement>(null); // around the SearchInput, which takes no ref
   // A save or action in flight: polling must not overwrite its optimistic state.
   const pending = useRef(0);
@@ -92,7 +94,7 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
       setSession(next);
       setLoadError(null);
     } catch (error) {
-      if (seq === requestSeq.current) setLoadError(mexicanoErrorMessage(error, "Couldn't load this Mexicano stage."));
+      if (seq === requestSeq.current) setLoadError(mexicanoErrorMessage(error, "Couldn't load this stage."));
     }
   }, [formatId]);
 
@@ -181,8 +183,8 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
       setTab("round");
     });
 
-  /** Optimistic: the players leave the pool at once and come back if the server refuses. */
-  const makeTeam = async (memberIds: string[]) => {
+  /** Optimistic: the players leave the pool at once and come back (with the typed name) if the server refuses. */
+  const makeTeam = async (memberIds: string[], name: string) => {
     if (!session) return;
     const names = memberIds.map((id) => session.unpaired.find((u) => u.memberId === id)?.name ?? "");
     const before = new Set(session.players.map((p) => p.teamId));
@@ -190,7 +192,7 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
     const seq = ++requestSeq.current;
     pending.current += 1;
     try {
-      const next = await createMexicanoUnit(formatId, memberIds);
+      const next = await createMexicanoUnit(formatId, memberIds, name);
       const made = next.players.filter((p) => !before.has(p.teamId));
       const mine = made.find((p) => [...p.members].sort().join("|") === [...names].sort().join("|")) ?? made[0];
       if (seq === requestSeq.current) setSession(next);
@@ -198,6 +200,7 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
       if (mine) setJustMade(mine.teamId);
     } catch (error) {
       window.alert(mexicanoErrorMessage(error, "Couldn't make that team."));
+      setTeamName((current) => current || name);
     } finally {
       setPairing((current) => current.filter((id) => !memberIds.includes(id)));
       pending.current -= 1;
@@ -217,16 +220,25 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
       return;
     }
     setPicked([]);
+    const name = teamName.trim();
+    setTeamName("");
     if (search) {
       setSearch("");
       searchBox.current?.querySelector("input")?.focus();
     }
-    makeTeam(next);
+    makeTeam(next, name);
   };
 
   const undoTeam = (teamId: string) => {
     setJustMade(null);
     runAction(() => dissolveMexicanoUnit(formatId, teamId), "Couldn't undo that team.");
+  };
+
+  /** Any team of the stage, also one that has played: the new name shows everywhere. */
+  const renameTeam = (teamId: string, name: string) => {
+    const typed = window.prompt(`New name for ${name}`, name);
+    if (typed === null || typed.trim() === name) return;
+    runAction(() => renameMexicanoUnit(formatId, teamId, typed.trim()), "Couldn't rename that team.");
   };
 
   const breakUpTeam = (teamId: string, name: string) => {
@@ -237,9 +249,10 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
   const undoRound = () => {
     setMenuOpen(false);
     if (!session) return;
+    const again = stageKind(session) === "Roulette" ? "draw it again" : "start it again";
     if (
       !window.confirm(
-        `Undo Round ${session.currentRound}? Its matches are deleted and you can start it again. ` +
+        `Undo Round ${session.currentRound}? Its matches are deleted and you can ${again}. ` +
           "Anyone who was on Sit out for it is back to Playing, so mark them again if needed."
       )
     )
@@ -250,9 +263,10 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
   const finishEarly = () => {
     setMenuOpen(false);
     if (!session) return;
+    const verb = stageKind(session) === "Roulette" ? "drawn" : "started";
     if (
       !window.confirm(
-        `Finish the event after Round ${session.currentRound}? No more rounds can be started, and the current leaderboard is final.`
+        `Finish the event after Round ${session.currentRound}? No more rounds can be ${verb}, and the current leaderboard is final.`
       )
     )
       return;
@@ -283,7 +297,8 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
     return (
       <div className="mexicano-runner">
         <div className="mexicano-runner__top">
-          <AppBar title="Mexicano" onBack={onBack} backLabel={BACK_LABEL} />
+          {/* The format isn't known until the session is in. */}
+          <AppBar title="Stage" onBack={onBack} backLabel="Back to stages" />
         </div>
         <main className="mexicano-runner__body">
           {loadError ? (
@@ -291,13 +306,15 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
               <EmptyState icon="alert" title={loadError} action={<Button onClick={refresh}>Try again</Button>} />
             </div>
           ) : (
-            <Spinner label="Loading Mexicano..." />
+            <Spinner label="Loading stage..." />
           )}
         </main>
       </div>
     );
   }
 
+  const kind = stageKind(session);
+  const roulette = kind === "Roulette";
   const nameById = new Map(session.players.map((p) => [p.teamId, p.name]));
   const counts = {
     playing: session.players.filter((p) => p.status === MexicanoStatus.Playing).length,
@@ -346,6 +363,10 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
   const activeTab: Tab = tab ?? (session.currentRound > 0 ? "round" : "players");
   const hasBar = canRun && !session.ended;
   const hasTray = canFormTeams && pickedPlayers.length > 0;
+  // Roulette draws fresh line-ups rather than pairing by rank; its rounds may be open-ended (no planned count).
+  const startLabel = roulette ? "Draw next round" : `Start round ${session.currentRound + 1}`;
+  const finishLabel = session.plannedRounds === 0 ? "Finish" : "Finish early";
+  const repeats = repeatNote(session);
 
   return (
     <div
@@ -355,14 +376,14 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
     >
       <div className="mexicano-runner__top">
         <AppBar
-          eyebrow={`${session.stageName || "Mexicano"} · ${roundLabel(session)}`}
-          title={session.categoryName || "Mexicano"}
+          eyebrow={`${session.stageName || kind} · ${roundLabel(session)}`}
+          title={session.categoryName || kind}
           onBack={onBack}
-          backLabel={BACK_LABEL}
+          backLabel={`Back to ${kind}`}
           right={<Tag tone="glass">{statusTag}</Tag>}
         />
         <div className="mexicano-runner__tabs">
-          <UnderlineTabs ariaLabel="Mexicano" options={TABS} value={activeTab} onChange={(v) => setTab(v as Tab)} />
+          <UnderlineTabs ariaLabel={kind} options={TABS} value={activeTab} onChange={(v) => setTab(v as Tab)} />
         </div>
       </div>
 
@@ -376,7 +397,9 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
                   title="No round has started yet"
                   body={
                     canRun
-                      ? "Mark who's here on the Players tab, then press Start round 1."
+                      ? `Mark who's here on the Players tab, then press ${roulette ? "Draw next round" : "Start round 1"}.`
+                      : roulette
+                      ? "The organizer draws each round. Courts show up here as soon as it's drawn."
                       : "The organizer starts each round. Courts show up here as soon as it does."
                   }
                 />
@@ -409,6 +432,10 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
                     <span className="mexicano-runner__round-status">Waiting for scores</span>
                   )}
                 </div>
+                {/* The server counts repeats for the current round only. */}
+                {repeats && shownRound.number === session.currentRound && (
+                  <p className="mexicano-runner__repeats">{repeats}</p>
+                )}
                 <ul className="mexicano-runner__courts">
                   {shownRound.matches.map((match) => (
                     <MexicanoCourt
@@ -467,6 +494,8 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
                 disabled={busy}
                 search={search}
                 onToggle={togglePick}
+                teamName={teamName}
+                onTeamNameChange={setTeamName}
               />
             )}
             {leftover && <p className="mexicano-runner__leftover">{leftover}</p>}
@@ -511,6 +540,17 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
                       >
                         Undo
                       </Button>
+                    )}
+                    {canFormTeams && (
+                      <button
+                        type="button"
+                        className="mexicano-runner__quiet"
+                        aria-label={`Rename ${p.name}`}
+                        disabled={busy}
+                        onClick={() => renameTeam(p.teamId, p.name)}
+                      >
+                        Rename
+                      </button>
                     )}
                     {canFormTeams && !p.hasMatches && p.teamId !== justMade && (
                       <button
@@ -593,7 +633,7 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
                 disabled={busy || savingStatuses > 0 || !session.canStartNextRound}
                 onClick={startRound}
               >
-                {busy ? "Working..." : `Start round ${session.currentRound + 1}`}
+                {busy ? "Working..." : startLabel}
               </Button>
               {(session.canUndoRound || session.canFinish) && (
                 <div className="mexicano-runner__more">
@@ -616,7 +656,7 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
                       )}
                       {session.canFinish && (
                         <button type="button" onClick={finishEarly} disabled={busy}>
-                          Finish early
+                          {finishLabel}
                         </button>
                       )}
                     </div>

@@ -1,0 +1,7 @@
+// One unit of a big (Roulette) side per line, inside the view's own name element; a long name truncates on its own.
+.side-name__unit {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "../../../ui/Button";
-import { Match, sideDisplayName } from "../../matches/types/match";
+import { Match } from "../../matches/types/match";
+import SideName from "../../matches/components/SideName";
 import { matchWinner, scoreCells } from "../../matches/utils/matchDisplay";
 import "./MexicanoCourt.scss";
 
@@ -24,13 +25,15 @@ const MexicanoCourt: React.FC<MexicanoCourtProps> = ({ match, canScore, onScore 
   const winner = matchWinner(match);
   const refereeTeams = (match.refereeTeams ?? []).map((team) => team.teamName).filter(Boolean);
 
-  const side = (key: "home" | "away", name: string, score?: number) => (
+  const side = (key: "home" | "away", score?: number) => (
     <div
       className={`mexicano-court__team${winner === key ? " mexicano-court__team--win" : ""}${
         winner && winner !== key ? " mexicano-court__team--lose" : ""
       }`}
     >
-      <span className="mexicano-court__team-name">{name}</span>
+      <span className="mexicano-court__team-name">
+        <SideName match={match} side={key} />
+      </span>
       {points && <span className={`mexicano-court__points mexicano-court__points--${points.state}`}>{score}</span>}
     </div>
   );
@@ -43,8 +46,8 @@ const MexicanoCourt: React.FC<MexicanoCourtProps> = ({ match, canScore, onScore 
       <div className={`mexicano-court__row${match.isCompleted ? " mexicano-court__row--done" : ""}`}>
         <span className="mexicano-court__stripe" aria-hidden="true" />
         <div className="mexicano-court__main">
-          {side("home", sideDisplayName(match.homeTeamName, match.homeTeam2Name), points?.home)}
-          {side("away", sideDisplayName(match.awayTeamName, match.awayTeam2Name), points?.away)}
+          {side("home", points?.home)}
+          {side("away", points?.away)}
           {refereeTeams.length > 0 && (
             <p className="mexicano-court__referees">
               {refereeTeams.length === 1 ? "Referee team" : "Referee teams"}: {refereeTeams.join(", ")}

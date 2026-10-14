@@ -9,5 +9,7 @@ it("names the stages tab after its one kind of stage, else Stages", () => {
   expect(stagesLabel([{ kind: "Mexicano" }, { kind: "Mexicano" }])).toBe("Mexicano");
   expect(stagesLabel([{ kind: "Americano" }])).toBe("Americano");
   expect(stagesLabel([{ kind: "Americano" }, { kind: "Mexicano" }])).toBe("Stages");
+  expect(stagesLabel([{ kind: "Roulette" }, { kind: "Roulette" }])).toBe("Roulette");
+  expect(stagesLabel([{ kind: "Roulette" }, { kind: "Mexicano" }])).toBe("Stages");
   expect(stagesLabel([])).toBe("Stages");
 });
