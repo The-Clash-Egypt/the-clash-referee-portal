@@ -36,12 +36,26 @@ export interface UnpairedPlayer {
   name: string;
 }
 
-/** GET Mexicano/session: everything the Mexicano page shows. */
+/** The formats run live, a round at a time: Mexicano pairs by rank, Roulette draws fresh line-ups. */
+export type LiveStageKind = "Mexicano" | "Roulette";
+
+/** Roulette: how much of the current round was played in earlier rounds. */
+export interface RoundRepeats {
+  lineUps: number;
+  matches: number;
+}
+
+/** GET Mexicano/session: everything the runner shows, for a Mexicano or a Roulette stage. */
 export interface MexicanoSession {
   formatId: string;
   tournamentId: string;
   categoryName: string;
   stageName: string;
+  /** The stage's format. Older servers leave it out: Mexicano. */
+  blockType?: LiveStageKind;
+  /** Units on each side of a match (2 for Mexicano). Older servers leave it out. */
+  unitsPerSide?: number;
+  /** 0 = open-ended (Roulette): rounds go on until Finish. */
   plannedRounds: number;
   courts: number | null;
   pointsPerMatch: number;
@@ -50,6 +64,8 @@ export interface MexicanoSession {
   currentRound: number;
   currentRoundScored: number;
   currentRoundTotal: number;
+  /** Roulette: line-ups / matches of the current round played before. Older servers leave it out. */
+  currentRoundRepeats?: RoundRepeats;
   ended: boolean;
   canStartNextRound: boolean;
   nextRoundBlockedReason: string | null;

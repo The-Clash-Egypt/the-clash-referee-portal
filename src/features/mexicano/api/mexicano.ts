@@ -1,7 +1,10 @@
 import api from "../../../api/axios";
 import { MexicanoSession, MexicanoStatus } from "../types";
 
-/** Mexicano live rounds (spec 2026-09-29 §3.2). Every action returns the updated session. */
+/**
+ * Live rounds (spec 2026-09-29 §3.2), for Mexicano and Roulette stages alike: the server answers the Mexicano prefix for
+ * both and goes by the stage's own format. Every action returns the updated session.
+ */
 
 export interface ApiEnvelope<T> {
   data: T;
@@ -29,9 +32,23 @@ export const undoMexicanoRound = async (formatId: string): Promise<MexicanoSessi
 export const finishMexicano = async (formatId: string): Promise<MexicanoSession> =>
   (await api.post<ApiEnvelope<MexicanoSession>>(`/Mexicano/finish?${byFormat(formatId)}`)).data.data;
 
-/** Pair `unitSize` unpaired players (TeamMember ids) into one Playing team. */
-export const createMexicanoUnit = async (formatId: string, memberIds: string[]): Promise<MexicanoSession> =>
-  (await api.post<ApiEnvelope<MexicanoSession>>(`/Mexicano/units?${byFormat(formatId)}`, { memberIds })).data.data;
+/**
+ * Pair `unitSize` unpaired players (TeamMember ids) into one Playing team, named `name` when one is typed; without one
+ * the server names it after its players ("A / B").
+ */
+export const createMexicanoUnit = async (formatId: string, memberIds: string[], name?: string): Promise<MexicanoSession> => {
+  const typed = name?.trim();
+  const body = typed ? { memberIds, name: typed } : { memberIds };
+  return (await api.post<ApiEnvelope<MexicanoSession>>(`/Mexicano/units?${byFormat(formatId)}`, body)).data.data;
+};
+
+/** Rename a team of the stage (unit size 2+), any time before the event ends; the name shows everywhere. */
+export const renameMexicanoUnit = async (formatId: string, teamId: string, name: string): Promise<MexicanoSession> =>
+  (
+    await api.put<ApiEnvelope<MexicanoSession>>(`/Mexicano/units/${encodeURIComponent(teamId)}?${byFormat(formatId)}`, {
+      name,
+    })
+  ).data.data;
 
 /** Break up a team that hasn't been drawn yet; its players go back to the unpaired list. */
 export const dissolveMexicanoUnit = async (formatId: string, teamId: string): Promise<MexicanoSession> =>
