@@ -19,7 +19,7 @@ import {
 } from "../api/matches";
 import { assignRefereeTeams, unassignRefereeTeam } from "../api/refereeTeams";
 import { forgetRefereeTeamOptions } from "./useRefereeTeamOptions";
-import { FilterOptions, Match, MatchGameScore, Referee, RefereeTeamAssignResult, sideDisplayName } from "../types/match";
+import { FilterOptions, Match, MatchGameScore, Referee, RefereeTeamAssignResult, matchSideName } from "../types/match";
 import type { BulkScoreEntry, BulkScoreResult } from "../components/BulkUpdateScoreModal";
 import { nameForValue } from "../utils/filterOptions";
 import { orderForReschedule } from "../utils/reschedule";
@@ -66,10 +66,7 @@ export const matchWhatsAppMessage = (match: Match, referee?: MessageReferee): st
   const appUrl = window.location.origin;
   const matchTime = match.startTime ? moment(match.startTime).format("MMMM Do YYYY, h:mm a") : "TBD";
   const venue = match.venue || "TBD";
-  const teams = `${sideDisplayName(match.homeTeamName, match.homeTeam2Name)} vs ${sideDisplayName(
-    match.awayTeamName,
-    match.awayTeam2Name
-  )}`;
+  const teams = `${matchSideName(match, "home")} vs ${matchSideName(match, "away")}`;
   const tournamentName = match.tournamentName || "Tournament";
   const categoryName = match.categoryName || "";
   const round = match.round || "";
@@ -131,7 +128,7 @@ export const bulkWhatsAppMessage = (referee: MessageReferee, refereeMatches: Mat
         const time = match.startTime
           ? new Date(match.startTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
           : "TBD";
-        const teams = `${match.homeTeamName || "TBD"} vs ${match.awayTeamName || "TBD"}`;
+        const teams = `${matchSideName(match, "home")} vs ${matchSideName(match, "away")}`;
         const venue = match.venue || "TBD";
         const round = match.round ? ` - ${match.round}` : "";
         message += `\n  • ${time} - ${teams} (${venue})${round}`;

@@ -1,5 +1,5 @@
 import React from "react";
-import { Match, sideDisplayName } from "../../types/match";
+import { Match, matchSideName } from "../../types/match";
 import { Checkbox } from "../../../../ui/Checkbox";
 import { Icon } from "../../../../ui/Icon";
 import { Tag } from "../../../../ui/Tag";
@@ -53,8 +53,8 @@ const MatchRow: React.FC<MatchRowProps> = ({
   const referees = refereeSummary(match);
   const detail = categoryAndRound(match);
   const time = formatTime(match.startTime);
-  const home = sideDisplayName(match.homeTeamName, match.homeTeam2Name);
-  const away = sideDisplayName(match.awayTeamName, match.awayTeam2Name);
+  const home = matchSideName(match, "home");
+  const away = matchSideName(match, "away");
 
   const sideClass = (side: "home" | "away") =>
     `match-row__team${winner === side ? " match-row__team--win" : ""}${winner && winner !== side ? " match-row__team--lose" : ""}`;

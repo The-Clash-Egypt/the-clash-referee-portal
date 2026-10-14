@@ -3,7 +3,8 @@ import Drawer from "../../../shared/components/Drawer";
 import { Button } from "../../../../ui/Button";
 import { Icon, IconName } from "../../../../ui/Icon";
 import { Tag } from "../../../../ui/Tag";
-import { Match, Referee, sideDisplayName } from "../../types/match";
+import { Match, Referee } from "../../types/match";
+import SideName from "../SideName";
 import { formatTime, formatWhen, isLive } from "../../utils/timeline";
 import { initials, liveTagLabel, matchWinner, playersLine, scoreCells, ScoreCell, setsWon } from "../../utils/matchDisplay";
 import { getMatchDuration } from "../../../../utils/durationUtils";
@@ -75,15 +76,13 @@ const MatchSheet: React.FC<MatchSheetProps> = ({
   const duration = fullAccess && match.startedAt && match.endedAt ? getMatchDuration(match) : null;
 
   const side = (key: "home" | "away") => {
-    const name =
-      key === "home"
-        ? sideDisplayName(match.homeTeamName, match.homeTeam2Name)
-        : sideDisplayName(match.awayTeamName, match.awayTeam2Name);
     const players = playersLine(key === "home" ? match.homeTeamMembers : match.awayTeamMembers);
     return (
       <div className={`match-sheet__team${winner && winner !== key ? " match-sheet__team--lose" : ""}`}>
         <div className="match-sheet__who">
-          <b className="match-sheet__name">{name}</b>
+          <b className="match-sheet__name">
+            <SideName match={match} side={key} />
+          </b>
           {players ? <small className="match-sheet__players">{players}</small> : null}
         </div>
         {cells.length > 0 ? (

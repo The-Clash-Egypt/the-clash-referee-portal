@@ -1,6 +1,6 @@
 import React from "react";
 import { Document, Page, Path, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
-import { Match, isFixedPointsFormat, sideDisplayName } from "../features/matches/types/match";
+import { Match, isFixedPointsFormat, matchSideName } from "../features/matches/types/match";
 import { PDF_FONT_FAMILY, registerPdfFonts } from "../utils/pdfFonts";
 import { shouldGroupByVenue } from "../utils/venueGrouping";
 import {
@@ -214,7 +214,7 @@ const MatchSheetCard: React.FC<{
         </View>
 
         <TeamLine
-          name={sideDisplayName(match.homeTeamName, match.homeTeam2Name)}
+          name={matchSideName(match, "home")}
           members={formatMembers(match.homeTeamMembers)}
           cells={cells}
           side="home"
@@ -222,7 +222,7 @@ const MatchSheetCard: React.FC<{
         />
         <View style={styles.divider} />
         <TeamLine
-          name={sideDisplayName(match.awayTeamName, match.awayTeam2Name)}
+          name={matchSideName(match, "away")}
           members={formatMembers(match.awayTeamMembers)}
           cells={cells}
           side="away"

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Match, MatchGameScore, isFixedPointsFormat, sideDisplayName } from "../types/match";
+import { Match, MatchGameScore, isFixedPointsFormat, matchSideName } from "../types/match";
 import { ScoreCell, ScoreDrafts, scoreCellsFor } from "../../../utils/matchScoreCells";
 import { filledCells, gameScoresFromCells, otherSideScore, sameCells, validateGameScores } from "../../../utils/scoreValidation";
 import { groupMatchesByVenue } from "../../../utils/venueGrouping";
@@ -212,8 +212,8 @@ const BulkUpdateScoreModal: React.FC<BulkUpdateScoreModalProps> = ({
 
   const renderRow = (match: Match) => {
     const cells = cellsFor(match);
-    const home = sideDisplayName(match.homeTeamName, match.homeTeam2Name);
-    const away = sideDisplayName(match.awayTeamName, match.awayTeam2Name);
+    const home = matchSideName(match, "home");
+    const away = matchSideName(match, "away");
     const fixedPoints = isFixedPointsFormat(match.formatType);
     const locked = rowState[match.id] !== undefined;
     const errors = errorsFor(match);

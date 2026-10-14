@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Match, PlayerSuggestion, RefereeTeamAssignResult, RefereeTeamOption } from "../types/match";
+import { Match, PlayerSuggestion, RefereeTeamAssignResult, RefereeTeamOption, matchSideName } from "../types/match";
 import { usePlayerSuggestions, useDebounce, useRefereeTeamOptions } from "../hooks";
 import Drawer from "../../shared/components/Drawer";
 import { Button } from "../../../ui/Button";
@@ -84,7 +84,7 @@ const BulkAssignRefereeModal: React.FC<BulkAssignRefereeModalProps> = ({
   // A skipped match is named by its teams: the sheet doesn't list the matches.
   const matchName = (matchId: string) => {
     const match = selectedMatches.find((selected) => selected.id === matchId);
-    return match && [match.homeTeamName, match.awayTeamName].filter(Boolean).join(" vs ");
+    return match && `${matchSideName(match, "home")} vs ${matchSideName(match, "away")}`;
   };
 
   // After a keyboard pick or remove, back to the search for the next name.

@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import UpdateScoreDialog from "../components/UpdateScoreDialog";
-import { Match, MatchGameScore, isFixedPointsFormat, sideDisplayName } from "../types/match";
+import { Match, MatchGameScore, isFixedPointsFormat } from "../types/match";
+import SideName from "../components/SideName";
 import {
   GuestMatch,
   getGuestMatch,
@@ -97,16 +98,14 @@ const GuestMatchCard: React.FC<{ match: Match }> = ({ match }) => {
   const refereeTeams = match.refereeTeams ?? [];
 
   const side = (key: "home" | "away") => {
-    const name =
-      key === "home"
-        ? sideDisplayName(match.homeTeamName, match.homeTeam2Name)
-        : sideDisplayName(match.awayTeamName, match.awayTeam2Name);
     const players = playersLine(key === "home" ? match.homeTeamMembers : match.awayTeamMembers);
     const look = winner === key ? " guest-match__team--win" : winner ? " guest-match__team--lose" : "";
     return (
       <div className={`guest-match__team${look}`}>
         <div className="guest-match__who">
-          <b className="guest-match__name">{name}</b>
+          <b className="guest-match__name">
+            <SideName match={match} side={key} />
+          </b>
           {players ? <small className="guest-match__players">{players}</small> : null}
         </div>
         {cells.length > 0 ? (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Match, sideDisplayName } from "../types/match";
+import { Match, matchSideName } from "../types/match";
 import type { BulkEditResult, BulkMatchEdit } from "../hooks/useMatchActions";
 import {
   formatDateTimeLocal,
@@ -219,10 +219,7 @@ const BulkEditMatchModal: React.FC<BulkEditMatchModalProps> = ({
           <p className="edit-failures__title">{failureTitle}</p>
           <ul className="edit-failures__list">
             {failedMatches.map((match) => {
-              const teams = `${sideDisplayName(match.homeTeamName, match.homeTeam2Name)} vs ${sideDisplayName(
-                match.awayTeamName,
-                match.awayTeam2Name
-              )}`;
+              const teams = `${matchSideName(match, "home")} vs ${matchSideName(match, "away")}`;
               return (
                 <li key={match.id} className="edit-failure">
                   <div className="edit-failure__head">

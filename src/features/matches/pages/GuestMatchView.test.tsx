@@ -360,3 +360,23 @@ it("alerts on an unexpected save failure and keeps the dialog open", async () =>
   await waitFor(() => expect(alertSpy).toHaveBeenCalledWith("Enter at least one game's score."));
   expect(screen.getByRole("button", { name: "Submit stub" })).toBeInTheDocument();
 });
+
+it("lists every unit of a Roulette side on the card", async () => {
+  load.mockResolvedValue(
+    guest({
+      formatType: "Roulette",
+      homeTeamName: "Ali",
+      homeTeam2Name: "Bea",
+      homeExtraUnitNames: ["Eve", "Fay"],
+      awayTeamName: "Cy",
+      awayTeam2Name: "Dee",
+      awayExtraUnitNames: ["Gus"],
+    })
+  );
+
+  renderView();
+
+  for (const name of ["Ali", "Bea", "Eve", "Fay", "Cy", "Dee", "Gus"]) {
+    expect(await screen.findByText(name)).toHaveClass("side-name__unit");
+  }
+});
