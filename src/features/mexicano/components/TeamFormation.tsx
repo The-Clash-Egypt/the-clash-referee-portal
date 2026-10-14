@@ -15,9 +15,18 @@ interface UnpairedListProps {
   disabled: boolean;
   search: string;
   onToggle: (memberId: string) => void;
+  /** The next team's name, typed before its last player is tapped; empty = named after its players. */
+  teamName: string;
+  onTeamNameChange: (name: string) => void;
 }
 
-/** The players not in a team yet, as a grid of big tap targets (spec 2026-10-10); a pick turns orange. */
+/** The server's cap on a team name. */
+const TEAM_NAME_MAX = 100;
+
+/**
+ * The players not in a team yet, as a grid of big tap targets (spec 2026-10-10); a pick turns orange. Above them, an
+ * optional name for the team being picked (spec 2026-10-14): the last tap makes the team with it.
+ */
 export const UnpairedList: React.FC<UnpairedListProps> = ({
   unitSize,
   players,
@@ -26,6 +35,8 @@ export const UnpairedList: React.FC<UnpairedListProps> = ({
   disabled,
   search,
   onToggle,
+  teamName,
+  onTeamNameChange,
 }) => {
   const label = poolLabel(unitSize);
   return (
@@ -33,6 +44,16 @@ export const UnpairedList: React.FC<UnpairedListProps> = ({
       <h2 className="mexicano-runner__section">
         {label} · {total}
       </h2>
+      <input
+        type="text"
+        className="mexicano-runner__team-name"
+        aria-label="Team name (optional)"
+        placeholder="Team name (optional)"
+        autoComplete="off"
+        maxLength={TEAM_NAME_MAX}
+        value={teamName}
+        onChange={(e) => onTeamNameChange(e.target.value)}
+      />
       <ul className="mexicano-runner__pool" aria-label={label}>
         {players.map((p) => (
           <li key={p.memberId}>

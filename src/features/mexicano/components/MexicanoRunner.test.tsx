@@ -7,6 +7,7 @@ import {
   dissolveMexicanoUnit,
   finishMexicano,
   getMexicanoSession,
+  renameMexicanoUnit,
   startNextMexicanoRound,
   undoMexicanoRound,
   updateMexicanoPlayers,
@@ -24,6 +25,7 @@ jest.mock("../api/mexicano", () => ({
   getMexicanoSession: jest.fn(),
   createMexicanoUnit: jest.fn(),
   dissolveMexicanoUnit: jest.fn(),
+  renameMexicanoUnit: jest.fn(),
   updateMexicanoPlayers: jest.fn(),
   startNextMexicanoRound: jest.fn(),
   undoMexicanoRound: jest.fn(),
@@ -42,6 +44,7 @@ const finish = finishMexicano as jest.Mock;
 const saveScore = updateMatchByFormat as jest.Mock;
 const create = createMexicanoUnit as jest.Mock;
 const dissolve = dissolveMexicanoUnit as jest.Mock;
+const rename = renameMexicanoUnit as jest.Mock;
 
 const player = (name: string, status: MexicanoStatus, rank = 1, points = 0): MexicanoPlayer => ({
   teamId: `t-${name}`,
@@ -124,6 +127,7 @@ beforeEach(() => {
   jest.resetAllMocks();
   window.alert = jest.fn();
   window.confirm = jest.fn(() => true);
+  window.prompt = jest.fn(() => null);
 });
 
 it("opens on Players before round 1 and says why the round can't start yet", async () => {
@@ -430,7 +434,7 @@ it("pairs two players with two taps: they leave the list at once and the team co
   expect(within(tray()!).getByText("+ 1 more")).toBeInTheDocument();
 
   fireEvent.click(within(pool()).getByRole("button", { name: "Fay" }));
-  expect(create).toHaveBeenCalledWith("f1", ["m5", "m6"]);
+  expect(create).toHaveBeenCalledWith("f1", ["m5", "m6"], "");
   expect(tray()).not.toBeInTheDocument();
   expect(within(pool()).queryByRole("button", { name: "Eve" })).not.toBeInTheDocument();
   expect(within(pool()).queryByRole("button", { name: "Fay" })).not.toBeInTheDocument();
@@ -547,4 +551,190 @@ it("offers Break up only on teams that have not been drawn yet", async () => {
 
   await waitFor(() => expect(dissolve).toHaveBeenCalledWith("f1", "t-Ali / Bea"));
   await waitFor(() => expect(screen.queryByRole("button", { name: /Break up/ })).not.toBeInTheDocument());
+});
+
+// ── team names (Mexicano and Roulette) ──
+
+const nameField = () => screen.getByRole("textbox", { name: "Team name (optional)" });
+
+it("names a new team as it's made, then clears the name for the next one", async () => {
+  load.mockResolvedValue(pairSession());
+  create.mockResolvedValue(afterPairing());
+  renderRunner();
+
+  await screen.findByText("Needs a partner · 3");
+  fireEvent.change(nameField(), { target: { value: "Sand Sharks" } });
+  fireEvent.click(within(pool()).getByRole("button", { name: "Eve" }));
+  fireEvent.click(within(pool()).getByRole("button", { name: "Fay" }));
+
+  expect(create).toHaveBeenCalledWith("f1", ["m5", "m6"], "Sand Sharks");
+  expect(nameField()).toHaveValue("");
+  await screen.findByRole("button", { name: "Undo Eve / Fay" });
+});
+
+it("puts the typed name back when the team couldn't be made", async () => {
+  load.mockResolvedValue(pairSession());
+  create.mockRejectedValue({ response: { data: { message: "Team names can be at most 100 characters." } } });
+  renderRunner();
+
+  await screen.findByText("Needs a partner · 3");
+  fireEvent.change(nameField(), { target: { value: "Sand Sharks" } });
+  fireEvent.click(within(pool()).getByRole("button", { name: "Eve" }));
+  fireEvent.click(within(pool()).getByRole("button", { name: "Fay" }));
+
+  await waitFor(() => expect(window.alert).toHaveBeenCalledWith("Team names can be at most 100 characters."));
+  expect(nameField()).toHaveValue("Sand Sharks");
+});
+
+it("renames a team, also one that has played, and shows its players under the new name", async () => {
+  load.mockResolvedValue(pairSession());
+  (window.prompt as jest.Mock).mockReturnValue("  Net Ninjas ");
+  rename.mockResolvedValue(
+    pairSession({
+      players: [pairSession().players[0], { ...pairSession().players[1], name: "Net Ninjas" }],
+    })
+  );
+  renderRunner();
+
+  await screen.findByText("Needs a partner · 3");
+  expect(screen.getAllByRole("button", { name: /^Rename / })).toHaveLength(2);
+  fireEvent.click(screen.getByRole("button", { name: "Rename Cy / Dee" }));
+
+  expect(window.prompt).toHaveBeenCalledWith("New name for Cy / Dee", "Cy / Dee");
+  await waitFor(() => expect(rename).toHaveBeenCalledWith("f1", "t-Cy / Dee", "Net Ninjas"));
+  expect(await screen.findByText("Net Ninjas")).toBeInTheDocument();
+  expect(screen.getByText("Cy, Dee")).toBeInTheDocument();
+});
+
+it("doesn't rename when the prompt is cancelled or the name is unchanged, and says why a rename was refused", async () => {
+  load.mockResolvedValue(pairSession());
+  renderRunner();
+  await screen.findByText("Needs a partner · 3");
+
+  (window.prompt as jest.Mock).mockReturnValueOnce(null).mockReturnValueOnce("Ali / Bea ");
+  fireEvent.click(screen.getByRole("button", { name: "Rename Ali / Bea" }));
+  fireEvent.click(screen.getByRole("button", { name: "Rename Ali / Bea" }));
+  expect(rename).not.toHaveBeenCalled();
+
+  rename.mockRejectedValue({ response: { data: { message: "Type a team name." } } });
+  (window.prompt as jest.Mock).mockReturnValueOnce("");
+  fireEvent.click(screen.getByRole("button", { name: "Rename Ali / Bea" }));
+  await waitFor(() => expect(window.alert).toHaveBeenCalledWith("Type a team name."));
+});
+
+it("has no team names or Rename for single-player stages or plain referees", async () => {
+  load.mockResolvedValue(session());
+  const singles = renderRunner();
+  await screen.findByRole("heading", { name: "Men's Open" });
+  expect(screen.queryByRole("textbox", { name: "Team name (optional)" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /^Rename / })).not.toBeInTheDocument();
+  singles.unmount();
+
+  load.mockResolvedValue(pairSession());
+  renderRunner(false);
+  await screen.findByRole("heading", { name: "Men's Open" });
+  expect(screen.queryByRole("button", { name: /^Rename / })).not.toBeInTheDocument();
+});
+
+// ── Roulette ──
+
+const roulette = (over: Partial<MexicanoSession> = {}) =>
+  session({ blockType: "Roulette", unitsPerSide: 2, stageName: "Friday Roulette", plannedRounds: 0, ...over });
+
+const rouletteRound = (over: Partial<MexicanoSession> = {}) =>
+  roundOne({
+    blockType: "Roulette",
+    unitsPerSide: 2,
+    stageName: "Friday Roulette",
+    plannedRounds: 0,
+    currentRoundRepeats: { lineUps: 0, matches: 0 },
+    ...over,
+  });
+
+it("Roulette draws the next round, and an open-ended stage has no round count", async () => {
+  load.mockResolvedValue(roulette({ canStartNextRound: true, nextRoundBlockedReason: null }));
+  start.mockResolvedValue(rouletteRound());
+  renderRunner();
+
+  expect(await screen.findByText("Friday Roulette · Open-ended")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Back to Roulette" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Start round/ })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("tab", { name: "Round" }));
+  expect(screen.getByText(/then press Draw next round/)).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "Draw next round" }));
+
+  expect(start).toHaveBeenCalledWith("f1");
+  expect(await screen.findByText("Friday Roulette · Round 1")).toBeInTheDocument();
+  expect(screen.getByText("Court 1")).toBeInTheDocument();
+});
+
+it("a Roulette round with planned rounds counts them", async () => {
+  load.mockResolvedValue(rouletteRound({ plannedRounds: 6 }));
+  renderRunner();
+
+  expect(await screen.findByText("Friday Roulette · Round 1 of 6")).toBeInTheDocument();
+});
+
+it("Roulette courts list every unit of each side", async () => {
+  const big = court("m1", "Court 1", {
+    formatType: "Roulette",
+    homeExtraUnits: [{ teamId: "t-Eve", teamName: "Eve" }],
+    awayExtraUnits: [{ teamId: "t-Fay", teamName: "Fay" }],
+  });
+  load.mockResolvedValue(rouletteRound({ rounds: [{ number: 1, matches: [big], sittingOut: [] }] }));
+  renderRunner();
+
+  for (const name of ["Ali", "Dee", "Eve", "Bea", "Cy", "Fay"]) {
+    expect(await screen.findByText(name, { selector: ".side-name__unit" })).toBeInTheDocument();
+  }
+});
+
+it("notes repeated line-ups under the current round only", async () => {
+  const roundTwo = { number: 2, matches: [court("m2", "Court 1", { round: "Round 2" })], sittingOut: [] };
+  load.mockResolvedValue(
+    rouletteRound({
+      currentRound: 2,
+      currentRoundRepeats: { lineUps: 2, matches: 0 },
+      rounds: [{ number: 1, matches: [court("m1", "Court 1")], sittingOut: [] }, roundTwo],
+    })
+  );
+  renderRunner();
+
+  const note = "No fresh line-ups left for everyone here — 2 line-ups in this round were played before.";
+  expect(await screen.findByText(note)).toBeInTheDocument();
+
+  fireEvent.change(screen.getByRole("combobox", { name: "Round" }), { target: { value: "1" } });
+  expect(screen.queryByText(note)).not.toBeInTheDocument();
+});
+
+it("a Mexicano round never shows the repeat note", async () => {
+  load.mockResolvedValue(roundOne({ currentRoundRepeats: { lineUps: 0, matches: 0 } }));
+  renderRunner();
+  await screen.findByText("Court 1");
+
+  expect(screen.queryByText(/No fresh line-ups/)).not.toBeInTheDocument();
+});
+
+it("an open-ended Roulette stage offers Finish, which says no more rounds are drawn", async () => {
+  load.mockResolvedValue(rouletteRound({ canFinish: true }));
+  finish.mockResolvedValue(rouletteRound({ ended: true, canUndoRound: false, canFinish: false }));
+  renderRunner();
+  await screen.findByText("Court 1");
+
+  fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+  expect(screen.queryByRole("button", { name: "Finish early" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+
+  expect((window.confirm as jest.Mock).mock.calls[0][0]).toMatch(/No more rounds can be drawn/);
+  await waitFor(() => expect(finish).toHaveBeenCalledWith("f1"));
+});
+
+it("forms named teams for a Roulette stage of pairs too", async () => {
+  load.mockResolvedValue(pairSession({ blockType: "Roulette", plannedRounds: 0 }));
+  renderRunner();
+
+  expect(await screen.findByText("Needs a partner · 3")).toBeInTheDocument();
+  expect(nameField()).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Rename Ali / Bea" })).toBeInTheDocument();
 });
