@@ -42,6 +42,15 @@ export const createMexicanoUnit = async (formatId: string, memberIds: string[], 
   return (await api.post<ApiEnvelope<MexicanoSession>>(`/Mexicano/units?${byFormat(formatId)}`, body)).data.data;
 };
 
+/** Complete a short team (spec 2026-10-30) with unpaired players (TeamMember ids), up to the unit size. */
+export const addMexicanoUnitMembers = async (formatId: string, teamId: string, memberIds: string[]): Promise<MexicanoSession> =>
+  (
+    await api.post<ApiEnvelope<MexicanoSession>>(
+      `/Mexicano/units/${encodeURIComponent(teamId)}/members?${byFormat(formatId)}`,
+      { memberIds }
+    )
+  ).data.data;
+
 /** Rename a team of the stage (unit size 2+), any time before the event ends; the name shows everywhere. */
 export const renameMexicanoUnit = async (formatId: string, teamId: string, name: string): Promise<MexicanoSession> =>
   (

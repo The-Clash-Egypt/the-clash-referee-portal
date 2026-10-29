@@ -102,3 +102,24 @@ export const NewTeamTray: React.FC<NewTeamTrayProps> = ({ unitSize, picked, onRe
     </div>
   );
 };
+
+interface FillTrayProps {
+  teamName: string;
+  /** Players the team still needs. */
+  missing: number;
+  onCancel: () => void;
+}
+
+/**
+ * Sits on top of the action bar while a short team (spec 2026-10-30: signed up below the team size) is being
+ * completed: each tap on a waiting player adds them to it, until it is full or the organizer cancels.
+ */
+export const FillTray: React.FC<FillTrayProps> = ({ teamName, missing, onCancel }) => (
+  <div className="mexicano-runner__tray" role="region" aria-label={`Add to ${teamName}`}>
+    <span className="mexicano-runner__tray-label">Add to {teamName}:</span>
+    <span className="mexicano-runner__tray-more">+ {missing} more</span>
+    <button type="button" className="mexicano-runner__quiet mexicano-runner__tray-cancel" onClick={onCancel}>
+      Cancel
+    </button>
+  </div>
+);

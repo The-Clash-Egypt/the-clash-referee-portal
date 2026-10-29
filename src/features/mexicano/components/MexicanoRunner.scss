@@ -727,6 +727,16 @@
   color: var(--muted);
 }
 
+.mexicano-runner__tray-cancel {
+  margin-left: auto;
+}
+
+// "2 of 3" on a team that signed up short.
+.mexicano-runner__short {
+  align-self: flex-start;
+  margin-top: 3px;
+}
+
 // ---------- Touch screens and wide screens ----------
 
 // Thumb-sized controls on touch screens: the switch options, the quiet buttons, the round chip and the tray's chips.
