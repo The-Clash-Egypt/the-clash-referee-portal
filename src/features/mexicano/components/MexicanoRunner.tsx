@@ -12,6 +12,7 @@ import { Spinner } from "../../../ui/Spinner";
 import { Tag } from "../../../ui/Tag";
 import { UnderlineTabs } from "../../../ui/UnderlineTabs";
 import {
+  addMexicanoUnitMembers,
   createMexicanoUnit,
   dissolveMexicanoUnit,
   finishMexicano,
@@ -23,9 +24,9 @@ import {
   updateMexicanoPlayers,
 } from "../api/mexicano";
 import { repeatNote, roundLabel, stageKind, statusLine } from "../sessionText";
-import { MexicanoSession, MexicanoStatus } from "../types";
+import { MexicanoPlayer, MexicanoSession, MexicanoStatus } from "../types";
 import MexicanoCourt from "./MexicanoCourt";
-import { NewTeamTray, UnpairedList } from "./TeamFormation";
+import { FillTray, NewTeamTray, UnpairedList } from "./TeamFormation";
 import "./MexicanoRunner.scss";
 
 type Tab = "round" | "players" | "leaderboard";
@@ -79,6 +80,7 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
   const [pairing, setPairing] = useState<string[]>([]); // members hidden while their team is being made
   const [justMade, setJustMade] = useState<string | null>(null); // the team that gets Undo for a moment
   const [teamName, setTeamName] = useState(""); // optional name for the team being picked
+  const [filling, setFilling] = useState<string | null>(null); // a short team taking waiting players
   const searchBox = useRef<HTMLDivElement>(null); // around the SearchInput, which takes no ref
   // A save or action in flight: polling must not overwrite its optimistic state.
   const pending = useRef(0);
@@ -110,6 +112,13 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
       return next.length === current.length ? current : next;
     });
   }, [session]);
+
+  // The team being filled is done once it's full (or gone).
+  useEffect(() => {
+    if (!session || !filling) return;
+    const team = session.players.find((p) => p.teamId === filling);
+    if (!team || team.members.length >= session.unitSize) setFilling(null);
+  }, [session, filling]);
 
   useEffect(() => {
     if (!justMade) return;
@@ -207,9 +216,22 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
     }
   };
 
+  /** While a short team is being filled, each tap adds that player to it. */
+  const addToShortTeam = (teamId: string, memberId: string) =>
+    runAction(() => addMexicanoUnitMembers(formatId, teamId, [memberId]), "Couldn't add that player.");
+
+  const startFilling = (teamId: string) => {
+    setPicked([]);
+    setFilling(teamId);
+  };
+
   /** Tapping the last player a team needs makes the team; no extra button. */
   const togglePick = (memberId: string) => {
     if (!session) return;
+    if (filling) {
+      addToShortTeam(filling, memberId);
+      return;
+    }
     if (picked.includes(memberId)) {
       setPicked(picked.filter((id) => id !== memberId));
       return;
@@ -336,6 +358,9 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
     // The team just made goes on top, so its Undo is where the organizer is looking.
     .sort((a, b) => Number(b.teamId === justMade) - Number(a.teamId === justMade) || a.name.localeCompare(b.name));
   const statusesLocked = !canRun || session.ended;
+  // A premade team that signed up below the team size (spec 2026-10-30) can't be drawn until it is filled.
+  const isShort = (p: MexicanoPlayer) => session.unitSize > 1 && p.members.length < session.unitSize;
+  const fillingTeam = filling ? session.players.find((p) => p.teamId === filling) : undefined;
   // Teams of 2+ are paired here, just before play (spec 2026-10-10).
   const canFormTeams = canRun && !session.ended && session.unitSize > 1;
   const waiting = canFormTeams ? session.unpaired.filter((u) => !pairing.includes(u.memberId)) : [];
@@ -362,7 +387,7 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
   // Until someone picks a tab: Players before round 1 (check-in), the Round afterwards.
   const activeTab: Tab = tab ?? (session.currentRound > 0 ? "round" : "players");
   const hasBar = canRun && !session.ended;
-  const hasTray = canFormTeams && pickedPlayers.length > 0;
+  const hasTray = canFormTeams && (pickedPlayers.length > 0 || !!fillingTeam);
   // Roulette draws fresh line-ups rather than pairing by rank; its rounds may be open-ended (no planned count).
   const startLabel = roulette ? "Draw next round" : `Start round ${session.currentRound + 1}`;
   const finishLabel = session.plannedRounds === 0 ? "Finish" : "Finish early";
@@ -471,7 +496,8 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
                   disabled={notHere.length === 0}
                   onClick={() =>
                     saveStatuses(
-                      notHere.map((p) => ({
+                      // Short teams can't play yet; they are checked in once filled.
+                      notHere.filter((p) => !isShort(p)).map((p) => ({
                         teamId: p.teamId,
                         status: MexicanoStatus.Playing,
                       }))
@@ -512,6 +538,11 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
                     {session.unitSize > 1 && p.members.length > 0 && p.members.join(" / ") !== p.name && (
                       <span className="mexicano-runner__player-members">{p.members.join(", ")}</span>
                     )}
+                    {canFormTeams && isShort(p) && (
+                      <Tag tone="warn" className="mexicano-runner__short">
+                        {p.members.length} of {session.unitSize}
+                      </Tag>
+                    )}
                   </div>
                   <div className="mexicano-runner__player-actions">
                     <div className="mexicano-runner__tri" role="group" aria-label={`${p.name} status`}>
@@ -540,6 +571,17 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
                       >
                         Undo
                       </Button>
+                    )}
+                    {canFormTeams && isShort(p) && (
+                      <button
+                        type="button"
+                        className="mexicano-runner__quiet"
+                        aria-label={`Add a player to ${p.name}`}
+                        disabled={busy || waiting.length === 0 || filling === p.teamId}
+                        onClick={() => startFilling(p.teamId)}
+                      >
+                        Add player
+                      </button>
                     )}
                     {canFormTeams && (
                       <button
@@ -617,7 +659,14 @@ const MexicanoRunner: React.FC<MexicanoRunnerProps> = ({ formatId, canRun, onBac
 
       {hasBar && (
         <div className="mexicano-runner__bar">
-          {hasTray && (
+          {hasTray && fillingTeam && (
+            <FillTray
+              teamName={fillingTeam.name}
+              missing={session.unitSize - fillingTeam.members.length}
+              onCancel={() => setFilling(null)}
+            />
+          )}
+          {hasTray && !fillingTeam && (
             <NewTeamTray
               unitSize={session.unitSize}
               picked={pickedPlayers}

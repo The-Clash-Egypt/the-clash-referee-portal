@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import "@testing-library/jest-dom";
 import MexicanoRunner from "./MexicanoRunner";
 import {
+  addMexicanoUnitMembers,
   createMexicanoUnit,
   dissolveMexicanoUnit,
   finishMexicano,
@@ -24,6 +25,7 @@ jest.mock("../api/mexicano", () => ({
   ...jest.requireActual("../api/mexicano"),
   getMexicanoSession: jest.fn(),
   createMexicanoUnit: jest.fn(),
+  addMexicanoUnitMembers: jest.fn(),
   dissolveMexicanoUnit: jest.fn(),
   renameMexicanoUnit: jest.fn(),
   updateMexicanoPlayers: jest.fn(),
@@ -45,6 +47,7 @@ const saveScore = updateMatchByFormat as jest.Mock;
 const create = createMexicanoUnit as jest.Mock;
 const dissolve = dissolveMexicanoUnit as jest.Mock;
 const rename = renameMexicanoUnit as jest.Mock;
+const addMembers = addMexicanoUnitMembers as jest.Mock;
 
 const player = (name: string, status: MexicanoStatus, rank = 1, points = 0): MexicanoPlayer => ({
   teamId: `t-${name}`,
@@ -737,4 +740,82 @@ it("forms named teams for a Roulette stage of pairs too", async () => {
   expect(await screen.findByText("Needs a partner · 3")).toBeInTheDocument();
   expect(nameField()).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Rename Ali / Bea" })).toBeInTheDocument();
+});
+
+// Spec 2026-10-30 §1: a premade team that signed up short is completed from the waiting players.
+const trioSession = (over: Partial<MexicanoSession> = {}) =>
+  session({
+    blockType: "Roulette",
+    unitSize: 3,
+    players: [
+      { ...player("Hawks", MexicanoStatus.NotHere), members: ["Hana", "Hadi"] },
+      { ...player("Owls", MexicanoStatus.NotHere, 2), members: ["Omar", "Ola", "Oni"] },
+    ],
+    unpaired: [
+      { memberId: "m5", name: "Eve" },
+      { memberId: "m6", name: "Fay" },
+    ],
+    ...over,
+  });
+
+const fillTray = () => screen.queryByRole("region", { name: "Add to Hawks" });
+
+it("says how many players a short team has and fills it with a tap on a waiting player", async () => {
+  load.mockResolvedValue(trioSession());
+  addMembers.mockResolvedValue(
+    trioSession({
+      players: [
+        { ...player("Hawks", MexicanoStatus.NotHere), members: ["Hana", "Hadi", "Eve"] },
+        trioSession().players[1],
+      ],
+      unpaired: [{ memberId: "m6", name: "Fay" }],
+    })
+  );
+  renderRunner();
+
+  expect(await screen.findByText("2 of 3")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Add a player to Owls" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Add a player to Hawks" }));
+  expect(within(fillTray()!).getByText("+ 1 more")).toBeInTheDocument();
+
+  fireEvent.click(within(screen.getByRole("list", { name: "Needs a team" })).getByRole("button", { name: "Eve" }));
+
+  expect(addMembers).toHaveBeenCalledWith("f1", "t-Hawks", ["m5"]);
+  await waitFor(() => expect(fillTray()).not.toBeInTheDocument());
+  expect(screen.queryByText("2 of 3")).not.toBeInTheDocument();
+  expect(create).not.toHaveBeenCalled();
+});
+
+it("cancelling the fill goes back to making new teams", async () => {
+  load.mockResolvedValue(trioSession());
+  renderRunner();
+
+  fireEvent.click(await screen.findByRole("button", { name: "Add a player to Hawks" }));
+  fireEvent.click(within(fillTray()!).getByRole("button", { name: "Cancel" }));
+
+  expect(fillTray()).not.toBeInTheDocument();
+  fireEvent.click(within(screen.getByRole("list", { name: "Needs a team" })).getByRole("button", { name: "Eve" }));
+  expect(addMembers).not.toHaveBeenCalled();
+  expect(tray()).toBeInTheDocument();
+});
+
+it("says why a player couldn't be added to a short team", async () => {
+  load.mockResolvedValue(trioSession());
+  addMembers.mockRejectedValue({ response: { data: { message: "This team is already complete." } } });
+  renderRunner();
+
+  fireEvent.click(await screen.findByRole("button", { name: "Add a player to Hawks" }));
+  fireEvent.click(within(screen.getByRole("list", { name: "Needs a team" })).getByRole("button", { name: "Eve" }));
+
+  await waitFor(() => expect(window.alert).toHaveBeenCalledWith("This team is already complete."));
+});
+
+it("Mark everyone playing leaves short teams out", async () => {
+  load.mockResolvedValue(trioSession());
+  updatePlayers.mockResolvedValue(trioSession());
+  renderRunner();
+
+  fireEvent.click(await screen.findByRole("button", { name: "Mark everyone playing" }));
+
+  expect(updatePlayers).toHaveBeenCalledWith("f1", [{ teamId: "t-Owls", status: MexicanoStatus.Playing }]);
 });

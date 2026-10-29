@@ -1,5 +1,6 @@
 import api from "../../../api/axios";
 import {
+  addMexicanoUnitMembers,
   createMexicanoUnit,
   dissolveMexicanoUnit,
   finishMexicano,
@@ -65,6 +66,13 @@ describe("Mexicano session actions", () => {
 
     await expect(createMexicanoUnit("f1", ["m1", "m2"])).resolves.toEqual(session);
     expect(post).toHaveBeenCalledWith("/Mexicano/units?formatId=f1", { memberIds: ["m1", "m2"] });
+  });
+
+  it("adds waiting players to a short team", async () => {
+    post.mockResolvedValue(envelope(session));
+
+    await expect(addMexicanoUnitMembers("f1", "t 1", ["m5"])).resolves.toEqual(session);
+    expect(post).toHaveBeenCalledWith("/Mexicano/units/t%201/members?formatId=f1", { memberIds: ["m5"] });
   });
 
   it("sends a typed team name, trimmed; a blank one is left out so the server names the team after its players", async () => {
